@@ -97,13 +97,30 @@ mod tests {
 
     #[test]
     fn test_mul() {
-        assert_eq!(mul(0x0, 0x0), 0x0);
-        assert_eq!(mul(0x1, 0x1), 0x1);
-        assert_eq!(mul(0x2, 0x2), 0x4);
-        assert_eq!(mul(0x3, 0x3), 0x6); // This test might fail based on the current `mul` implementation. Needs fixing.
-        // Add more tests as needed, including cases that require reduction
-    }
+        assert_eq!(mul(0x0, 0x0), 0x0); // 0 * 0 = 0
+        assert_eq!(mul(0x1, 0x1), 0x1); // 1 * 1 = 1
+        assert_eq!(mul(0x2, 0x2), 0x4); // x * x = x^2 = 4
+        assert_eq!(mul(0x3, 0x3), 0x5); // (x + 1) * (x + 1) = x^2 + 2x + 1 = x^2 + 1 (as modulo 2 eats the 2x - no modular reduction needed)
 
+        assert_eq!(mul(0xC, 0x3), 0x7); 
+        // (x^3 + x^2) * (x + 1) = x^4 + 2x^3 + x^2 
+        // = x^4 + x^2 (Term-wise modulo 2 reduction)
+        // x^4 + x^2 + (x^4 + x + 1) = x^2 + x + 1 (By doing modular reduction on x^4 + x^2 with f(x) = x^4 + x + 1 - then modulo 2 term-wise)
+
+        assert_eq!(mul(0xC, 0x7), 0x2); 
+        // (x^3 + x^2) * (x^2 + x + 1) = x^5 + 2x^4 + 2x^3 + x^2 = x^5 + x^2 (Term-wise modulo 2 reduction)
+        // x^5 + x^2 + (x^5 + x^2 + x) = 2x^5 + 2x^2 + x (By doing modular reduction on x^5 + x^2 with x * f(x) = x^5 + x^2 + x)
+        // = x  (modulo 2 term-wise)
+
+        assert_eq!(mul(0xf, 0xf), 0xa); 
+        // (x^3 + x^2 + x + 1) * (x^3 + x^2 + x + 1) = x^6 + 2x^5 + 3x^4 + 4x^3 + 3x^2 + x + 1
+        // = x^6 + x^4 + x^2 + 1 (Term-wise modulo 2 reduction)
+        // x^6 + x^4 + x^3 + x^2 + 1 + (x^6 + x^3 + x^2) = 2x^6 + x^4 + 2x^3 + 2x^2 + 1 (By doing modular reduction on x^6 + x^4 + x^3 + x^2 + 1 with x^2 * f(x) = x^6 + x^3 + x^2)
+        // = x^4 + x^3 + 1 (modulo 2 term-wise)
+        // x^4 + x^3 + 1 + (x^4 + x + 1) = 2x^4 + x^3 + x + 2 (By doing modular reduction on x^4 + x^3 + 1 with f(x) = x^4 + x + 1)
+        // = x^3 + x  (modulo 2 term-wise)
+    }
+    
     #[test]
     fn test_inv() {
         assert_eq!(inv(0x1), 0x1); // 1 is its own inverse
