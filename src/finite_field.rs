@@ -3,17 +3,18 @@
 use std::u8;
 
 
-// GF(16) negation is equivalent to XOR with 0xf
+// Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
+// Hence, -a = a in binary fields (GF(2^n)).  
 pub fn neg(x: u8) -> u8 {
-    return x ^ 0xf;
+    return x; // Negation in GF(2^n) has no effect as a + a = 0.
 }
 
-// GF(16) addition is equivalent to XOR
+// GF(16) addition is equivalent to XOR because we do bitwise addition modulo 2 (no carry)
 pub fn add(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
 
-// GF(16) subtraction is equivalent to XOR
+// GF(16) subtraction is equivalent to XOR because we do bitwise subtraction modulo 2 (no carry)
 pub fn sub(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
