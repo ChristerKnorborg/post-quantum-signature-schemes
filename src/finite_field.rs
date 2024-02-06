@@ -19,19 +19,20 @@ pub fn sub(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
 
-// GF(16) multiplication is equivalent to multiplying the polynomials and then reducing modulo the irreducible polynomial
+// GF(16) multiplication is equivalent to multiplying the polynomials and then reducing modulo the irreducible polynomial. 
 pub fn mul(x: u8, y: u8) -> u8 {
 
     // Carryless multiplication of polynomials in GF(2^4)
-    let mut res;
+    let mut res: u8;
     res =  (x & 1)*y; // Multiply by x^0
     res ^= (x & 2)*y; // Multiply by x^1
     res ^= (x & 4)*y; // Multiply by x^2
     res ^= (x & 8)*y; // Multiply by x^3
 
-    // Reduce modulo the irreducible polynomial x^4 + x + 1
-    let first_4_bits: u8 = res & 0xf0; // Top 4 bits of res
-    let res : u8 = (res ^ (first_4_bits >> 4) ^ (first_4_bits >> 3)) & 0x0f; // XOR with x^4 and x^3, then take bottom 4 bits
+    // Reduce modulo by the irreducible polynomial x^4 + x + 1 
+    let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit is always 0, cause we can't get more than x^6)
+    let overflow_bits: u8 = (first_4_bits >> 4) ^ (first_4_bits >> 3); // Replace x^4 with x + 1 as x^4 (e.g. 16) = x + 1 (under the irreducible polynomial). Notice, + is XOR in binary fields.
+    let res : u8 = (res ^ overflow_bits) & 0x0f; // XOR res with the mod reduction of the overflow bits. Then remove first 4 bits from res.
     return res;
 }
 
@@ -48,6 +49,12 @@ pub fn inv(x: u8) -> u8{
     let x14: u8 = mul(x8, x6);
 
     return x14;
+}
+
+
+// GF(16) division is equivalent to multiplying the dividend by the multiplicative inverse of the divisor.
+pub fn div(x: u8, y: u8) -> u8 {
+    return mul(x, inv(y));
 }
 
 
@@ -85,7 +92,6 @@ mod tests {
         assert_eq!(add(0x1, 0x2), 0x3); // 1 + 2 = 3
         assert_eq!(add(0x3, 0x1), 0x2); // 3 + 1 = 2
         assert_eq!(add(0x6, 0x6), 0x0); // 6 is its own additive inverse
-
     }
 
     #[test]
@@ -121,7 +127,7 @@ mod tests {
         // x^4 + x^3 + 1 + (x^4 + x + 1) = 2x^4 + x^3 + x + 2 (By doing modular reduction on x^4 + x^3 + 1 with f(x) = x^4 + x + 1)
         // = x^3 + x  (modulo 2 term-wise)
     }
-    
+
     #[test]
     fn test_inv() {
         assert_eq!(inv(0x1), 0x1); // 1 is its own inverse

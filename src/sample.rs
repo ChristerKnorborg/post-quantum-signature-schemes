@@ -1,40 +1,46 @@
+use crate::finite_field as ff;
 
 
-// Function to perform the echelon form algorithm on matrix B
-pub fn echelon_form(mut b: Vec<Vec<f64>>, k: usize, o: usize) -> Vec<Vec<f64>> {
-    let m = b.len(); // Number of rows
-    let n = k * o + 1; // Number of columns based on the given parameters k and o
+
+// Function to perform the echelon form algorithm on matrix B (E.g. make an affine transformation matrix)
+pub fn echelon_form(mut b: Vec<Vec<u8>>, k: usize, o: usize) -> Vec<Vec<u8>> {
+    let rows = b.len(); // Number of rows
+    let cols = k * o + 1; // Number of columns based on the given parameters k and o
     let mut pivot_row = 0;
     let mut pivot_column = 0;
 
-    while pivot_row < m && pivot_column < n {
+    while pivot_row < rows && pivot_column < cols {
         // Find the pivot
-        let possible_pivots: Vec<usize> = (pivot_row..m)
-            .filter(|&i| b[i][pivot_column] != 0.0)
-            .collect();
+        let possible_pivots: Vec<usize> = (pivot_row..rows)
+            .filter(|&i| b[i][pivot_column] != 0) // remember to dereferrence i to avoid ownership
+            .collect(); // Transforms all the candidate pivots to an iterator.
 
-        if possible_pivots.is_empty() {
+        // If there are no possible pivots in this column, move to the next
+        let next_pivot_row = if let Some(min_pivot) = possible_pivots.iter().min() {
+            *min_pivot
+        } else {
             // No pivot in this column, move to the next
             pivot_column += 1;
             continue;
-        }
-
-        let next_pivot_row = *possible_pivots.iter().min().unwrap();
+        };
 
         // Swap rows
         b.swap(pivot_row, next_pivot_row);
 
-        // Make the leading entry a "1"
-        let leading_entry = b[pivot_row][pivot_column];
-        for j in 0..n {
-            b[pivot_row][j] /= leading_entry;
+        // Make the leading entry a "1" by multiplying the row by the inverse of the pivot
+        let inv_idx = ff::inv(b[pivot_row][pivot_column]);
+        for j in pivot_column..cols {
+            b[pivot_row][j] = ff::mul(inv_idx, b[pivot_row][j]);
         }
 
         // Eliminate entries below the pivot
-        for i in pivot_row + 1..m {
+        for i in pivot_row + 1..rows { // From next pivot row to m - 1
             let factor = b[i][pivot_column];
-            for j in pivot_column..n {
-                b[i][j] -= factor * b[pivot_row][j];
+            for j in pivot_column..cols {
+
+                let finite_mult = ff::mul(factor, b[pivot_row][j]);
+                let res = ff::sub(b[i][j], finite_mult);
+                b[i][j] = res // b[i][j] - (factor * b[pivot_row][j]);
             }
         }
 
@@ -48,8 +54,7 @@ pub fn echelon_form(mut b: Vec<Vec<f64>>, k: usize, o: usize) -> Vec<Vec<f64>> {
 
 
 
-
-
+/*
 // Sample a solution to a system of linear equations
 pub fn sample_solution(a: Vec<Vec<f64>>, mut y: Vec<f64>, r: Vec<f64>) -> Result<Vec<f64>, &'static str> {
     let m = a.len();
@@ -95,4 +100,36 @@ pub fn sample_solution(a: Vec<Vec<f64>>, mut y: Vec<f64>, r: Vec<f64>) -> Result
     }
 
     Ok(x)
+}
+
+ */
+
+
+// test echoleon_form
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_echelon_form_simple() {
+        // Example matrix in GF(16), represented as u8
+        let b = vec![
+            vec![0x0, 0x2, 0x3, 0x4], // Represents polynomials: 0, x, x+1, x^2
+            vec![0x2, 0x4, 0x6, 0x4], // Represents polynomials: x, x^2, x^2+x, x^2
+        ];
+        let k = 1; // Adjust based on your setup
+        let o = 2; // Adjust based on your setup
+
+        // Expected result after echelon form transformation
+        // It's important to calculate these expected values based on GF(16) arithmetic rules
+        let expected = vec![
+            vec![0x1, 0x0, 0x0], // Adjust these values based on expected echelon form
+            vec![0x0, 0x1, 0x0], // Adjust these values based on expected echelon form
+        ];
+
+        let result = echelon_form(b, k, o);
+
+        assert_eq!(result, expected, "Echelon form did not match expected result");
+    }
+
 }
