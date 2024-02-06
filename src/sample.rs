@@ -1,19 +1,19 @@
-use std::vec;
+use std::u16;
 
-use crate::finite_field::{self as ff, sub};
+use crate::finite_field as ff;
 use rand::rngs::StdRng as rng;
-use rand::{Rng, rngs::StdRng, SeedableRng};
+use rand::{Rng, SeedableRng};
 
 
 // Function to perform the echelon form algorithm on matrix B.
-pub fn echelon_form(mut b: Vec<Vec<u8>>, k: usize, o: usize) -> Vec<Vec<u8>> {
+pub fn echelon_form(mut b: Vec<Vec<u8>>, k: u8, o: u8) -> Vec<Vec<u8>> {
 
     let rows = b.len(); 
     let cols = b[0].len(); 
     let mut pivot_row = 0;
     let mut pivot_column = 0;
 
-    while pivot_row < rows && pivot_column < k*o + 1{
+    while pivot_row < rows && pivot_column < (k*o + 1) as usize{
         // Find the pivot
         let possible_pivots: Vec<usize> = (pivot_row..rows)
             .filter(|&i| b[i][pivot_column] != 0) // remember to dereferrence i to avoid ownership
@@ -34,6 +34,9 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>, k: usize, o: usize) -> Vec<Vec<u8>> {
         // Make the leading entry a "1" by multiplying the row by the inverse of the pivot
         let inv_idx = ff::inv(b[pivot_row][pivot_column]);
         for j in pivot_column..cols {
+
+            println!("inv_idx: {}", inv_idx);
+            println!("b[pivot_row][j]: {}", b[pivot_row][j]);
             b[pivot_row][j] = ff::mul(inv_idx, b[pivot_row][j]);
         }
 
@@ -80,7 +83,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
 
 
     // Perform y = y - Ar in single iteration over y and A
-    let mut y: Vec<u8> = a.iter().zip(y.iter()).map(|(row, &y_val)| {
+    y = a.iter().zip(y.iter()).map(|(row, &y_val)| {
 
         let ar_val: u8 = row.iter().zip(r.iter())
             .map(|(a_row_idx, r_idx)| ff::mul(*a_row_idx, *r_idx))
@@ -110,9 +113,9 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         x[c] = ff::add(x[c], y[r]);
 
         // Calc x_c = x_c + y[r]
-        let temp_mult = a.iter().map(|row| {
+        let temp_mult: Vec<u8> = a.iter().map(|row| {
             ff::mul(y[r], row[c])
-        }).collect::<Vec<u8>>();
+        }).collect();
         
 
         // Calc y = y - y[r] * A[:,c]
@@ -120,6 +123,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
             ff::sub(*y_idx, *temp_mult_idx)
         }).collect();
     }
+
     Ok(x)
 }
 
@@ -222,3 +226,7 @@ mod tests {
 
 
 }
+
+
+
+
