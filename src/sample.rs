@@ -87,7 +87,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
 
         let ar_val: u8 = row.iter().zip(r.iter())
             .map(|(a_row_idx, r_idx)| ff::mul(*a_row_idx, *r_idx))
-            .sum(); // Compute the dot product of the current row of A and r
+            .fold(0, |acc, x| ff::add(acc, x)); // Compute the dot product of the current row of A and r
         ff::sub(y_val, ar_val) // Perform subtraction y - Ar
     }).collect(); // Collect new vector of size m
 
