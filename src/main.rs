@@ -57,7 +57,7 @@ fn main() {
         vec![0x8, 0x9, 0x5, 0x6, 0xe, 0xa, 0xb, 0x1],  
     ];
 
-
+    //first iter goes to row, second iter goes over all entries in a row.
     let mult_x: Vec<u8> = a_temp.iter().map(|row| {
         row.iter().zip(x.iter()).map(|(a_row_idx, r_idx)| ff::mul(*a_row_idx, *r_idx))
         .fold(0, |acc, x| ff::add(acc, x))
@@ -68,13 +68,15 @@ fn main() {
 
     println!("Solution!");
     println!("{:?}" , mult_x);
-    let mut sum = 0;
-    for i in (0..8) {  
-        let x = ff::mul(a_temp[2][i], x[i]);
-        sum = ff::add(sum, x);
-    }
 
-    println!("{:?}" , sum)
+
+    // let mut sum = 0;
+    // for i in (0..8) {  
+    //     let x = ff::mul(a_temp[2][i], x[i]);
+    //     sum = ff::add(sum, x);
+    // }
+
+    // println!("{:?}" , sum)
 
 
 
