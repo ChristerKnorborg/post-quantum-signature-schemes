@@ -98,22 +98,25 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
     }
 
     // Put (A | y) in echelon form with leading 1's.
-    a = echelon_form(a, 2, 4);
+    let a_ech = echelon_form(a, 2, 4);
 
 
-    if a[rows].iter().all(|&i| {i == 0} ) {
+    if a_ech[rows-1].iter().all(|&i| {i == 0} ) {
         return Err("The matrix A does not have full rank.");
     }
  
+    print_matrix(a_ech.clone());
+    
     // Back-substitution
     // Create affine transformation known from Oil and Vinegar
-    for r in (0..cols).rev() {
+    for r in (0..rows).rev() {
         // Let c be the index of first non-zero element of A[r,:]
-        let c = a[r].iter().position(|&i| i != 0).unwrap();
+        let c = a_ech[r].iter().position(|&i| i != 0).unwrap();
         x[c] = ff::add(x[c], y[r]);
+        println!("{}",x[c]);
 
         // Calc x_c = x_c + y[r]
-        let temp_mult: Vec<u8> = a.iter().map(|row| {
+        let temp_mult: Vec<u8> = a_ech.iter().map(|row| {
             ff::mul(y[r], row[c])
         }).collect();
         
