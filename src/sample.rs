@@ -228,6 +228,7 @@ mod tests {
 
     #[test]
     fn test_sample_solution() {
+        //TODO maybe make it run 20 times every time
         let mut rand_test = rng::from_entropy();
         // Input matrix A
         let mut a = vec![
