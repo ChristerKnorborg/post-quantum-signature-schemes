@@ -1,6 +1,7 @@
 use std::u16;
 
 use crate::finite_field as ff;
+use crate::utils as util;
 use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
 
@@ -71,6 +72,7 @@ pub fn sample_rand(k: u8, o: u8) -> Vec<u8> {
 }
 
 
+
 pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &'static str> {
     let rows = a.len();
     let cols = a[0].len();
@@ -78,7 +80,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
     let k = 2;
     let o = 4;
 
-    let r: Vec<u8> = sample_rand(k, o);
+    let r: Vec<u8> = util::test_random(k, o);
     let mut x: Vec<u8> = r.clone();
 
 
@@ -91,11 +93,15 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         ff::sub(y_val, ar_val) // Perform subtraction y - Ar
     }).collect(); // Collect new vector of size m
 
+    println!("{:?}",y);
 
     // Append the first element of y to the first row of A, the second element of y to the second row of A etc.
     for (row, &y_val) in a.iter_mut().zip(y.iter()) {
         row.push(y_val);
     }
+
+    println!("Matrix after y!");
+    util::print_matrix(a.clone());
 
     // Put (A | y) in echelon form with leading 1's.
     let a_ech = echelon_form(a, 2, 4);
@@ -105,7 +111,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         return Err("The matrix A does not have full rank.");
     }
  
-    print_matrix(a_ech.clone());
+    util::print_matrix(a_ech.clone());
     
     // Back-substitution
     // Create affine transformation known from Oil and Vinegar
@@ -130,13 +136,6 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
     Ok(x)
 }
 
-
-
-pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
-    mat.iter().for_each(|f| {
-        println!("{:?}", f);
-})
-}
 
 // test echoleon_form
 #[cfg(test)]

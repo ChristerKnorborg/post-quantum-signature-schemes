@@ -1,9 +1,11 @@
 mod sample;
 mod finite_field;
+mod utils;
 
 
 use crate::sample as samp;
 use crate::finite_field as ff;
+use crate::utils as util;
 
 
 fn main() {
@@ -31,7 +33,7 @@ fn main() {
     let y = vec![0x1, 0x2, 0x3, 0x4];
 
     println!("Input Matrix: ");
-    samp::print_matrix(a.clone());
+    util::print_matrix(a.clone());
 
     println!("Input Vector (tag): ");
     println!("{:?}", y);
@@ -58,25 +60,14 @@ fn main() {
     ];
 
     //first iter goes to row, second iter goes over all entries in a row.
+    //a[1][1]*x[1] +  a[1][2]*x[2] .....
     let mult_x: Vec<u8> = a_temp.iter().map(|row| {
         row.iter().zip(x.iter()).map(|(a_row_idx, r_idx)| ff::mul(*a_row_idx, *r_idx))
         .fold(0, |acc, x| ff::add(acc, x))
     }).collect();
 
-
-    //a[1][1]*x[1] +  a[1][2]*x[2] .....
-
     println!("Solution!");
     println!("{:?}" , mult_x);
-
-
-    // let mut sum = 0;
-    // for i in (0..8) {  
-    //     let x = ff::mul(a_temp[2][i], x[i]);
-    //     sum = ff::add(sum, x);
-    // }
-
-    // println!("{:?}" , sum)
 
 
 
