@@ -41,6 +41,9 @@ pub fn mul(x: u8, y: u8) -> u8 {
 // E.g. x^14 = x^-1 (the multiplicative inverse of x)      
 pub fn inv(x: u8) -> u8{
 
+    // u8 table[16] = {0, 1, 9, 14, 13, 11, 7, 6, 15, 2, 12, 5,
+    // 10, 4, 3, 8}; return table[a & 15];
+
     // Calculate multiplicative inverse of x by exponentiation by squaring (x^14 = x^-1) 
     let x2: u8 = mul(x, x);
     let x4: u8 = mul(x2, x2);
@@ -98,8 +101,9 @@ mod tests {
     fn test_sub() {
         // Subtraction is the same as addition in GF(16)
         assert_eq!(sub(0x0, 0x0), 0x0); // 0 is the additive identity
-        assert_eq!(sub(0x3, 0x1), 0x2); // 3 - 1 = 2
-        assert_eq!(sub(0x1, 0x2), 0x3); // 1 - 2 = 3
+        assert_eq!(sub(0x3, 0x1), 0x2); // (x + 1) - 1 = x
+        assert_eq!(sub(0x1, 0x2), 0x3); // 1 - x = x + 1
+        assert_eq!(sub(0x6, 0xf), 0x0); // 
     }
 
     #[test]

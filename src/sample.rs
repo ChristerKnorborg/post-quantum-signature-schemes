@@ -35,9 +35,6 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>, k: u8, o: u8) -> Vec<Vec<u8>> {
         // Make the leading entry a "1" by multiplying the row by the inverse of the pivot
         let inv_idx = ff::inv(b[pivot_row][pivot_column]);
         for j in pivot_column..cols {
-
-            println!("inv_idx: {}", inv_idx);
-            println!("b[pivot_row][j]: {}", b[pivot_row][j]);
             b[pivot_row][j] = ff::mul(inv_idx, b[pivot_row][j]);
         }
 
@@ -75,12 +72,11 @@ pub fn sample_rand(k: u8, o: u8) -> Vec<u8> {
 
 pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &'static str> {
     let rows = a.len();
-    let cols = a[0].len();
 
     let k = 2;
     let o = 4;
 
-    let r: Vec<u8> = util::test_random(k, o);
+    let r: Vec<u8> = sample_rand(k, o);
     let mut x: Vec<u8> = r.clone();
 
 
@@ -93,7 +89,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         ff::sub(y_val, ar_val) // Perform subtraction y - Ar
     }).collect(); // Collect new vector of size m
 
-    println!("{:?}",y);
+    println!("y vector: {:?}",y);
 
     // Append the first element of y to the first row of A, the second element of y to the second row of A etc.
     for (row, &y_val) in a.iter_mut().zip(y.iter()) {
@@ -104,34 +100,49 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
     util::print_matrix(a.clone());
 
     // Put (A | y) in echelon form with leading 1's.
-    let a_ech = echelon_form(a, 2, 4);
+    let a = echelon_form(a, k, o);
+
+    println!("Matrix A after echelon form!");
+    util::print_matrix(a.clone());
+
+    // Split the matrix into A and y
+    let a_ech: Vec<Vec<u8>> = a.iter().map(|row| row[0..row.len()-1].to_vec()).collect();
+    let mut y_ech: Vec<u8> = a.iter().map(|row| *row.last().unwrap()).collect();
 
 
     if a_ech[rows-1].iter().all(|&i| {i == 0} ) {
-        return Err("The matrix A does not have full rank.");
+        return Err("The matrix A does not have full rank. No solution is found");
     }
- 
+    
+    println!("Matrix A_ech after echelon form!");
     util::print_matrix(a_ech.clone());
+    println!("Vector y_ech after echelon form: {:?}", y_ech);
     
     // Back-substitution
     // Create affine transformation known from Oil and Vinegar
     for r in (0..rows).rev() {
-        // Let c be the index of first non-zero element of A[r,:]
-        let c = a_ech[r].iter().position(|&i| i != 0).unwrap();
-        x[c] = ff::add(x[c], y[r]);
-        println!("{}",x[c]);
 
+        // Let c be the index of first non-zero element of A[r,:]
         // Calc x_c = x_c + y[r]
+        let c = a_ech[r].iter().position(|&i| i != 0).unwrap();
+        x[c] = ff::add(x[c], y_ech[r]);
+  
+
+        
+        // Calc temp_mult = y[r] * A[:,c]
         let temp_mult: Vec<u8> = a_ech.iter().map(|row| {
-            ff::mul(y[r], row[c])
+            ff::mul(y_ech[r], row[c])
         }).collect();
         
 
         // Calc y = y - y[r] * A[:,c]
-        y = y.iter().zip(temp_mult.iter()).map(|(y_idx, temp_mult_idx)| {
+        y_ech = y_ech.iter().zip(temp_mult.iter()).map(|(y_idx, temp_mult_idx)| {
             ff::sub(*y_idx, *temp_mult_idx)
         }).collect();
     }
+
+
+    println!("Vector y_ech after sample: {:?}", y_ech);
 
     Ok(x)
 }
