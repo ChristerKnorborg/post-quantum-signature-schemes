@@ -84,15 +84,12 @@ pub fn encode_bit_sliced_matrices(rows: usize, cols: usize, a: Vec<Vec<Vec<u8>>>
                     indices_vec.push(mat[i][j]);
                 }
 
-                println!{"Encode: Indices Vector {:?} ", indices_vec};
                 let encoded_bits = encode_bit_sliced_vector(indices_vec);
-                println!{"Encode bits {:?} ", encoded_bits};
+                println!("Encoded bits: {:?}", encoded_bits);
                 bytestring.extend(encoded_bits);
             }
         }
     }
-    println!("Bytestring length in encode matrices: {}", bytestring.len());
-    println!("Bytestring in encode matrices:: {:?}", bytestring.clone());
 
     return bytestring;
 } 
@@ -120,15 +117,16 @@ pub fn decode_bit_sliced_matrices(rows: usize, cols: usize, bytestring: Vec<u8>,
     // Calculate the number of matrices m:
     // If the matrix is non-triangular: bytestring len is (m*r*c)/2
     // Else: bytestring len is (m*r*(r+1))/2
-    let num_matrices = bytestring.len() / (elements_per_matrix * 2) - 1;
+
+    // rewrite formula: m = (2*B)/(rc)
+    let num_matrices = 2 * bytestring.len() / (elements_per_matrix);
 
     let mut a = vec![vec![vec![0u8; cols]; rows]; num_matrices];
     let mut curr_byte_idx = 0;
 
+
     println!("Elements per matrix {}", elements_per_matrix);
     println!("Bytestring len {}", bytestring.len());
-    println!("Bytestring {:?}", bytestring.clone());
-
 
     println!("num_matrices: {}", num_matrices);
   
@@ -138,8 +136,10 @@ pub fn decode_bit_sliced_matrices(rows: usize, cols: usize, bytestring: Vec<u8>,
         for j in 0..cols {
             if i <= j || is_triangular == false {
 
-                // Slice the bytestring to get the exact bytes for decoding
-                let slice_end = curr_byte_idx + num_matrices;
+                // Slice the bytestring to get the exact bytes for decodin
+                // Remember bytestring is m/2 aka num_matrices/2
+                let sub_byte_end = num_matrices/2;
+                let slice_end = curr_byte_idx + sub_byte_end;
                 let encoded_bits = &bytestring[curr_byte_idx..slice_end];
 
                 println!("Encoded bits length {}", encoded_bits.len());
@@ -238,11 +238,15 @@ mod tests {
         let vec_2 = vec_1.clone();
         let vec_3 = vec_1.clone();
         let vec_4 = vec_1.clone();
-        
+        let vec_5 = vec_1.clone();
+        let vec_6 = vec_1.clone();
+        let vec_7 = vec_1.clone();
+        let vec_8 = vec_1.clone();
+
         let rows = vec_1.len();
         let cols = vec_1[0].len();
 
-        let plain_input: Vec<Vec<Vec<u8>>> = vec![vec_1.clone(), vec_2, vec_3, vec_4];
+        let plain_input: Vec<Vec<Vec<u8>>> = vec![vec_1.clone(), vec_2, vec_3, vec_4, vec_5, vec_6, vec_7, vec_8]; 
 
         let bytestring
          = encode_bit_sliced_matrices(rows, cols, plain_input.clone(), false);
