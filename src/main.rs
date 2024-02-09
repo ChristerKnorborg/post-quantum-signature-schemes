@@ -1,11 +1,16 @@
 mod sample;
 mod finite_field;
 mod utils;
+mod constants;
+mod argumentHandler;
 
 
 use crate::sample as samp;
 use crate::finite_field as ff;
 use crate::utils as util;
+use crate::constants as cs;
+use crate::argumentHandler as argH;
+
 
 
 fn main() {
@@ -20,6 +25,19 @@ fn main() {
     println!("4 * 9 = {}", four_mult_nine);
 
     */
+
+
+
+    // cs::O.with(|o| println!("Updated o: {}", o.get()));
+        println!("O: {}", cs::O);
+
+
+    //argH::argument_handler();
+
+    println!("O: {}", cs::O);
+
+    // cs::O.with(|o| println!("Updated o: {}", o.get()));
+
 
     // Input matrix A
     let mut a = vec![
