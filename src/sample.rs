@@ -2,17 +2,18 @@ use std::u16;
 
 use crate::finite_field as ff;
 use crate::utils as util;
+use crate::constants as cs;
 use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
 
 // Function to perform the echelon form algorithm on matrix B.
-pub fn echelon_form(mut b: Vec<Vec<u8>>, k: u8, o: u8) -> Vec<Vec<u8>> {
+pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     let rows = b.len();
     let cols = b[0].len();
     let mut pivot_row = 0;
     let mut pivot_column = 0;
 
-    while pivot_row < rows && pivot_column < (k * o + 1) as usize {
+    while pivot_row < rows && pivot_column < (cs::K * cs::O + 1) as usize {
         // Find the pivot
         let possible_pivots: Vec<usize> = (pivot_row..rows)
             .filter(|&i| b[i][pivot_column] != 0) // remember to dereferrence i to avoid ownership
@@ -54,8 +55,8 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>, k: u8, o: u8) -> Vec<Vec<u8>> {
     b
 }
 
-pub fn sample_rand(k: u8, o: u8) -> Vec<u8> {
-    let num_elems: u16 = (k * o) as u16;
+pub fn sample_rand() -> Vec<u8> {
+    let num_elems: u16 = (cs::K * cs::O) as u16;
 
     let mut rand_core = rng::from_entropy();
 
@@ -70,10 +71,8 @@ pub fn sample_rand(k: u8, o: u8) -> Vec<u8> {
 pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &'static str> {
     let rows = a.len();
 
-    let k = 2;
-    let o = 4;
 
-    let r: Vec<u8> = sample_rand(k, o);
+    let r: Vec<u8> = sample_rand();
     let mut x: Vec<u8> = r.clone();
 
     // Perform y = y - Ar in single iteration over y and A
@@ -101,7 +100,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
     util::print_matrix(a.clone());
 
     // Put (A | y) in echelon form with leading 1's.
-    let a = echelon_form(a, k, o);
+    let a = echelon_form(a);
 
     println!("Matrix A after echelon form!");
     util::print_matrix(a.clone());
@@ -163,8 +162,8 @@ mod tests {
 
         // n = 4
         // m = 2
-        let k = 1; // Whipping parameter
-        let o = 2; // Oil space dimension
+        // let k = 1; // Whipping parameter
+        // let o = 2; // Oil space dimension
 
         // Matrix in GF(16)
         let b = vec![
@@ -176,7 +175,7 @@ mod tests {
         // Expected result after echelon form transformation (The two rows should be swapped)
         let expected = vec![vec![0x1, 0x2, 0x3, 0x4, 0x5], vec![0x0, 0x1, 0x8, 0x4, 0x5]];
 
-        let result = echelon_form(b, k, o);
+        let result = echelon_form(b);
 
         assert_eq!(
             result, expected,
@@ -218,7 +217,7 @@ mod tests {
             vec![0x0, 0x0, 0x1, 0x4],
         ];
 
-        let result = echelon_form(b, k, o);
+        let result = echelon_form(b);
 
         assert_eq!(
             result, expected,
