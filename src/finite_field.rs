@@ -81,11 +81,13 @@ mod tests {
 
     #[test]
     fn test_neg() {
+        // Negatrion is defined as the additive inverse of a number. 
+        // E.g. how much we need to add to a number to get 0. (always the number itself in binary fields)
         assert_eq!(neg(0x0), 0xf); // 0 is its own negation
         assert_eq!(neg(0x1), 0xe); // 1 is its own negation 
         assert_eq!(neg(0xf), 0x0); // 0xf is its own negation
         assert_eq!(neg(0xe), 0x1); // 0xe is its own negation
-        // Add more tests as needed
+
     }
 
     #[test]
@@ -103,7 +105,7 @@ mod tests {
         assert_eq!(sub(0x0, 0x0), 0x0); // 0 is the additive identity
         assert_eq!(sub(0x3, 0x1), 0x2); // (x + 1) - 1 = x
         assert_eq!(sub(0x1, 0x2), 0x3); // 1 - x = x + 1
-        assert_eq!(sub(0x6, 0xf), 0x0); // 
+        assert_eq!(sub(0x6, 0xf), 0x9); // x^2 + x - (x^3 + x^2 + x + 1) = x^3 + 1
     }
 
     #[test]
@@ -134,10 +136,17 @@ mod tests {
 
     #[test]
     fn test_inv() {
+        assert_eq!(inv(0x0), 0x0); // 0 acts as its own inverse, but theorethically it's undefined
         assert_eq!(inv(0x1), 0x1); // 1 is its own inverse
-        // For non-trivial inverses, ensure mul(x, inv(x)) = 1
-        // Note: Additional tests will depend on the correct implementation of `mul`
-        // and might require adjustment if `mul` is corrected.
+        // For non-trivial inverses, mul(x, inv(x)) = 1
+        assert_eq!(inv(0x2), 0x9); // x's inverse is x^3 + 1 
+        assert_eq!(inv(0x3), 0xe); // (x + 1)'s inverse is x^3 + x^2 + x
+        assert_eq!(inv(0x4), 0xd); // x^2's inverse is x^3 + x^2 + 1
+        assert_eq!(inv(0x5), 0xb); // (x^2 + 1)'s inverse is x^3 + x + 1
+        assert_eq!(inv(0x6), 0x7); // (x^2 + x)'s inverse is x^2 + x + 1
+        assert_eq!(inv(0x8), 0xf); // x^3's inverse is x^3 + x^2 + x + 1
+
+        
     }
 }
 

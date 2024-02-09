@@ -43,7 +43,6 @@ pub fn decode_bit_sliced_vector(bytestring: Vec<u8>) -> Vec<u8> {
 
     let m = bytestring.len() * 2;
     
-
     let mut v = vec![0u8; m];
 
     for i in 0..(m/8) {
@@ -72,20 +71,12 @@ pub fn decode_bit_sliced_vector(bytestring: Vec<u8>) -> Vec<u8> {
 pub fn encode_bit_sliced_matrices(rows: usize, cols: usize, a: Vec<Vec<Vec<u8>>>, is_triangular: bool) -> Vec<u8>{
 
     let m = a.len();
-
-    let size = if is_triangular {
-        // If the matrix is triangular: size = mr(r+1)/4
-        m * rows * (rows + 1) / 4
-    } else {
-        // If the matrix is non-triangular: size = mrc/2 
-        m * rows * cols / 2
-    };
-
-    println!("Size: {}", size);
-
-    // Assign space for the bytestring
     let mut bytestring: Vec<u8> = Vec::new();
-
+    
+    // Encode bits from the matrices in the following order: 
+    // A0[0, 0], A1[0, 0], . . . , Am−1[0, 0]
+    // Ai[0, 1] entries up to the Ai[0, c − 1]
+    // Ai[r − 1, c − 1]
     for i in 0..rows {
         for j in 0..cols {
             if i <= j || is_triangular == false {
@@ -97,19 +88,10 @@ pub fn encode_bit_sliced_matrices(rows: usize, cols: usize, a: Vec<Vec<Vec<u8>>>
                     indices_vec.push(mat[i][j]);
                 }
 
-
                 let mut encoded_bits = encode_bit_sliced_vector(indices_vec);
-                println!("Encoded bits length: {}", encoded_bits.len());
                 bytestring.append(&mut encoded_bits);
             }
         }
-    }
-
-    println!("Bytestring length ENCODE: {}", bytestring.len());
-
-
-    for _ in 0..5 {
-        println!("");
     }
     return bytestring;
 } 
@@ -120,13 +102,8 @@ pub fn encode_bit_sliced_matrices(rows: usize, cols: usize, a: Vec<Vec<Vec<u8>>>
 
 
 
-
-
-
-
 // MAYO Algorithm 3 (inverse): Decodes a bitsliced representation of m matrices denoted a.
 pub fn decode_bit_sliced_matrices(rows: usize, cols: usize, bytestring: Vec<u8>, is_triangular: bool) -> Vec<Vec<Vec<u8>>> {
-
 
     let num_matrices = if is_triangular {
         (4 * bytestring.len()) / (rows * (rows + 1)) // If the matrix is triangular: m = 4*len(bytestring)/(rows*(rows+1))
@@ -134,40 +111,25 @@ pub fn decode_bit_sliced_matrices(rows: usize, cols: usize, bytestring: Vec<u8>,
         (2 * bytestring.len()) / (rows * cols) // If the matrix is non-triangular: m = 2*len(bytestring)/(rows*cols)
     };
 
-    let mut a = vec![vec![vec![0u8; cols]; rows]; num_matrices];
+    let mut a = vec![vec![vec![0u8; cols]; rows]; num_matrices]; // Initialize the matrices list of size m x rows x cols 
     let mut curr_byte_idx = 0;
 
-    println!("Bytestring len {}", bytestring.len());
-
-    println!("num_matrices: {}", num_matrices);
-  
-    println!("rows: {}", rows);
-    println!("cols: {}", cols);
     for i in 0..rows {
         for j in 0..cols {
             if i <= j || is_triangular == false {
 
-                // Slice the bytestring to get the exact bytes for decodin
-                // Remember bytestring is m/2 aka num_matrices/2
+                // Slice the bytestring (of size num_matrices/2) to get the exact bytes for decoding
                 let sub_byte_end = num_matrices/2;
                 let slice_end = curr_byte_idx + sub_byte_end;
                 let encoded_bits = &bytestring[curr_byte_idx..slice_end];
 
-                println!("Encoded bits length {}", encoded_bits.len());
-                println!("Encoded bits: {:?}", encoded_bits);
                 // Decode the bitsliced vector back into indices
                 let indices_vec = decode_bit_sliced_vector(encoded_bits.to_vec());
                 
-                println!("Indices_vec length {}", indices_vec.len());
-
-                println!("Indices_vec: {:?}", indices_vec.clone());
-        
-
                 // Distribute the decoded elements back into the matrices
                 for (mat_index, &value) in indices_vec.iter().enumerate() {
                     a[mat_index][i][j] = value;
                 }
-                
                 // Update the byte index for the next set of bytes
                 curr_byte_idx = slice_end;
             }
@@ -180,6 +142,8 @@ pub fn decode_bit_sliced_matrices(rows: usize, cols: usize, bytestring: Vec<u8>,
 #[cfg(test)]
 mod tests {
     
+    use crate::utils::print_matrix;
+
     use super::*;
     use std::vec;
     use rand::random;
@@ -189,9 +153,7 @@ mod tests {
        let test_vec: Vec<u8> = vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8]; 
 
        let result = encode_bit_sliced_vector(test_vec);
-
-        let expected: Vec <u8> = vec![85, 102, 120, 128];
-
+       let expected: Vec <u8> = vec![85, 102, 120, 128];
 
         assert_eq!(
             result, expected,
@@ -201,16 +163,13 @@ mod tests {
 
 
 
-
     #[test]
     fn test_encode_vector_then_decode() {
 
         let test_vec: Vec<u8> = vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8]; 
 
         let encoding = encode_bit_sliced_vector(test_vec);
- 
         let result = decode_bit_sliced_vector(encoding);
-
         let expected: Vec <u8> = vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8];
 
         assert_eq!(
@@ -270,6 +229,32 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_encode_and_decode_random_matrices_non_triangular() {
+        use rand::random;
+    
+        for _ in 0..10 { // Run the test for 10 different matrix sizes
+
+            let random_value: usize = rand::random();
+            let max_multiple_of_8 = 200 / 8;
+            let m = (random_value % max_multiple_of_8 + 1) * 8; // Random multiple of 8 between 8 and 200
+            let rows = random::<usize>() % 250 + 1; // rows between 1 and 250
+            let cols = random::<usize>() % 250 + 1; // cols between 1 and 250
+    
+            let plain_input: Vec<Vec<Vec<u8>>> = (0..m)
+                .map(|_| (0..rows)
+                    .map(|_| (0..cols)
+                        .map(|_| random::<u8>() % 16) // Elements in GF(16)
+                        .collect())
+                    .collect())
+                .collect();
+    
+            let bytestring = encode_bit_sliced_matrices(rows, cols, plain_input.clone(), false);
+            let result = decode_bit_sliced_matrices(rows, cols, bytestring, false);
+    
+            assert_eq!(result, plain_input, "Decode form did not match expected result for non-triangular matrices");
+        }
+    }
 
 
     #[test]
@@ -279,6 +264,10 @@ mod tests {
             vec![0x0, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xf], 
             vec![0x0, 0x0, 0x4, 0x0, 0x3, 0x4, 0x5, 0x6],
             vec![0x0, 0x0, 0x0, 0x2, 0x1, 0x2, 0x4, 0x1],  
+            vec![0x0, 0x0, 0x0, 0x0, 0x2, 0x2, 0x2, 0x4], 
+            vec![0x0, 0x0, 0x0, 0x0, 0x0, 0x8, 0x9, 0xf], 
+            vec![0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5, 0x6],
+            vec![0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1],  
         ];
         
         let vec_2 = vec_1.clone();
@@ -304,5 +293,36 @@ mod tests {
             "Decode form did not match expected result"
         );
     }
+
+
+    #[test]
+    fn test_encode_and_decode_random_matrices_triangular() {
+        use rand::random;
+
+        for _ in 0..10 { // Run the test for 10 different matrix sizes randomly chosen
+
+            let random_value: usize = rand::random();
+            let max_multiple_of_8 = 200 / 8;
+            let m = (random_value % max_multiple_of_8 + 1) * 8; // Random multiple of 8 between 8 and 200
+            let size = random::<usize>() % 250 + 1; // Square matrix size between 1 and 250
+
+            let plain_input: Vec<Vec<Vec<u8>>> = (0..m)
+                .map(|_| (0..size)
+                    .map(|i| (0..size)
+                        .map(|j| if i <= j { random::<u8>() % 16 } else { 0 }) // Upper triangular condition
+                        .collect())
+                    .collect())
+                .collect();
+
+            let bytestring = encode_bit_sliced_matrices(size, size, plain_input.clone(), true);
+            let result = decode_bit_sliced_matrices(size, size, bytestring, true);
+
+            assert_eq!(result, plain_input, "Decode form did not match expected result for triangular matrices");
+        }
+    }
+
+
+
+
 
 }
