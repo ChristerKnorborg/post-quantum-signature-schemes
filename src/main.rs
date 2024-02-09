@@ -2,7 +2,6 @@ mod sample;
 mod finite_field;
 mod utils;
 mod constants;
-mod argumentHandler;
 mod bitsliced_functionality;
 
 
