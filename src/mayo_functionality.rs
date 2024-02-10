@@ -1,14 +1,12 @@
 
-use std::fmt::Result;
-
 use sha3::{Shake256, Digest};
 use sha3::digest::{Update, ExtendableOutput, XofReader};
-use rand::{Rng, rngs::OsRng};
+use rand::{Rng, rngs::OsRng, RngCore, SeedableRng};
+use aes_prng::AesRng;
+
 use crate::constants::{L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, SALT_BYTES};
 use crate::{bitsliced_functionality as bf, finite_field as ff};
 
-use aes_prng::AesRng;
-use rand::{RngCore, SeedableRng};
 
 
 
@@ -79,20 +77,27 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     let output_len = PK_SEED_BYTES + O_BYTES;
     let s = shake256(&sk_seed, output_len);
 
+    
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice.try_into()
     .expect("Slice has incorrect length");
+
 
     let rows = N - O;
     let cols = O;
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case 
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
-    let o = &bf::decode_bit_sliced_matrices(rows, cols, o_bytes, false)[0]; 
+
+    println!("o_bytes: {:?}", o_bytes);
+    println!("o_bytes.len(): {:?}", o_bytes.len());
+    let o = bf::decode_bit_sliced_matrices(rows, cols, o_bytes, false); 
+
 
     println!("o: {:?}", o);
 
-
+    let dummy_return = vec![0u8; 0];
+    return (dummy_return.clone(), dummy_return);
 
     // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
@@ -117,14 +122,14 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     for i in 0..M {
 
         // transpose 
-        let transposed_o = transpose(o);
+        let transposed_o = transpose(&o[i]);
 
         let p1_i = &p1[i];
         let p2_i = &p2[i];
 
         // Compute: −O^{T} * P^{(1)}_i * O 
         let mut left_term = ff::matrix_mul(&transposed_o, &p1_i);
-        left_term = ff::matrix_mul(&left_term, &o);
+        left_term = ff::matrix_mul(&left_term, &o[i]);
 
         // Compute: −O^{T} * P^{(2)}_i 
         let right_term: Vec<Vec<u8>> = ff::matrix_mul(&transposed_o, &p2_i);

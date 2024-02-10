@@ -111,15 +111,24 @@ pub fn decode_bit_sliced_matrices(rows: usize, cols: usize, bytestring: Vec<u8>,
         (2 * bytestring.len()) / (rows * cols) // If the matrix is non-triangular: m = 2*len(bytestring)/(rows*cols)
     };
 
+    println!("Number of matrices: {}", num_matrices);
+    println!("cols: {}", cols);
+    println!("rows: {}", rows);
+
     let mut a = vec![vec![vec![0u8; cols]; rows]; num_matrices]; // Initialize the matrices list of size m x rows x cols 
     let mut curr_byte_idx = 0;
+    let sub_byte_end = num_matrices/2;
+    println!("sub_byte_end: {}", sub_byte_end);
+
 
     for i in 0..rows {
         for j in 0..cols {
             if i <= j || is_triangular == false {
+                
 
                 // Slice the bytestring (of size num_matrices/2) to get the exact bytes for decoding
-                let sub_byte_end = num_matrices/2;
+                
+                
                 let slice_end = curr_byte_idx + sub_byte_end;
                 let encoded_bits = &bytestring[curr_byte_idx..slice_end];
 
