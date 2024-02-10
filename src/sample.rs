@@ -57,9 +57,8 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 pub fn sample_rand() -> Vec<u8> {
     let num_elems: u16 = (K * O) as u16;
 
+    // Cryptographically secure random number generation
     let mut rand_core = rng::from_entropy();
-
-    // REMEMBER TO MAKE CRYPTOGRAPHICALLY SECURE
     let vals: Vec<u8> = (0..num_elems)
         .map(|_| rand_core.gen_range(0..15) as u8)
         .collect();

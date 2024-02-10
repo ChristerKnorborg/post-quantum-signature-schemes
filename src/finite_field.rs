@@ -61,14 +61,68 @@ pub fn div(x: u8, y: u8) -> u8 {
 }
 
 
-pub fn matrix_add() {
-    // TODO
+
+pub fn matrix_add(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+
+    assert_eq!(a.len(), b.len(), "Matrices must have the same number of rows");
+    assert_eq!(a[0].len(), b[0].len(), "Matrices must have the same number of columns");
+
+    a.iter().zip(b.iter())
+        .map(|(row_a, row_b)| {
+            row_a.iter().zip(row_b.iter())
+                .map(|(&val_a, &val_b)| add(val_a, val_b))
+                .collect()
+        })
+        .collect()
+}
+
+// Matrix subtraction over GF(16)
+pub fn matrix_sub(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+
+    assert_eq!(a.len(), b.len(), "Matrices must have the same number of rows");
+    assert_eq!(a[0].len(), b[0].len(), "Matrices must have the same number of columns");
+
+    a.iter().zip(b.iter())
+        .map(|(row_a, row_b)| {
+            row_a.iter().zip(row_b.iter())
+                .map(|(&val_a, &val_b)| sub(val_a, val_b))
+                .collect()
+        })
+        .collect()
 }
 
 
-pub fn matrix_mul() {
-    // TODO
+// Matrix multiplication over GF(16) (also works for matrix-vector multiplication)
+pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+
+    assert_eq!(a[0].len(), b.len(), "Number of columns in A must equal number of rows in B");
+
+    let rows_a = a.len();
+    let cols_a = a[0].len();
+    let cols_b = b[0].len();
+
+    let mut result = vec![vec![0; cols_b]; rows_a];
+
+    for i in 0..rows_a {
+        for j in 0..cols_b {
+            for k in 0..cols_a {
+                // Take the dot product of the i-th row of A and the j-th column of B
+                result[i][j] = add(result[i][j], mul(a[i][k], b[k][j])); 
+
+            }
+        }
+    }
+    return result
 }
+
+
+// Matrix negation over GF(16)
+pub fn matrix_neg(a: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    a.iter()
+        .map(|row| row.iter().map(|&val| neg(val)).collect())
+        .collect()
+}
+
 
 
 
@@ -145,9 +199,137 @@ mod tests {
         assert_eq!(inv(0x5), 0xb); // (x^2 + 1)'s inverse is x^3 + x + 1
         assert_eq!(inv(0x6), 0x7); // (x^2 + x)'s inverse is x^2 + x + 1
         assert_eq!(inv(0x8), 0xf); // x^3's inverse is x^3 + x^2 + x + 1
-
-        
     }
+
+
+    #[test]
+    fn test_matrix_add() {
+
+        let a = vec![vec![0, 1, 5],
+                                   vec![3, 4, 6]];
+
+        let b = vec![vec![3, 4, 5],
+                                   vec![0, 1, 7]];
+
+        let result = matrix_add(&a, &b);
+
+        // Notice (x^2 + 1) + (x^2 + 1) = 0. (5 + 5 = 0)
+        // And (x^2 + x + 1) + (x^2 + x) = 1. (6 + 7 = 1)
+        let expected = vec![vec![3, 5, 0], 
+                                          vec![3, 5, 1]]; 
+        
+        assert_eq!(result, expected, "Matrix addition is not correct");
+    }
+
+
+    #[test]
+    // GF(16) subtraction is the same as addition
+    fn test_matrix_sub() {
+
+        let a = vec![vec![0, 1, 5],
+                                   vec![3, 4, 6]];
+
+        let b = vec![vec![3, 4, 5],
+                                   vec![0, 1, 7]];
+
+        let result = matrix_sub(&a, &b);
+
+        // Notice (x^2 + 1) + (x^2 + 1) = 0. (5 + 5 = 0)
+        // And (x^2 + x + 1) + (x^2 + x) = 1. (6 + 7 = 1)
+        let expected = vec![vec![3, 5, 0], 
+                                          vec![3, 5, 1]]; 
+        
+        assert_eq!(result, expected, "Matrix addition is not correct");
+    }
+
+
+    #[test]
+    fn test_matrix_neg() {
+
+        let a = vec![vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
+                                   vec![9, 10, 11, 12, 13, 14, 15,]];
+
+        let expected = a.clone(); // Negation in GF(16) should be the element itself
+
+        let result = matrix_neg(&a);
+        
+        assert_eq!(result, expected, "Matrix negation is not correct");
+    }
+
+    
+    #[test]
+    fn test_matrix_mul_simple() {
+
+        let a = vec![vec![2],
+                                   vec![8]];
+
+        let b = vec![vec![3, 1]];
+
+        let result = matrix_mul(&a, &b);
+
+        let expected = vec![vec![6, 2],
+                                          vec![11, 8]]; 
+        
+        assert_eq!(result, expected, "Matrix multiplication is not correct");
+    }
+
+
+    #[test]
+    fn test_matrix_mul() {
+
+        let a = vec![vec![2, 2, 2, 2, 2, 2, 2, 2],
+                                   vec![4, 4, 5, 5, 5, 6, 6, 8]];
+
+        let b = vec![vec![0, 1],
+                                   vec![2, 3],
+                                   vec![4, 5],
+                                   vec![6, 7],
+                                   vec![8, 9],
+                                   vec![10, 11],
+                                   vec![12, 13],
+                                   vec![14, 15]];
+
+        let result = matrix_mul(&a, &b);
+
+        let expected = vec![vec![0, 0],
+                                          vec![2, 15]]; 
+        
+        assert_eq!(result, expected, "Matrix multiplication is not correct");
+    }
+
+
+    #[test]
+    fn test_matrix_mul_vector() {
+
+        let a = vec![vec![2, 2, 2, 2, 2, 2, 2, 2],
+                                   vec![4, 4, 5, 5, 5, 6, 6, 8]];
+
+        let b = vec![vec![0],
+                                   vec![1],
+                                   vec![2],
+                                   vec![3],
+                                   vec![4],
+                                   vec![5],
+                                   vec![6],
+                                   vec![7],
+                                   vec![8],
+                                   vec![9],
+                                   vec![10],
+                                   vec![11],
+                                   vec![12],
+                                   vec![13],
+                                   vec![14],
+                                   vec![15]];
+
+        let result = matrix_mul(&a, &b);
+
+        let expected = vec![vec![2, 15]]; 
+        
+        assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
+    }
+
+    
+
 }
 
 
