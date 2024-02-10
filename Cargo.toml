@@ -11,8 +11,6 @@ default = []
 mayo1 = []
 
 
-
-
 [dependencies]
 rand = "0.8.5"
-
+sha3 = "0.10.8"

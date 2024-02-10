@@ -3,11 +3,12 @@ mod finite_field;
 mod utils;
 mod constants;
 mod bitsliced_functionality;
+mod mayo_functionality;
 
 
-use std::result;
 
 use crate::bitsliced_functionality as bf;
+
 
 fn main() {
 
@@ -24,7 +25,7 @@ fn main() {
             vec![0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1],  
 
         ];
-        
+
         let vec_2 = vec_1.clone();
         let vec_3 = vec_1.clone();
         let vec_4 = vec_1.clone();

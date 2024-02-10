@@ -1,10 +1,9 @@
-use std::u16;
-
 use crate::finite_field as ff;
 use crate::utils as util;
-use crate::constants as cs;
+use crate::constants::{K, O};
 use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
+
 
 // Function to perform the echelon form algorithm on matrix B.
 pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
@@ -13,7 +12,7 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     let mut pivot_row = 0;
     let mut pivot_column = 0;
 
-    while pivot_row < rows && pivot_column < (cs::K * cs::O + 1) as usize {
+    while pivot_row < rows && pivot_column < (K * O + 1) as usize {
         // Find the pivot
         let possible_pivots: Vec<usize> = (pivot_row..rows)
             .filter(|&i| b[i][pivot_column] != 0) // remember to dereferrence i to avoid ownership
@@ -56,7 +55,7 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 }
 
 pub fn sample_rand() -> Vec<u8> {
-    let num_elems: u16 = (cs::K * cs::O) as u16;
+    let num_elems: u16 = (K * O) as u16;
 
     let mut rand_core = rng::from_entropy();
 
