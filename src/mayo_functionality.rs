@@ -89,15 +89,8 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case 
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
 
-    println!("o_bytes: {:?}", o_bytes);
-    println!("o_bytes.len(): {:?}", o_bytes.len());
-    let o = bf::decode_bit_sliced_matrices(rows, cols, o_bytes, false); 
+    let o = bf::decode_bytestring_to_matrix(rows, cols, o_bytes); 
 
-
-    println!("o: {:?}", o);
-
-    let dummy_return = vec![0u8; 0];
-    return (dummy_return.clone(), dummy_return);
 
     // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
@@ -109,12 +102,12 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = bf::decode_bit_sliced_matrices(rows, rows, p1_bytes, true);
 
-    // m p2 matrices are of size (n−o) × o
-    let p2 = bf::decode_bit_sliced_matrices(rows, cols, p2_bytes, true);
+    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
+    let p2 = bf::decode_bit_sliced_matrices(rows, cols, p2_bytes, false);
 
 
-    // Allocate space for P_{i}^(3)
-    let mut p3 = vec![vec![vec![0u8; cols]; rows]; M];
+    // Allocate space for P_{i}^(3). Size is o × o
+    let mut p3 = vec![vec![vec![0u8; cols]; cols]; M];
 
 
     // Compute P_{i}^(3) as (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
@@ -122,14 +115,14 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     for i in 0..M {
 
         // transpose 
-        let transposed_o = transpose(&o[i]);
+        let transposed_o = transpose(&o);
 
         let p1_i = &p1[i];
         let p2_i = &p2[i];
 
         // Compute: −O^{T} * P^{(1)}_i * O 
         let mut left_term = ff::matrix_mul(&transposed_o, &p1_i);
-        left_term = ff::matrix_mul(&left_term, &o[i]);
+        left_term = ff::matrix_mul(&left_term, &o);
 
         // Compute: −O^{T} * P^{(2)}_i 
         let right_term: Vec<Vec<u8>> = ff::matrix_mul(&transposed_o, &p2_i);
@@ -142,7 +135,6 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
 
     let mut encoded_p3 = bf::encode_bit_sliced_matrices(rows, cols, p3, true);
 
-
     // Public and secret keys
     let mut cpk = Vec::new(); // contains pk_seed and encoded_p3
     let csk = sk_seed;
@@ -151,7 +143,6 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     cpk.append(&mut encoded_p3);
 
     return (cpk, csk);
-
 }
 
 
@@ -160,7 +151,9 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
 pub fn transpose(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     let rows = matrix.len();
     let cols = matrix[0].len();
-    let mut transposed = vec![vec![0u8; rows]; cols]; // Create a new transposed matrix
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = vec![vec![0u8; rows]; cols]; 
 
     for i in 0..rows {
         for j in 0..cols {

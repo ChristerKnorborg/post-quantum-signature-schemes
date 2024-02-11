@@ -1,3 +1,6 @@
+
+
+
 #[cfg(feature = "mayo1")]
 mod mayo1_features {
     pub const  N: usize = 66;
@@ -14,10 +17,11 @@ mod mayo1_features {
 
 #[cfg(not(feature = "mayo1"))]
 mod other_features {
+
     pub const  N: usize = 66;
     pub const I: usize = 1;
-    pub const K: usize = 2;
-    pub const O: usize = 4;
+    pub const K: usize = 9;
+    pub const O: usize = 8;
     pub const  M: usize = 64;
 
 
@@ -31,11 +35,14 @@ mod other_features {
     // Compact Representiation of secret key
     pub const CSK_BYTES: usize = SK_SEED_BYTES;
 
-    pub const O_BYTES: usize = (N - O)*O /2;
-    pub const V_BYTES: usize = (N - O) /2;
+    // ceil( (N - O)*O /2 )
+    pub const O_BYTES: usize = if ((N - O) * O) % 2 == 0 { ((N - O) * O) / 2 } else { ((N - O) * O) / 2 + 1 }; 
+    
+    // ceil( (N - O) /2 )
+    pub const V_BYTES: usize = if (N - O) % 2 == 0 { (N - O) / 2 } else { (N - O) / 2 + 1 }; 
 
     // Formula for P1 is m * binom(n-o+1, 2) /2
-    pub const P1_BYTES: usize = 68640;
+    pub const P1_BYTES: usize = M * 1711 / 2; // 1711 = binom(66-8+1, 2) 
 
     pub const P2_BYTES: usize = M*(N - O)*O /2;
     pub const P3_BYTES: usize = M * 6 /2;
@@ -50,8 +57,9 @@ mod other_features {
     // Expanded Representation of Public key
     pub const EPK_BYTES: usize = P1_BYTES + P2_BYTES + P3_BYTES;
 
-    pub const SIG_BYTES: usize = (N*K / 2) + SALT_BYTES; 
-
+    // ceil( (N*K / 2) )  + SALT_BYTES
+    pub const SIG_BYTES: usize = if (N*K  % 2) == 0 { (N*K / 2) + SALT_BYTES } else { (N*K / 2) + SALT_BYTES + 1 };
+    
 }
 
 

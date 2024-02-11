@@ -137,10 +137,10 @@ mod tests {
     fn test_neg() {
         // Negatrion is defined as the additive inverse of a number. 
         // E.g. how much we need to add to a number to get 0. (always the number itself in binary fields)
-        assert_eq!(neg(0x0), 0xf); // 0 is its own negation
-        assert_eq!(neg(0x1), 0xe); // 1 is its own negation 
-        assert_eq!(neg(0xf), 0x0); // 0xf is its own negation
-        assert_eq!(neg(0xe), 0x1); // 0xe is its own negation
+        assert_eq!(neg(0x0), 0x0); // 0 is its own negation
+        assert_eq!(neg(0x1), 0x1); // 1 is its own negation 
+        assert_eq!(neg(0xf), 0xf); // 0xf is its own negation
+        assert_eq!(neg(0xe), 0xe); // 0xe is its own negation
 
     }
 
@@ -301,29 +301,17 @@ mod tests {
     #[test]
     fn test_matrix_mul_vector() {
 
-        let a = vec![vec![2, 2, 2, 2, 2, 2, 2, 2],
-                                   vec![4, 4, 5, 5, 5, 6, 6, 8]];
+        // Row vector of size 1x2
+        let a = vec![vec![0, 2]];
 
-        let b = vec![vec![0],
-                                   vec![1],
-                                   vec![2],
-                                   vec![3],
-                                   vec![4],
-                                   vec![5],
-                                   vec![6],
-                                   vec![7],
-                                   vec![8],
-                                   vec![9],
-                                   vec![10],
-                                   vec![11],
-                                   vec![12],
-                                   vec![13],
-                                   vec![14],
-                                   vec![15]];
+        // Matrix of size 2x2
+        let b = vec![vec![0, 1],
+                                   vec![2, 3],];
 
         let result = matrix_mul(&a, &b);
 
-        let expected = vec![vec![2, 15]]; 
+        // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
+        let expected = vec![vec![4, 6]]; 
         
         assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
     }

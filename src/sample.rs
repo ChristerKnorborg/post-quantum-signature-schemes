@@ -94,14 +94,8 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         row.push(y_val);
     }
 
-    println!("Matrix after y!");
-    util::print_matrix(a.clone());
-
     // Put (A | y) in echelon form with leading 1's.
     let a = echelon_form(a);
-
-    println!("Matrix A after echelon form!");
-    util::print_matrix(a.clone());
 
     // Split the matrix into A and y
     let a_ech: Vec<Vec<u8>> = a.iter().map(|row| row[0..row.len() - 1].to_vec()).collect();
@@ -111,12 +105,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         return Err("The matrix A does not have full rank. No solution is found");
     }
 
-    println!("Matrix A_ech after echelon form!");
-    util::print_matrix(a_ech.clone());
-    println!("Vector y_ech after echelon form: {:?}", y_ech);
-
     // Back-substitution
-    // Create affine transformation known from Oil and Vinegar
     for r in (0..rows).rev() {
         // Let c be the index of first non-zero element of A[r,:]
         // Calc x_c = x_c + y[r]
@@ -133,8 +122,6 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
             .map(|(y_idx, temp_mult_idx)| ff::sub(*y_idx, *temp_mult_idx))
             .collect();
     }
-
-    println!("Vector y_ech after sample: {:?}", y_ech);
 
     Ok(x)
 }
@@ -158,10 +145,6 @@ mod tests {
             o is the dimension of the oil space.
         */
 
-        // n = 4
-        // m = 2
-        // let k = 1; // Whipping parameter
-        // let o = 2; // Oil space dimension
 
         // Matrix in GF(16)
         let b = vec![
@@ -194,10 +177,6 @@ mod tests {
             o is the dimension of the oil space.
         */
 
-        // n = 8
-        // m = 4
-        let k = 2; // Whipping parameter
-        let o = 4; // Oil space parameter
 
         // Example matrix in GF(16), represented as u8
         let b = vec![
@@ -260,7 +239,7 @@ mod tests {
             }
         };
 
-        let Ax_eq_y: Vec<u8> = a_input
+        let a_times_x_equal_y: Vec<u8> = a_input
             .iter()
             .map(|row| {
                 row.iter()
@@ -270,11 +249,11 @@ mod tests {
             })
             .collect();
 
-        println!("Ax_eq_y: {:?}", Ax_eq_y);
+        println!("Ax_eq_y: {:?}", a_times_x_equal_y);
         println!("expected: {:?}", expected);
 
         assert_eq!(
-            Ax_eq_y, expected,
+            a_times_x_equal_y, expected,
             "Echelon form did not match expected result"
         );
     }
