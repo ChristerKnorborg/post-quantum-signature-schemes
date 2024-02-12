@@ -116,12 +116,7 @@ pub fn decode_bytestring_to_matrix(rows: usize, cols: usize, bytestring: Vec<u8>
 
 
 // Mayo Algorithm 4: Encodes a vector v ∈ F_{16}^{m} into a bitsliced representation
-pub fn encode_bit_sliced_vector(mut v: Vec<u8>) -> Vec<u8>{
-
-    // if v.len() % 2 != 0 {
-    //     // pad the vector with 0 nibble to make it even
-    //     v.push(0x0);
-    // } 
+pub fn encode_bit_sliced_vector(v: Vec<u8>) -> Vec<u8>{
 
     let m = v.len();
     let mut bytestring = vec![0u8; m/2]; // Bytestring of length m/2 of all 0s

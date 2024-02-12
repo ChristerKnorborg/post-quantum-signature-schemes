@@ -97,7 +97,7 @@ pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 
     assert_eq!(a[0].len(), b.len(), "Number of columns in A must equal number of rows in B");
 
-    let rows_a = a.len();
+    let rows_a: usize = a.len();
     let cols_a = a[0].len();
     let cols_b = b[0].len();
 

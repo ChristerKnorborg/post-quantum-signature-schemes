@@ -83,13 +83,13 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     .expect("Slice has incorrect length");
 
 
-    let rows = N - O;
-    let cols = O;
+    let n_minus_o = N - O;
+  
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case 
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
 
-    let o = bf::decode_bytestring_to_matrix(rows, cols, o_bytes); 
+    let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytes); 
 
 
     // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
@@ -100,14 +100,14 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
 
 
     // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = bf::decode_bit_sliced_matrices(rows, rows, p1_bytes, true);
+    let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
 
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = bf::decode_bit_sliced_matrices(rows, cols, p2_bytes, false);
+    let p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
 
 
     // Allocate space for P_{i}^(3). Size is o × o
-    let mut p3 = vec![vec![vec![0u8; cols]; cols]; M];
+    let mut p3 = vec![vec![vec![0u8; O]; O]; M];
 
 
     // Compute P_{i}^(3) as (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
@@ -133,15 +133,15 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
         p3[i] = upper(&sub); // Upper triangular part of the result
     }
 
-    let mut encoded_p3 = bf::encode_bit_sliced_matrices(rows, cols, p3, true);
+    let mut encoded_p3 = bf::encode_bit_sliced_matrices(n_minus_o, O, p3, true);
 
     // Public and secret keys
-    let mut cpk = Vec::new(); // contains pk_seed and encoded_p3
+    let mut cpk = Vec::with_capacity(PK_SEED_BYTES + P3_BYTES); // contains pk_seed and encoded_p3
     let csk = sk_seed;
 
     cpk.extend_from_slice(&pk_seed); // pk_seed is an array, so we need to use extend_from_slice
     cpk.append(&mut encoded_p3);
-
+    
     return (cpk, csk);
 }
 
