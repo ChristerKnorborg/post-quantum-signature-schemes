@@ -13,13 +13,26 @@ mod mayo_functionality;
 
 fn main() {
 
-    let (pk, sk) = mayo_functionality::compact_key_gen();
+    let (cpk, csk) = mayo_functionality::compact_key_gen();
     
-    println!("Secret key: {:?}", sk);
-    println!("Public key: {:?}", pk);
+    println!("Compact Secret key: {:?}", csk);
+    println!("Compact Public key: {:?}", cpk);
 
-    println!("Secret key length: {:?}", sk.len());
-    println!("Public key length: {:?}", pk.len());
+    println!("Compact Secret key length: {:?}", csk.len());
+    println!("Compact Public key length: {:?}", cpk.len());
     
+
+
+    let esk = mayo_functionality::expand_sk(csk);
+    let epk = mayo_functionality::expand_pk(cpk);
+
+
+    println!("Expanded Secret key: {:?}", esk);
+    println!("Expanded Public key: {:?}", epk);
+
+    println!("Expanded Secret key length: {:?}", esk.len());
+    println!("Expanded Public key length: {:?}", epk.len());
+    
+
 
 }
