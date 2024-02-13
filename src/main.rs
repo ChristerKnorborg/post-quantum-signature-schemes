@@ -5,7 +5,7 @@ mod finite_field;
 mod utils;
 mod constants;
 mod bitsliced_functionality;
-mod mayo_functionality;
+mod MAYO_functionality;
 
 
 
@@ -13,7 +13,7 @@ mod mayo_functionality;
 
 fn main() {
 
-    let (cpk, csk) = mayo_functionality::compact_key_gen();
+    let (cpk, csk) = MAYO_functionality::compact_key_gen();
     
     println!("Compact Secret key: {:?}", csk);
     println!("Compact Public key: {:?}", cpk);
@@ -23,8 +23,8 @@ fn main() {
     
 
 
-    let esk = mayo_functionality::expand_sk(csk);
-    let epk = mayo_functionality::expand_pk(cpk);
+    let esk = MAYO_functionality::expand_sk(csk);
+    let epk = MAYO_functionality::expand_pk(cpk);
 
 
     println!("Expanded Secret key: {:?}", esk);

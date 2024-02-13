@@ -59,6 +59,11 @@ mod other_features {
 
     // ceil( (N*K / 2) )  + SALT_BYTES
     pub const SIG_BYTES: usize = if (N*K  % 2) == 0 { (N*K / 2) + SALT_BYTES } else { (N*K / 2) + SALT_BYTES + 1 };
+
+
+    // Compact representation of irreducible polynomial z^0 + z^1 + z^2 + z^3 + z^4 + z^m
+    pub const F_Z: [u8; 5] = [8, 0, 2, 8, 0]; // f(z) =  z^64         + x^3*z^3 + x*z^2         + x^3
+
     
 }
 
