@@ -1,8 +1,8 @@
-
 use sha3::{Shake256, Digest};
 use sha3::digest::{Update, ExtendableOutput, XofReader};
 use rand::{Rng, rngs::OsRng, RngCore, SeedableRng};
-use aes_prng::AesRng;
+use aes::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
+use byteorder::{ByteOrder, LittleEndian};
 
 use crate::bitsliced_functionality::{decode_bit_sliced_vector, decode_bytestring_to_matrix, decode_bytestring_to_vector};
 use crate::constants::{CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES};
@@ -33,16 +33,31 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
 
 
 
-
 pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Vec<u8> {
+    type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>; // Define the type of the cipher (AES-128-CTR in little-endian mode)
 
-    let mut rng = AesRng::from_seed(pk_seed);
-    
-    // sample random bytes
-    let mut expanded_seed = vec![0u8; output_length];
-    rng.fill_bytes(&mut expanded_seed);
+    let key = pk_seed; // 16 bytes key
+    let iv: [u8; 16] = [0u8; 16]; // 16 bytes IV
 
-    return expanded_seed
+    let mut cipher = Aes128Ctr64LE::new(&key.into(), &iv.into());
+
+    let mut output = Vec::with_capacity(output_length);
+
+    let mut ctr: u128 = 0u128; // 128-bit counter (0 initial value) to encrypt
+
+    while output.len() < output_length {
+        let mut buf = [0u8; 16]; // 16 bytes buffer to store the counter
+        LittleEndian::write_u128(&mut buf, ctr); // Write the counter to the buffer (array of bytes)
+        cipher.apply_keystream(&mut buf); // Encrypt the counter with the key and IV
+        output.extend_from_slice(&buf); // Append the encrypted counter to the output vector
+
+        ctr += 1;
+    }
+
+    // Truncate the output to the desired length (if not multiple of 16 bytes)
+    output.truncate(output_length);
+
+    return output
 }
 
 
@@ -326,7 +341,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
 
         // Build the linear system Ax = y
         let a: Vec<Vec<u8>> = vec![vec![0u8; K*O]; M]; // Make matrix of size m x k*o
-        let y = &t;
+        let mut y = &t;
         let ell = 0;
 
 
@@ -387,7 +402,6 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
 
                 reduce_y_mod_f(&mut y);
             }
-
         }
 
 

@@ -115,6 +115,46 @@ pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return result
 }
 
+// Vector-matrix multiplication over GF(16).
+// Returns a vector of size equal to the number of columns in the matrix.
+pub fn vector_matrix_mul(vec: &Vec<u8>, matrix: &Vec<Vec<u8>>) -> Vec<u8> {
+    assert_eq!(vec.len(), matrix.len(), "Length of vector must equal number of rows in matrix");
+
+    let rows_matrix = matrix.len();
+    let cols_matrix = matrix[0].len();
+
+    let mut result = vec![0; cols_matrix];
+
+    for j in 0..cols_matrix {
+        for i in 0..rows_matrix {
+            // Multiply each element of the vector by the corresponding element in the matrix column and sum the results
+            result[j] = add(result[j], mul(vec[i], matrix[i][j])); 
+        }
+    }
+    return result;
+}
+
+
+// Matrix-vector multiplication over GF(16)
+// Returns a vector of size equal to the number of rows in the matrix.
+pub fn matrix_vector_mul(matrix: &Vec<Vec<u8>>, vec: &Vec<u8>) -> Vec<u8> {
+    assert_eq!(matrix[0].len(), vec.len(), "Number of columns in matrix must equal length of vector");
+
+    let rows_matrix = matrix.len();
+    let cols_matrix = matrix[0].len();
+
+    let mut result = vec![0; rows_matrix];
+
+    for i in 0..rows_matrix {
+        for k in 0..cols_matrix {
+            // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
+            result[i] = add(result[i], mul(matrix[i][k], vec[k])); 
+        }
+    }
+
+    return result;
+}
+
 
 // Matrix negation over GF(16)
 pub fn matrix_neg(a: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
@@ -299,7 +339,7 @@ mod tests {
 
 
     #[test]
-    fn test_matrix_mul_vector() {
+    fn test_matrix_mul_with_vector_wrapped_as_matrix() {
 
         // Row vector of size 1x2
         let a = vec![vec![0, 2]];
@@ -312,6 +352,46 @@ mod tests {
 
         // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
         let expected = vec![vec![4, 6]]; 
+        
+        assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
+    }
+
+
+    #[test]
+    fn test_vector_matrix_mul() {
+
+        let vec = vec![0, 2];
+
+        let matrix = vec![vec![0, 1],
+                                   vec![2, 3],];
+
+        let result = vector_matrix_mul(&vec, &matrix);
+
+
+        let rows_expected = 1; // Vector has 1 row
+        let cols_expected = matrix[0].len(); // Result should have same number of columns as the matrix
+
+        assert_eq!(result.len(), rows_expected, "Result vector has wrong number of rows");
+
+        // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
+        let expected = vec![4, 6]; 
+        
+        assert_eq!(result, expected, "Vector-matrix multiplication is not correct");
+    }
+
+
+    #[test]
+    fn test_matrix_vector_mul() {
+
+        let matrix = vec![vec![0, 1],
+                                   vec![2, 3],];
+
+        let vec = vec![0, 2];
+
+        let result = matrix_vector_mul(&matrix, &vec);
+
+        // 0*0 + 1*2 = 2, 2*0 + 3*2 = 6 (still works with GF(16 for these small examples).)
+        let expected = vec![2, 6]; 
         
         assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
     }
