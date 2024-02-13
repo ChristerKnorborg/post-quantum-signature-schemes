@@ -51,7 +51,7 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
         pivot_column += 1;
     }
 
-    b
+    return b
 }
 
 pub fn sample_rand() -> Vec<u8> {
@@ -123,7 +123,7 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
             .collect();
     }
 
-    Ok(x)
+    return Ok(x)
 }
 
 // test echoleon_form
@@ -131,6 +131,113 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
 mod tests {
     use super::*;
     use std::vec;
+
+
+
+
+
+    // Function to check if a matrix is in echelon form (not reduced).
+    // A matrix is in echelon form if row entries are all zero below the leading entry.
+    fn is_echelon_form(matrix: &Vec<Vec<u8>>) -> bool {
+        let mut last_leading_column = None;
+
+        for row in matrix {
+            let mut row_iter = row.iter().enumerate().filter(|&(_, &val)| val != 0);
+
+            if let Some((leading_column, _)) = row_iter.next() {
+                if let Some(last_col) = last_leading_column {
+                    if leading_column <= last_col {
+                        // Leading entry is not to the right of the one above
+                        return false;
+                    }
+                }
+                last_leading_column = Some(leading_column);
+
+                if row_iter.any(|(col, _)| col < leading_column) {
+                    // There are non-zero entries after the leading entry
+                    return false;
+                }
+            }
+        }
+
+        // All entries below leading entries must be zero
+        for col in 0..matrix[0].len() {
+            let mut found_nonzero = false;
+            for row in matrix {
+                if found_nonzero && row[col] != 0 {
+                    // Found a non-zero entry below a leading entry
+                    return false;
+                }
+                if row[col] != 0 {
+                    found_nonzero = true;
+                }
+            }
+        }
+
+        true
+    }
+
+
+
+
+
+    // Test method to check if a matrix is in reduced echelon form.
+    // A matrix is in reduced echelon form if all leading row entries are 1 and all other entries in the same column below the leading entry are 0.
+    fn is_reduced_echelon_form(matrix: &Vec<Vec<u8>>) -> bool {
+        if !is_echelon_form(matrix) {
+            // If it's not in echelon form, it can't be in reduced echelon form.
+            return false;
+        }
+
+        for (i, row) in matrix.iter().enumerate() {
+            if let Some(leading_one_index) = row.iter().position(|&x| x == 1) {
+                // Ensure the leading one is the only non-zero entry in its column
+                if matrix.iter().enumerate().any(|(j, other_row)| j != i && other_row[leading_one_index] != 0) {
+                    return false;
+                }
+                // Ensure that all leading ones are to the right of the leading one in the row above
+                if i > 0 && matrix[i - 1].iter().position(|&x| x == 1) >= Some(leading_one_index) {
+                    return false;
+                }
+            } else {
+                // If there's no leading one and the row is not all zeros, it's not in reduced form
+                if row.iter().any(|&x| x != 0) {
+                    return false;
+                }
+            }
+        }
+
+        return true
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     #[test]
     fn test_echelon_form_simple() {
@@ -163,6 +270,89 @@ mod tests {
             "Echelon form did not match expected result"
         );
     }
+
+
+
+
+
+
+    #[test]
+    fn test_echelon_form() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..50 {
+            let rows = rng.gen_range(1..10);
+            let cols = rng.gen_range(1..10);
+            let mut matrix = vec![vec![0u8; cols]; rows];
+
+            // Fill the matrix with random numbers
+            for row in &mut matrix {
+                for elem in row.iter_mut() {
+                    *elem = rng.gen_range(0..=15);
+                }
+            }
+
+            let echelon_matrix = echelon_form(matrix);
+            assert!(is_echelon_form(&echelon_matrix));
+        }
+    }
+
+
+
+    #[test]
+    fn test_sample_solution() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..50 {
+            let rows = rng.gen_range(1..10);
+            let cols = rng.gen_range(1..10);
+            let mut a = vec![vec![0u8; cols]; rows];
+
+            // Fill the matrix with random numbers
+            for row in &mut matrix {
+                for elem in row.iter_mut() {
+                    *elem = rng.gen_range(0..=15);
+                }
+            }
+
+            let expected: Vec<u8> = (0..rows).map(|_| rng.gen_range(0..=15)).collect();
+
+
+            let solution_matrix = match sample_solution(matrix, expected.clone()) {
+                Ok(x) => x, // If Ok, destructure the tuple into `a` and `x`
+                Err(e) => {
+                    println!("Error: {}", e);
+                    return; // Exit the function early in case of error.
+                }
+            };
+
+
+            //assert!(is_reduced_echelon_form(solution_matrix));
+        }
+    }
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     #[test]
     fn test_echelon_form_more_complex() {
@@ -203,7 +393,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sample_solution() {
+    fn test_sample_solution_OLD() {
         //TODO maybe make it run 20 times every time
         let mut rand_test = rng::from_entropy();
         // Input matrix A
