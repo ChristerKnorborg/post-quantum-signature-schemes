@@ -118,12 +118,13 @@ pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 // Vector-matrix multiplication over GF(16).
 // Returns a vector of size equal to the number of columns in the matrix.
 pub fn vector_matrix_mul(vec: &Vec<u8>, matrix: &Vec<Vec<u8>>) -> Vec<u8> {
+    
     assert_eq!(vec.len(), matrix.len(), "Length of vector must equal number of rows in matrix");
 
     let rows_matrix = matrix.len();
     let cols_matrix = matrix[0].len();
 
-    let mut result = vec![0; cols_matrix];
+    let mut result = vec![0; cols_matrix]; // 1 x cols_matrix vector
 
     for j in 0..cols_matrix {
         for i in 0..rows_matrix {
@@ -143,7 +144,7 @@ pub fn matrix_vector_mul(matrix: &Vec<Vec<u8>>, vec: &Vec<u8>) -> Vec<u8> {
     let rows_matrix = matrix.len();
     let cols_matrix = matrix[0].len();
 
-    let mut result = vec![0; rows_matrix];
+    let mut result = vec![0; rows_matrix]; // rows_matrix x 1 vector
 
     for i in 0..rows_matrix {
         for k in 0..cols_matrix {
@@ -360,18 +361,19 @@ mod tests {
     #[test]
     fn test_vector_matrix_mul() {
 
-        let vec = vec![0, 2];
+        let vec = vec![0, 2]; // 1x2 vector
 
-        let matrix = vec![vec![0, 1],
-                                   vec![2, 3],];
+        let matrix = vec![vec![0, 1], // 2x2 matrix
+                                        vec![2, 3],];
 
         let result = vector_matrix_mul(&vec, &matrix);
 
 
-        let rows_expected = 1; // Vector has 1 row
-        let cols_expected = matrix[0].len(); // Result should have same number of columns as the matrix
+        let cols_expected = 2; // Expected dimensions 1x2 vector
 
-        assert_eq!(result.len(), rows_expected, "Result vector has wrong number of rows");
+
+        assert_eq!(result.len(), cols_expected, "Result vector has wrong number of cols");
+
 
         // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
         let expected = vec![4, 6]; 
@@ -389,6 +391,12 @@ mod tests {
         let vec = vec![0, 2];
 
         let result = matrix_vector_mul(&matrix, &vec);
+
+
+        let cols_expected = vec.len(); // Matrix has 2 columns
+
+
+        assert_eq!(result.len(), cols_expected, "Result vector has wrong number of columns");
 
         // 0*0 + 1*2 = 2, 2*0 + 3*2 = 6 (still works with GF(16 for these small examples).)
         let expected = vec![2, 6]; 

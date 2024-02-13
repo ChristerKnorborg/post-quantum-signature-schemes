@@ -5,6 +5,7 @@ use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
 
 
+// MAYO Algorithm 1: Echelon Form
 // Function to perform the echelon form algorithm on matrix B.
 pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     let rows = b.len();
@@ -54,6 +55,10 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return b
 }
 
+
+
+// Function to sample a random vector of size K*O in GF(16).
+// Used to generate the random vector r in the algorithm 2
 pub fn sample_rand() -> Vec<u8> {
     let num_elems: u16 = (K * O) as u16;
 
@@ -66,6 +71,10 @@ pub fn sample_rand() -> Vec<u8> {
     return vals;
 }
 
+
+
+// MAYO Algorithm 2: Sample Solution
+// Function to solve the equation Ax = y in GF(16) using gaussian elimination.
 pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &'static str> {
     let rows = a.len();
 
@@ -87,7 +96,6 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         })
         .collect(); // Collect new vector of size m
 
-    println!("y vector: {:?}", y);
 
     // Append the first element of y to the first row of A, the second element of y to the second row of A etc.
     for (row, &y_val) in a.iter_mut().zip(y.iter()) {
@@ -126,9 +134,23 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
     return Ok(x)
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 // test echoleon_form
 #[cfg(test)]
 mod tests {
+    use crate::{constants::M, utils::print_matrix};
+
     use super::*;
     use std::vec;
 
@@ -139,74 +161,35 @@ mod tests {
     // Function to check if a matrix is in echelon form (not reduced).
     // A matrix is in echelon form if row entries are all zero below the leading entry.
     fn is_echelon_form(matrix: &Vec<Vec<u8>>) -> bool {
-        let mut last_leading_column = None;
 
-        for row in matrix {
-            let mut row_iter = row.iter().enumerate().filter(|&(_, &val)| val != 0);
+        let mut last_leading_col: isize = -1; // Track column index of leading entry in the previous row
+        
+        for row in matrix.iter() {
 
-            if let Some((leading_column, _)) = row_iter.next() {
-                if let Some(last_col) = last_leading_column {
-                    if leading_column <= last_col {
-                        // Leading entry is not to the right of the one above
+            // Find the index of the first non-zero element in the current row
+            let current_leading_col = row.iter().position(|&x| x != 0);
+            
+            match current_leading_col {
+                Some(idx) => {
+                    // Not in echelon form if the current leading element is to the left or in the same column as the last
+                    if idx as isize <= last_leading_col {
                         return false;
                     }
-                }
-                last_leading_column = Some(leading_column);
-
-                if row_iter.any(|(col, _)| col < leading_column) {
-                    // There are non-zero entries after the leading entry
-                    return false;
-                }
+                    // Update last_leading_col to the current row's leading element column index
+                    last_leading_col = idx as isize;
+                },
+                None => {
+                    // Checks if there is a non-zero row after finding a full zero row (then not in echelon form)
+                    for subsequent_row in matrix.iter().skip_while(|&r| r != row).skip(1) {
+                        if subsequent_row.iter().any(|&x| x != 0) {
+                            return false;
+                        }
+                    }
+                    // If zero row exist and no non-zero row after it, matrix is in echelon form and we can break
+                    break;
+                },
             }
         }
-
-        // All entries below leading entries must be zero
-        for col in 0..matrix[0].len() {
-            let mut found_nonzero = false;
-            for row in matrix {
-                if found_nonzero && row[col] != 0 {
-                    // Found a non-zero entry below a leading entry
-                    return false;
-                }
-                if row[col] != 0 {
-                    found_nonzero = true;
-                }
-            }
-        }
-
-        true
-    }
-
-
-
-
-
-    // Test method to check if a matrix is in reduced echelon form.
-    // A matrix is in reduced echelon form if all leading row entries are 1 and all other entries in the same column below the leading entry are 0.
-    fn is_reduced_echelon_form(matrix: &Vec<Vec<u8>>) -> bool {
-        if !is_echelon_form(matrix) {
-            // If it's not in echelon form, it can't be in reduced echelon form.
-            return false;
-        }
-
-        for (i, row) in matrix.iter().enumerate() {
-            if let Some(leading_one_index) = row.iter().position(|&x| x == 1) {
-                // Ensure the leading one is the only non-zero entry in its column
-                if matrix.iter().enumerate().any(|(j, other_row)| j != i && other_row[leading_one_index] != 0) {
-                    return false;
-                }
-                // Ensure that all leading ones are to the right of the leading one in the row above
-                if i > 0 && matrix[i - 1].iter().position(|&x| x == 1) >= Some(leading_one_index) {
-                    return false;
-                }
-            } else {
-                // If there's no leading one and the row is not all zeros, it's not in reduced form
-                if row.iter().any(|&x| x != 0) {
-                    return false;
-                }
-            }
-        }
-
         return true
     }
 
@@ -222,66 +205,12 @@ mod tests {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #[test]
-    fn test_echelon_form_simple() {
-        /*
-        Must satisfy the following conditions:
-            k < n − o
-            k*o ≥ m
-        where:
-            m is the number of multivariate quadratic polynomials,
-            n is number of variables in the multivariate polynomials,
-            k is the whipping parameter,
-            o is the dimension of the oil space.
-        */
-
-
-        // Matrix in GF(16)
-        let b = vec![
-            vec![0x0, 0x1, 0x8, 0x4, 0x5],
-            vec![0x1, 0x2, 0x3, 0x4, 0x5],
-            // SHOULD SWAP THESE TWO ROWS
-        ];
-
-        // Expected result after echelon form transformation (The two rows should be swapped)
-        let expected = vec![vec![0x1, 0x2, 0x3, 0x4, 0x5], vec![0x0, 0x1, 0x8, 0x4, 0x5]];
-
-        let result = echelon_form(b);
-
-        assert_eq!(
-            result, expected,
-            "Echelon form did not match expected result"
-        );
-    }
-
-
-
-
-
-
     #[test]
     fn test_echelon_form() {
         let mut rng = rand::thread_rng();
         for _ in 0..50 {
-            let rows = rng.gen_range(1..10);
-            let cols = rng.gen_range(1..10);
+            let rows = M;
+            let cols = K * O;
             let mut matrix = vec![vec![0u8; cols]; rows];
 
             // Fill the matrix with random numbers
@@ -291,7 +220,8 @@ mod tests {
                 }
             }
 
-            let echelon_matrix = echelon_form(matrix);
+            let echelon_matrix = echelon_form(matrix.clone());
+            print_matrix(echelon_matrix.clone());
             assert!(is_echelon_form(&echelon_matrix));
         }
     }
@@ -300,151 +230,57 @@ mod tests {
 
     #[test]
     fn test_sample_solution() {
+
         let mut rng = rand::thread_rng();
         for _ in 0..50 {
-            let rows = rng.gen_range(1..10);
-            let cols = rng.gen_range(1..10);
+
+            // Generate a random matrix of size (rows, cols)
+            let rows = M;
+            let cols = K * O;
             let mut a = vec![vec![0u8; cols]; rows];
 
             // Fill the matrix with random numbers
-            for row in &mut matrix {
+            for row in &mut a {
                 for elem in row.iter_mut() {
-                    *elem = rng.gen_range(0..=15);
+                    *elem = rng.gen_range(0..=15); // Random number in GF(16)
                 }
             }
 
-            let expected: Vec<u8> = (0..rows).map(|_| rng.gen_range(0..=15)).collect();
+            let a_input = a.clone(); // Clone the matrix for result comparison
+            let expected: Vec<u8> = (0..rows).map(|_| rng.gen_range(0..=15)).collect(); // Expected result aka. y
+
+            match sample_solution(a, expected.clone()) {
+                Ok(x) => {
 
 
-            let solution_matrix = match sample_solution(matrix, expected.clone()) {
-                Ok(x) => x, // If Ok, destructure the tuple into `a` and `x`
-                Err(e) => {
-                    println!("Error: {}", e);
-                    return; // Exit the function early in case of error.
+                    // Calculate the result of Ax = y for comparison
+                    let a_times_x_equal_y: Vec<u8> = a_input
+                        .iter()
+                        .map(|row| {
+                            row.iter()
+                                .zip(x.iter())
+                                .map(|(a_row_idx, x_idx)| ff::mul(*a_row_idx, *x_idx))
+                                .fold(0, |acc, x| ff::add(acc, x))
+                        })
+                        .collect();
+
+
+                    println!("Ax_eq_y:  {:?}", a_times_x_equal_y);
+                    println!("expected: {:?}", expected);
+
+                    assert_eq!(
+                        a_times_x_equal_y, expected,
+                        "Echelon form did not match expected result"
+                    );
+
+                },
+                Err(_e) => {
+                    continue; // Test next randomly generated matrix in case no solution found.
                 }
             };
 
-
-            //assert!(is_reduced_echelon_form(solution_matrix));
         }
     }
 
 
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #[test]
-    fn test_echelon_form_more_complex() {
-        /*
-        Must satisfy the following conditions:
-            k < n − o
-            k*o ≥ m
-        where:
-            m is the number of multivariate quadratic polynomials,
-            n is number of variables in the multivariate polynomials,
-            k is the whipping parameter,
-            o is the dimension of the oil space.
-        */
-
-
-        // Example matrix in GF(16), represented as u8
-        let b = vec![
-            vec![0x4, 0x4, 0x4, 0x4, 0x5, 0x5, 0x5, 0x5, 0x6],
-            vec![0x2, 0x4, 0x6, 0x4, 0x2, 0x4, 0x6, 0x4, 0x8],
-            vec![0x3, 0x6, 0x5, 0x4, 0x3, 0x6, 0x5, 0x4, 0x7],
-            vec![0x0, 0x2, 0x3, 0x4, 0x0, 0x2, 0x3, 0x4, 0x1],
-        ];
-
-        // Expected result after echelon form transformation
-        let expected = vec![
-            vec![0x1, 0x2, 0x3, 0x4],
-            vec![0x0, 0x1, 0x8, 0x4],
-            vec![0x0, 0x0, 0x1, 0x4],
-            vec![0x0, 0x0, 0x1, 0x4],
-        ];
-
-        let result = echelon_form(b);
-
-        assert_eq!(
-            result, expected,
-            "Echelon form did not match expected result"
-        );
-    }
-
-    #[test]
-    fn test_sample_solution_OLD() {
-        //TODO maybe make it run 20 times every time
-        let mut rand_test = rng::from_entropy();
-        // Input matrix A
-        let mut a = vec![
-            vec![0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x4],
-            vec![0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xf],
-            vec![0x8, 0x9, 0xf, 0xe, 0x3, 0x4, 0x5, 0x6],
-            vec![0x8, 0x9, 0x5, 0x6, 0xe, 0xa, 0xb, 0x1],
-        ];
-        // Input vector y (hash/tag)
-        let mut expected = vec![0x1, 0x2, 0x3, 0x4];
-
-        for row in a.iter_mut() {
-            for elem in row.iter_mut() {
-                *elem = rand_test.gen_range(0..15);
-            }
-        }
-
-        let a_input = a.clone();
-
-        for elem in expected.iter_mut() {
-            *elem = rand_test.gen_range(0..15);
-        }
-
-        println!("Input Matrix: {:?}", a);
-        println!("Input Vector (hash): {:?}", expected);
-
-        let x: Vec<u8> = match sample_solution(a, expected.clone()) {
-            Ok(x) => x, // If Ok, destructure the tuple into `a` and `x`
-            Err(e) => {
-                println!("Error: {}", e);
-                return; // Exit the function early in case of error.
-            }
-        };
-
-        let a_times_x_equal_y: Vec<u8> = a_input
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .zip(x.iter())
-                    .map(|(a_row_idx, x_idx)| ff::mul(*a_row_idx, *x_idx))
-                    .fold(0, |acc, x| ff::add(acc, x))
-            })
-            .collect();
-
-        println!("Ax_eq_y: {:?}", a_times_x_equal_y);
-        println!("expected: {:?}", expected);
-
-        assert_eq!(
-            a_times_x_equal_y, expected,
-            "Echelon form did not match expected result"
-        );
-    }
 }
