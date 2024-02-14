@@ -391,7 +391,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
 
                 
                 // let y_sub_u: Vec<u8> = y.iter().zip(u.iter()).map(|(y_idx, u_idx)| ff::sub(*y_idx, *u_idx)).collect();
-                // for d in 0..K {
+                // for d in 0..m {
                 //     y[d+ell] = y_sub_u[d];
                 // }
                 // let e_raised_to_ell = vec![0u8; F_Z.len()]; // [0, 0, 0, 0, 0]
