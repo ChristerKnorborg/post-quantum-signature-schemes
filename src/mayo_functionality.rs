@@ -126,6 +126,7 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     let s = shake256(&sk_seed, output_len);
 
     
+    // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice.try_into()
     .expect("Slice has incorrect length");
@@ -136,13 +137,11 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case 
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
-
     let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytes); 
 
 
     // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
-    
     let p1_bytes = p_bytes[0..P1_BYTES].to_vec();
     let p2_bytes = p_bytes[P1_BYTES..].to_vec();
 
@@ -162,7 +161,7 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>){
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
     for i in 0..M {
 
-        // transpose 
+        // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
         let transposed_o = transpose_matrix(&o);
 
         let p1_i = &p1[i];
@@ -204,15 +203,19 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
 
     let s = shake256(&sk_seed, PK_SEED_BYTES + O_BYTES);
 
+
+    // Derive pk_seed from sk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice.try_into()
     .expect("Slice has incorrect length");
 
 
+    // Derive O from sk_seed
     let mut o_bytestring = s[PK_SEED_BYTES ..].to_vec();
     let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytestring.clone());
 
     
+    // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
     let mut p1_bytes = p_bytes[0..P1_BYTES].to_vec();
     let p2_bytes = p_bytes[P1_BYTES..].to_vec();
@@ -223,8 +226,8 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
     let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes.clone(), true);
     let p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
 
-     // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
-     let mut l = vec![vec![vec![0u8; O]; n_minus_o]; M];
+    // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
+    let mut l = vec![vec![vec![0u8; O]; n_minus_o]; M];
 
     // Compute L matrices
     for i in 0..M {
@@ -306,7 +309,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
 
     // Derive t
     let mut t_shake_input = Vec::new();
-    t_shake_input.extend(m_digest.clone()); // Extend to prevent emptying original 
+    t_shake_input.extend(&m_digest); // Extend to prevent emptying original 
     t_shake_input.extend(&salt); // Extend to prevent emptying original
     let t_shake_output_length = if M % 2 == 0 {M / 2} else {M / 2 + 1}; // Ceil (M * log_2(q) / 8)
     let t_input = shake256(&t_shake_input, t_shake_output_length);
@@ -343,55 +346,54 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
         let a: Vec<Vec<u8>> = vec![vec![0u8; K*O]; M]; // Make matrix of size m x k*o
         let mut y = &t;
         let ell = 0;
-
+        let mut m_matrices: Vec<Vec<Vec<u8>>> = vec![vec![vec![0u8; O]; M]; K]; // Vector of size m x o of zeroes
 
         // Build K matrices of size M x O 
         for i in 0..K {
-            let mut m: Vec<Vec<Vec<u8>>> = vec![vec![vec![0u8; O]; M]; K]; // Vector of size m x o of zeroes
+            
             let v_i_transpose = transpose_vector(&v[i]);
 
             for j in 0..M {
                 let res = ff::matrix_mul(&v_i_transpose, &l[j]);
-                m[i][j] = res[0].clone(); // Set the j-th row of m_i (unpack (o x 1) to row vector of size o)
+                m_matrices[i][j] = res[0].clone(); // Set the j-th row of m_i (unpack (o x 1) to row vector of size o)
             }
         }
 
         for i in 0..K {
-            for j in (0..K).rev() {
+            for j in (i..K).rev() {
 
                 let v_i_transpose = transpose_vector(&v[i]);
                 let mut u = vec![0x0 as u8; M];
 
                 if i == j {
-                    for p1_mat in p1.iter() {
-                        let trans_mult = ff::matrix_mul(&v_i_transpose, p1_mat);
-                        let v_i_matrix = vec![v[i].clone()]; 
+                    for a in 0..M {
+                        let trans_mult = ff::matrix_mul(&v_i_transpose, &p1[a]);
+                        
 
                         // Size (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) gives size 1 x 1.
-                        // Hence, we index in [0][0] as both dimensions are wrapped in a vector.
-                        u[i] = ff::matrix_mul(&trans_mult, &v_i_matrix)[0][0]; // 
+                        u[a] = ff::matrix_vector_mul(&trans_mult, &v[i])[0];  
                     }
                 }
                 else {
-                    for p1_mat in p1.iter() {    
-                        let trans_mult = ff::matrix_mul(&v_i_transpose, p1_mat);
-                        let v_j_matrix = vec![v[j].clone()];
+                    for a in 0..M {    
 
-                        let left_term = ff::matrix_mul(&trans_mult, &v_j_matrix)[0][0];
+                        let trans_mult = ff::matrix_mul(&v_i_transpose, &p1[a]);
+                        let left_term = ff::matrix_vector_mul(&trans_mult, &v[j])[0];
 
                         let v_j_transpose = transpose_vector(&v[j]);
-                        let trans_mult = ff::matrix_mul(&v_j_transpose, p1_mat);
-                        let v_i_matrix = vec![v[i].clone()];
-                        let right_term = ff::matrix_mul(&trans_mult, &v_i_matrix)[0][0];
+                        let trans_mult = ff::matrix_mul(&v_j_transpose, &p1[a]);
+                        let right_term = ff::matrix_vector_mul(&trans_mult, &v[i])[0];
 
-                        u[i] = ff::add(left_term, right_term);
+                        u[a] = ff::add(left_term, right_term);
                     }
                 }
+
+
                 
-                let y_sub_u: Vec<u8> = y.iter().zip(u.iter()).map(|(y_idx, u_idx)| ff::sub(*y_idx, *u_idx)).collect();
-                for d in 0..K {
-                    y[d+ell] = y_sub_u[d];
-                }
+                // let y_sub_u: Vec<u8> = y.iter().zip(u.iter()).map(|(y_idx, u_idx)| ff::sub(*y_idx, *u_idx)).collect();
+                // for d in 0..K {
+                //     y[d+ell] = y_sub_u[d];
+                // }
                 // let e_raised_to_ell = vec![0u8; F_Z.len()]; // [0, 0, 0, 0, 0]
                 // for power in 0..ell {
                 //     for poly_idx in 0..F_Z.len() {
@@ -400,41 +402,42 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
                 //     }
                 // }
 
-                reduce_y_mod_f(&mut y);
+                // reduce_y_mod_f(&mut y);
             }
         }
 
 
         // Try to solve the linear system Ax = y
-        x = match sample_solution(a, *y) {
-            Ok(x) => x, // If Ok
-            Err(e) => {
-                continue; // If Err (no solution found), continue to the next iteration of the loop
-            }
-        };
-        break; // If Ok (solution found), break the loop
+        // x = match sample_solution(a, y) {
+        //     Ok(x) => x, // If Ok
+        //     Err(e) => {
+        //         continue; // If Err (no solution found), continue to the next iteration of the loop
+        //     }
+        // };
+        // break; // If Ok (solution found), break the loop
 
     } // ctr loop end
 
 
+    return x;
 
-    // Finish and output signature
-    let mut signature = vec![0u8; K*N];
+    // // Finish and output signature
+    // let mut signature = vec![0u8; K*N];
 
-    for i in 0..K {
+    // for i in 0..K {
         
 
-        let x_idx = vec![x[i*O..(i+1)*O].to_vec()];
-        let ox: Vec<u8> = ff::matrix_mul(&o, &x_idx)[0];
-        let vi_mat = vec![v[i].clone()];
-        let vi_plus_ox = ff::matrix_add(&vi_mat, &ox);
+    //     let x_idx = vec![x[i*O..(i+1)*O].to_vec()];
+    //     let ox: Vec<u8> = ff::matrix_mul(&o, &x_idx)[0];
+    //     let vi_mat = vec![v[i].clone()];
+    //     let vi_plus_ox = ff::matrix_add(&vi_mat, &ox);
 
-        signature.append(&mut vi_plus_ox);
-        signature.append(&mut x_idx[0]);
+    //     signature.append(&mut vi_plus_ox);
+    //     signature.append(&mut x_idx[0]);
 
-    }
+    // }
 
-    return signature;
+    // return signature;
 
 } 
 
