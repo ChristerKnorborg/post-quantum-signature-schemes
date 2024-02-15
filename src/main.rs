@@ -1,4 +1,4 @@
-use constants::SIG_BYTES;
+use constants::{SALT_BYTES, SIG_BYTES};
 
 use crate::bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices};
 
@@ -38,12 +38,12 @@ fn main() {
 
     let message = vec![1, 2, 3, 4, 5, 6, 7, 8];
     
-    let sig = vec![0; SIG_BYTES];
+    let sig = vec![12u8; SIG_BYTES];
 
     let verify: bool = mayo_functionality::verify(epk, sig, &message);
 
 
-    let sig = mayo_functionality::sign(esk, &message);
+    //let sig = mayo_functionality::sign(esk, &message);
 
 
 

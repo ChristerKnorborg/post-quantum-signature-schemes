@@ -8,6 +8,7 @@ use crate::bitsliced_functionality::{decode_bit_sliced_vector, decode_bytestring
 use crate::constants::{CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES};
 use crate::finite_field::{matrix_mul, mul};
 use crate::sample::sample_solution;
+use crate::utils::print_matrix;
 use crate::{bitsliced_functionality as bf, finite_field as ff};
 
 
@@ -484,11 +485,12 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
     // for every matrix a ∈ [M]                    (0     P^3_a)                             
     let big_p = create_large_matrices(p1, p2, p3); 
 
- 
-    println!("number of matrices: {:?}", big_p.len());
-    println!("rows per matrix: {:?}", big_p[0].len());
-    println!("cols per matrix: {:?}", big_p[0][0].len());
+    for m in 0..M {
+        println!("");
+        println!("NEW");
 
+        print_matrix(big_p[m].clone());
+    }
 
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
@@ -501,7 +503,7 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
 
             for a in 0..M{
 
-                let s_i_trans_big_p = ff::matrix_mul(&big_p[a], &s_i_trans);
+                let s_i_trans_big_p = ff::matrix_mul(&s_i_trans, &big_p[a]);
 
                 if i == j {
                     u[a] = ff::matrix_vector_mul(&s_i_trans_big_p, &s_matrix[i])[0];
@@ -509,18 +511,17 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
 
                     let left_term = ff::matrix_vector_mul(&s_i_trans_big_p, &s_matrix[j])[0];
 
-                    let s_j_trans_big_p = ff::matrix_mul(&big_p[a], &s_j_trans);
+                    let s_j_trans_big_p = ff::matrix_mul(&s_j_trans, &big_p[a]);
                     let right_term = ff::matrix_vector_mul(&s_j_trans_big_p, &s_matrix[i])[0];
                     
                     u[a] = ff::add(left_term, right_term);   
                 }
-
-                // Y UPDATE HERE
-                
-                ell = ell + 1;
-
-                println!("U: {:?}", u);
             }
+            // Y UPDATE HERE
+                
+            ell = ell + 1;
+
+            //println!("U: {:?}", u);
         }
     }
 
@@ -685,8 +686,12 @@ mod tests {
                     }
                 }
 
-        let big_matrix = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
+        let big_matrices = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
         
+        for m in 0..M {
+            println!("NEW matrix");
+            print_matrix(big_matrices[m].clone());
+        }
         
         
         let mut succeded: bool = true;
@@ -695,25 +700,25 @@ mod tests {
         for i in 0..N{
             for j in 0..N{
                 if(i < N-O && j < N-O){
-                    if(big_matrix[m][i][j] != p1[m][i][j]){
+                    if(big_matrices[m][i][j] != p1[m][i][j]){
                         succeded = false;
                 }
             }
                 if (i < N-O && j < O) {
-                    if(big_matrix[m][i][j+(N-O)] != p2[m][i][j]){
+                    if(big_matrices[m][i][j+(N-O)] != p2[m][i][j]){
                         succeded = false;
                     }
                 }
 
                 // Should be zero
                 if (i < O && j < O) {
-                    if(big_matrix[m][i+(N-O)][j] != 0){
+                    if(big_matrices[m][i+(N-O)][j] != 0){
                         succeded = false;
                     }
                 }
                 
                 if (i < O && j < O) {
-                    if(big_matrix[m][i+(N-O)][j+(N-O)] != p3[m][i][j]){
+                    if(big_matrices[m][i+(N-O)][j+(N-O)] != p3[m][i][j]){
                         succeded = false;
                     }
                 }
@@ -721,6 +726,10 @@ mod tests {
             }
         }
     }
+
+
+
+
 
 
         assert_eq!(succeded, true);
