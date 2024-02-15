@@ -405,7 +405,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 // reduce_y_mod_f(&mut y);
             }
         }
-        
+
         // Try to solve the linear system Ax = y
         // x = match sample_solution(a, y) {
         //     Ok(x) => x, // If Ok
@@ -484,6 +484,12 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
     // for every matrix a ∈ [M]                    (0     P^3_a)                             
     let big_p = create_large_matrices(p1, p2, p3); 
 
+ 
+    println!("number of matrices: {:?}", big_p.len());
+    println!("rows per matrix: {:?}", big_p[0].len());
+    println!("cols per matrix: {:?}", big_p[0][0].len());
+
+
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
         
@@ -547,10 +553,12 @@ fn create_large_matrices(mut p1: Vec<Vec<Vec<u8>>>, mut p2: Vec<Vec<Vec<u8>>>, m
 
         for i in (N-O)..N {
             let new_vec = Vec::new();
-            result.push(new_vec);
+            rows.push(new_vec);
             rows[i].append(&mut zero_rows[i-(N-O)]);
             rows[i].append(&mut p3[mat][i-(N-O)]);
         }
+
+        result.push(rows);
     }
 
 
@@ -650,31 +658,32 @@ mod tests {
     }
     
     #[test]
-    fn test_big_matrix(){
+    fn test_create_large_matrices(){
 
         let mut rng = rand::thread_rng();
 
-        let mut p1: Vec<Vec<Vec<u8>>> = vec![vec![vec![1u8; N-O]; N-O]];
-        let mut p2: Vec<Vec<Vec<u8>>> = vec![vec![vec![2u8; O]; N-O]];
-        let mut p3: Vec<Vec<Vec<u8>>> = vec![vec![vec![3u8; O]; O]];
+        let mut p1: Vec<Vec<Vec<u8>>> = vec![vec![vec![1u8; N-O]; N-O]; M];
+        let mut p2: Vec<Vec<Vec<u8>>> = vec![vec![vec![2u8; O]; N-O]; M];
+        let mut p3: Vec<Vec<Vec<u8>>> = vec![vec![vec![3u8; O]; O]; M];
                     // Generate a random matrix of size (rows, cols)
-                    let rows = M;
-                    let cols = K * O;
-                    let mut a = vec![vec![0u8; cols]; rows];
 
+
+                for m in 0..M{
                     for i in 0..N-O{
                         for j in 0..N-O{
-                            p1[0][i][j] = rng.gen_range(00..=15);
+                            
+                            p1[m][i][j] = rng.gen_range(00..=15);
 
                             if(j < O){
-                                p2[0][i][j] = rng.gen_range(00..=15);
+                                p2[m][i][j] = rng.gen_range(00..=15);
                             }
 
                             if(i < O && j < O){
-                                p3[0][i][j] = rng.gen_range(00..=15);
+                                p3[m][i][j] = rng.gen_range(00..=15);
                             }
                         }
                     }
+                }
 
         let big_matrix = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
         
@@ -682,34 +691,36 @@ mod tests {
         
         let mut succeded: bool = true;
 
+    for m in 0..M {
         for i in 0..N{
             for j in 0..N{
                 if(i < N-O && j < N-O){
-                    if(big_matrix[0][i][j] != p1[0][i][j]){
+                    if(big_matrix[m][i][j] != p1[m][i][j]){
                         succeded = false;
                 }
             }
                 if (i < N-O && j < O) {
-                    if(big_matrix[0][i][j+(N-O)] != p2[0][i][j]){
+                    if(big_matrix[m][i][j+(N-O)] != p2[m][i][j]){
                         succeded = false;
                     }
                 }
 
                 // Should be zero
                 if (i < O && j < O) {
-                    if(big_matrix[0][i+(N-O)][j] != 0){
+                    if(big_matrix[m][i+(N-O)][j] != 0){
                         succeded = false;
                     }
                 }
                 
                 if (i < O && j < O) {
-                    if(big_matrix[i+(N-O)][j+(N-O)] != p3[i][j]){
+                    if(big_matrix[m][i+(N-O)][j+(N-O)] != p3[m][i][j]){
                         succeded = false;
                     }
                 }
 
             }
         }
+    }
 
 
         assert_eq!(succeded, true);
