@@ -18,7 +18,7 @@ mod mayo1_features {
 #[cfg(not(feature = "mayo1"))]
 mod other_features {
 
-    pub const  N: usize = 66;
+    pub const N: usize = 66;
     pub const I: usize = 1;
     pub const K: usize = 9;
     pub const O: usize = 8;

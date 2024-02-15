@@ -280,7 +280,7 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
 
 // MAYO algorithm 8
 // 
-pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
+pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     
     let n_minus_o = N - O; // rows of O matrix
     let mut x: Vec<u8> = vec![0u8; K*O]; // Initialize x to zero
@@ -439,8 +439,116 @@ pub fn sign(expanded_sk: Vec<u8>, message: Vec<u8>) -> Vec<u8> {
 
     // return signature;
 
-} 
+}
 
+pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bool {
+
+    let n_minus_o = N - O; // rows of O matrix
+
+    // retrieves the public information from the expanded public key
+    let p1_bytestring = expanded_pk[0..P1_BYTES].to_vec();
+    let p2_bytestring = expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES].to_vec();
+    let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
+
+    // decodes the public information into matrices
+    let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
+    let p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
+    let p3 = bf::decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+
+    
+    
+    
+    // decode signature and derive salt
+    let n_times_k = if N*K % 2 == 0 {N*K / 2} else {N*K / 2 + 1}; // Ceil (N*K/2)
+    let salt = signature [n_times_k .. n_times_k + SALT_BYTES].to_vec();
+    let s = decode_bytestring_to_vector(K*N, signature);
+    let mut s_matrix = vec![vec![0u8; N]; s.len()];
+    for i in 0..K {
+        s_matrix[i] = s[i*N..(i+1)*N].to_vec();
+    }
+
+    
+    // derive and decode t
+    let m_digest = shake256(&message, DIGEST_BYTES);
+    let mut t_shake_input = Vec::new();
+    t_shake_input.extend(&m_digest);
+    t_shake_input.extend(&salt);
+    let t_shake_output_length = if M % 2 == 0 {M / 2} else {M / 2 + 1}; // Ceil (M * log_2(q) / 8)
+    let t_input: Vec<u8> = shake256(&t_shake_input, t_shake_output_length);
+    let t: Vec<u8> = decode_bit_sliced_vector(t_input);
+
+    // Compute P*(s)
+    let y1: Vec<u8> = vec![0u8; M];
+    let ell: u8 = 0;
+
+
+    // p* matrices are of size (n-o + o) x (n-o + o)
+    let big_p: Vec<Vec<Vec<u8>>> = Vec::with_capacity(M);
+    for i in 0..K {
+        let s_i_trans = transpose_vector(&s_matrix[i]);
+
+        for j in (i..K).rev() {
+            let s_j_trans = transpose_vector(&s_matrix[j]);
+
+            for a in 0..M{
+                //Sizes of big matrix NXN
+
+
+
+
+                if(i == j){
+ 
+
+                }
+
+                else{
+
+                }
+
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    return true;
+}
+
+
+
+// Construct the matrix (P_1 P_2)
+//                      (0   P_3)
+fn concatenate_four_matrix(mut p1: Vec<Vec<u8>>, mut p2: Vec<Vec<u8>>, mut p3: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+
+    let mut result: Vec<Vec<u8>> = Vec::with_capacity(N);
+    let mut zero_rows = vec![vec![0u8; N-O]; O ]; // O rows of zeroes of len N-O.
+    
+    for i in 0..(N-O ) {
+        let new_vec = Vec::new();
+        result.push(new_vec);
+        result[i].append(&mut p1[i]);
+        result[i].append(&mut p2[i]);
+    }
+
+    for i in (N-O)..N {
+        let new_vec = Vec::new();
+        result.push(new_vec);
+        result[i].append(&mut zero_rows[i-(N-O)]);
+        result[i].append(&mut p3[i-(N-O)]);
+    }
+
+    return result;
+}
 
 
     
@@ -455,6 +563,51 @@ fn reduce_y_mod_f(y: &mut Vec<u8>) {
         y[i] = 0;
     }
 }
+
+pub fn api_sign(mut message : Vec<u8>, sk: Vec<u8>) -> Vec<u8> {
+    //Expands the secret key
+    let expanded_sk = expand_sk(sk);
+
+    
+
+    //creates the signature based on expanded secret key and message
+    let mut signature = sign(expanded_sk, &message);
+
+    //concatenates the signature and the message
+    let mut sign_con_mes = Vec::new();
+    sign_con_mes.append(&mut signature);
+    sign_con_mes.append(&mut message);
+
+
+    return sign_con_mes;
+}
+
+pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: Vec<u8>) -> (bool , Vec<u8>) {
+    
+    //Expands the public key
+    let expanded_pk = expand_pk(pk);
+
+
+    //Extracts the signature and the message from the input
+    let signature: Vec<u8> = sign_con_mes[0..SIG_BYTES].to_vec();
+    let mut message = sign_con_mes[SIG_BYTES..].to_vec();
+
+    //Verifies the signature based on expanded public key and message
+    let result = verify(expanded_pk, signature, &message);
+
+    //returns result and message
+    if result == false
+    {
+        //dummy / false message if the signature is not valid
+        message = vec![0u8];
+    }
+
+
+    return (result , message);
+}
+
+
+
     
 
 
@@ -466,6 +619,8 @@ fn reduce_y_mod_f(y: &mut Vec<u8>) {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::print_matrix;
+
     use super::*;
 
     #[test]
@@ -485,6 +640,82 @@ mod tests {
         let result = aes_128_ctr_seed_expansion(input, output_length);
         assert_eq!(result.len(), output_length);
         println!("{:?}", result);
+    }
+    
+    #[test]
+    fn test_big_matrix(){
+
+        let mut rng = rand::thread_rng();
+
+        let mut p1: Vec<Vec<u8>> = vec![vec![1u8; N-O]; N-O];
+        let mut p2: Vec<Vec<u8>> = vec![vec![2u8; O]; N-O];
+        let mut p3: Vec<Vec<u8>> = vec![vec![3u8; O]; O];
+                    // Generate a random matrix of size (rows, cols)
+                    let rows = M;
+                    let cols = K * O;
+                    let mut a = vec![vec![0u8; cols]; rows];
+
+                    for i in 0..N-O{
+                        for j in 0..N-O{
+                            p1[i][j] = rng.gen_range(00..=15);
+
+                            if(j < O){
+                                p2[i][j] = rng.gen_range(00..=15);
+                            }
+
+                            if(i < O && j < O){
+                                p3[i][j] = rng.gen_range(00..=15);
+                            }
+                        }
+                    }
+
+        print_matrix(p1.clone());
+        print_matrix(p2.clone());
+        print_matrix(p3.clone());
+        
+        
+        
+        println!("YEEEEHUU");
+        let big_matrix = concatenate_four_matrix(p1.clone(), p2.clone(), p3.clone());
+        
+        
+        
+        let mut succeded: bool = true;
+        print_matrix(big_matrix.clone());
+
+        for i in 0..N{
+            for j in 0..N{
+                if(i < N-O && j < N-O){
+                    if(big_matrix[i][j] != p1[i][j]){
+                        succeded = false;
+                }
+            }
+                if (i < N-O && j < O) {
+                    if(big_matrix[i][j+(N-O)] != p2[i][j]){
+                        succeded = false;
+                    }
+                }
+
+                // Should be zero
+                if (i < O && j < O) {
+                    if(big_matrix[i+(N-O)][j] != 0){
+                        succeded = false;
+                    }
+                }
+                
+                if (i < O && j < O) {
+                    if(big_matrix[i+(N-O)][j+(N-O)] != p3[i][j]){
+                        succeded = false;
+                    }
+                }
+
+            }
+        }
+
+
+        assert_eq!(succeded, true);
+        println!("Big Matrix test result: {:?}", succeded);
+
     }
 
 }
