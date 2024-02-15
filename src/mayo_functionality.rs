@@ -451,9 +451,9 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
 
     // decodes the public information into matrices
-    let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
-    let p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
-    let p3 = bf::decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+    let mut p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
+    let mut p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
+    let mut p3 = bf::decode_bit_sliced_matrices(O, O, p3_bytestring, true);
 
     
     
@@ -483,7 +483,6 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
 
 
     // p* matrices are of size (n-o + o) x (n-o + o)
-    let big_p: Vec<Vec<Vec<u8>>> = Vec::with_capacity(M);
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
 
@@ -492,11 +491,14 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
 
             for a in 0..M{
                 //Sizes of big matrix NXN
+                let big_matrix = concatenate_four_matrix(p1[a], p2[a], p3[a]);
 
 
 
 
                 if(i == j){
+                    let s_trans_big_matrix = ff::matrix_mul(&big_matrix, &s_i_trans);
+                    
  
 
                 }
