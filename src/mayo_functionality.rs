@@ -405,8 +405,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 // reduce_y_mod_f(&mut y);
             }
         }
-
-
+        
         // Try to solve the linear system Ax = y
         // x = match sample_solution(a, y) {
         //     Ok(x) => x, // If Ok
@@ -478,76 +477,82 @@ pub fn verify (expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> b
     let t: Vec<u8> = decode_bit_sliced_vector(t_input);
 
     // Compute P*(s)
-    let y1: Vec<u8> = vec![0u8; M];
-    let ell: u8 = 0;
+    let y: Vec<u8> = vec![0u8; M];
+    let mut ell: u8 = 0;
 
+    // Construct the M matrices of size N x N s.t. (P^1_a P^2_a)
+    // for every matrix a ∈ [M]                    (0     P^3_a)                             
+    let big_p = create_large_matrices(p1, p2, p3); 
 
-    // p* matrices are of size (n-o + o) x (n-o + o)
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
+        
 
         for j in (i..K).rev() {
+
+            let mut u = vec![0u8; M];
             let s_j_trans = transpose_vector(&s_matrix[j]);
 
             for a in 0..M{
-                //Sizes of big matrix NXN
-                let big_matrix = concatenate_four_matrix(p1[a], p2[a], p3[a]);
 
+                let s_i_trans_big_p = ff::matrix_mul(&big_p[a], &s_i_trans);
 
+                if i == j {
+                    u[a] = ff::matrix_vector_mul(&s_i_trans_big_p, &s_matrix[i])[0];
+                } else{
 
+                    let left_term = ff::matrix_vector_mul(&s_i_trans_big_p, &s_matrix[j])[0];
 
-                if(i == j){
-                    let s_trans_big_matrix = ff::matrix_mul(&big_matrix, &s_i_trans);
+                    let s_j_trans_big_p = ff::matrix_mul(&big_p[a], &s_j_trans);
+                    let right_term = ff::matrix_vector_mul(&s_j_trans_big_p, &s_matrix[i])[0];
                     
- 
-
+                    u[a] = ff::add(left_term, right_term);   
                 }
 
-                else{
+                // Y UPDATE HERE
+                
+                ell = ell + 1;
 
-                }
-
+                println!("U: {:?}", u);
             }
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-    return true;
+    // Accept signature if y = t
+    return y == t;
 }
 
 
 
 // Construct the matrix (P_1 P_2)
 //                      (0   P_3)
-fn concatenate_four_matrix(mut p1: Vec<Vec<u8>>, mut p2: Vec<Vec<u8>>, mut p3: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+fn create_large_matrices(mut p1: Vec<Vec<Vec<u8>>>, mut p2: Vec<Vec<Vec<u8>>>, mut p3: Vec<Vec<Vec<u8>>>) -> Vec<Vec<Vec<u8>>> {
 
-    let mut result: Vec<Vec<u8>> = Vec::with_capacity(N);
-    let mut zero_rows = vec![vec![0u8; N-O]; O ]; // O rows of zeroes of len N-O.
-    
-    for i in 0..(N-O ) {
-        let new_vec = Vec::new();
-        result.push(new_vec);
-        result[i].append(&mut p1[i]);
-        result[i].append(&mut p2[i]);
+    let mut result: Vec<Vec<Vec<u8>>> = Vec::with_capacity(M);
+
+
+
+    for mat in 0..M {
+
+        let mut rows = Vec::with_capacity(N);
+        
+        let mut zero_rows = vec![vec![0u8; N-O]; O ]; // O rows of zeroes of len N-O.
+            
+        for i in 0..(N-O ) {
+            let new_vec = Vec::new();
+            rows.push(new_vec);
+            rows[i].append(&mut p1[mat][i]);
+            rows[i].append(&mut p2[mat][i]);
+        }
+
+        for i in (N-O)..N {
+            let new_vec = Vec::new();
+            result.push(new_vec);
+            rows[i].append(&mut zero_rows[i-(N-O)]);
+            rows[i].append(&mut p3[mat][i-(N-O)]);
+        }
     }
 
-    for i in (N-O)..N {
-        let new_vec = Vec::new();
-        result.push(new_vec);
-        result[i].append(&mut zero_rows[i-(N-O)]);
-        result[i].append(&mut p3[i-(N-O)]);
-    }
 
     return result;
 }
@@ -649,9 +654,9 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
-        let mut p1: Vec<Vec<u8>> = vec![vec![1u8; N-O]; N-O];
-        let mut p2: Vec<Vec<u8>> = vec![vec![2u8; O]; N-O];
-        let mut p3: Vec<Vec<u8>> = vec![vec![3u8; O]; O];
+        let mut p1: Vec<Vec<Vec<u8>>> = vec![vec![vec![1u8; N-O]; N-O]];
+        let mut p2: Vec<Vec<Vec<u8>>> = vec![vec![vec![2u8; O]; N-O]];
+        let mut p3: Vec<Vec<Vec<u8>>> = vec![vec![vec![3u8; O]; O]];
                     // Generate a random matrix of size (rows, cols)
                     let rows = M;
                     let cols = K * O;
@@ -659,48 +664,40 @@ mod tests {
 
                     for i in 0..N-O{
                         for j in 0..N-O{
-                            p1[i][j] = rng.gen_range(00..=15);
+                            p1[0][i][j] = rng.gen_range(00..=15);
 
                             if(j < O){
-                                p2[i][j] = rng.gen_range(00..=15);
+                                p2[0][i][j] = rng.gen_range(00..=15);
                             }
 
                             if(i < O && j < O){
-                                p3[i][j] = rng.gen_range(00..=15);
+                                p3[0][i][j] = rng.gen_range(00..=15);
                             }
                         }
                     }
 
-        print_matrix(p1.clone());
-        print_matrix(p2.clone());
-        print_matrix(p3.clone());
-        
-        
-        
-        println!("YEEEEHUU");
-        let big_matrix = concatenate_four_matrix(p1.clone(), p2.clone(), p3.clone());
+        let big_matrix = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
         
         
         
         let mut succeded: bool = true;
-        print_matrix(big_matrix.clone());
 
         for i in 0..N{
             for j in 0..N{
                 if(i < N-O && j < N-O){
-                    if(big_matrix[i][j] != p1[i][j]){
+                    if(big_matrix[0][i][j] != p1[0][i][j]){
                         succeded = false;
                 }
             }
                 if (i < N-O && j < O) {
-                    if(big_matrix[i][j+(N-O)] != p2[i][j]){
+                    if(big_matrix[0][i][j+(N-O)] != p2[0][i][j]){
                         succeded = false;
                     }
                 }
 
                 // Should be zero
                 if (i < O && j < O) {
-                    if(big_matrix[i+(N-O)][j] != 0){
+                    if(big_matrix[0][i+(N-O)][j] != 0){
                         succeded = false;
                     }
                 }
