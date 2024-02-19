@@ -2,5 +2,9 @@
     "rust-analyzer.inlayHints.typeHints.hideClosureInitialization": true,
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml"
-    ]
+    ],
+    "files.associations": {
+        "rng.h": "c",
+        "ctype.h": "c"
+    }
 }

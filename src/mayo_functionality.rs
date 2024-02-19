@@ -344,9 +344,9 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
 
         // Build the linear system Ax = y
-        let a: Vec<Vec<u8>> = vec![vec![0u8; K*O]; M]; // Make matrix of size m x k*o
-        let mut y = &t;
-        let ell = 0;
+        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K*O]; M]; // Make matrix of size m x k*o
+        let mut y = t.clone();
+        let mut ell = 0;
         let mut m_matrices: Vec<Vec<Vec<u8>>> = vec![vec![vec![0u8; O]; M]; K]; // Vector of size m x o of zeroes
 
         // Build K matrices of size M x O 
@@ -391,10 +391,26 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
 
                 
-                // let y_sub_u: Vec<u8> = y.iter().zip(u.iter()).map(|(y_idx, u_idx)| ff::sub(*y_idx, *u_idx)).collect();
-                // for d in 0..m {
-                //     y[d+ell] = y_sub_u[d];
-                // }
+                let y_sub_u: Vec<u8> = y.iter().zip(u.iter()).map(|(y_idx, u_idx)| ff::sub(*y_idx, *u_idx)).collect();
+                for d in 0..M {
+                    y[d+ell] = y_sub_u[d];
+                }
+
+                // Calculate A
+                for d in 0..M {
+                    for a_entry in 0..O {
+                        a[d+ell][a_entry] ^= m_matrices[j][d][a_entry];
+                    }
+                }
+                if i != j {
+                    for d in 0..M {
+                        for a_entry in 0..O {
+                            a[d+ell][a_entry] ^= m_matrices[i][d][a_entry];
+                        }
+                    }
+                }
+                ell += 1;
+
                 // let e_raised_to_ell = vec![0u8; F_Z.len()]; // [0, 0, 0, 0, 0]
                 // for power in 0..ell {
                 //     for poly_idx in 0..F_Z.len() {
@@ -403,9 +419,11 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 //     }
                 // }
 
-                // reduce_y_mod_f(&mut y);
+                //
             }
         }
+        reduce_y_mod_f(&mut y);
+
 
         // Try to solve the linear system Ax = y
         // x = match sample_solution(a, y) {
@@ -577,6 +595,19 @@ fn reduce_y_mod_f(y: &mut Vec<u8>) {
             }
         }
         y[i] = 0;
+    }
+}
+
+fn reduce_a_mod_f(a: &mut Vec<Vec<u8>>) {
+    for i in (M..M + K * (K + 1) / 2 - 1).rev() {
+        for k in 0..O*K {
+            for j in 0..F_Z.len() {
+                if i >= M + j {
+                    a[i - M + j][k] ^= ff::mul(a[i - M + j][k], F_Z[j]);
+                }
+            }
+        a[i][k] = 0;
+        }
     }
 }
 
