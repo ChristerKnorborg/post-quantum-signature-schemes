@@ -16,7 +16,9 @@ mod mayo_functionality;
 
 fn main() {
 
-    let (cpk, csk) = mayo_functionality::compact_key_gen();
+    read_kat_file::read_kat();
+
+    // let (cpk, csk) = mayo_functionality::compact_key_gen();
     
     // println!("Compact Secret key: {:?}", csk);
     // println!("Compact Public key: {:?}", cpk);
@@ -26,8 +28,8 @@ fn main() {
     
 
 
-    let esk = mayo_functionality::expand_sk(csk);
-    let epk = mayo_functionality::expand_pk(cpk);
+    // let esk = mayo_functionality::expand_sk(csk);
+    // let epk = mayo_functionality::expand_pk(cpk);
 
 
     // println!("Expanded Secret key: {:?}", esk);
@@ -37,11 +39,11 @@ fn main() {
     // println!("Expanded Public key length: {:?}", epk.len());
     
 
-    let message = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    // let message = vec![1, 2, 3, 4, 5, 6, 7, 8];
     
-    let sig = vec![12u8; SIG_BYTES];
+    // let sig = vec![12u8; SIG_BYTES];
 
-    let verify: bool = mayo_functionality::verify(epk, sig, &message);
+    //let verify: bool = mayo_functionality::verify(epk, sig, &message);
 
 
     //let sig = mayo_functionality::sign(esk, &message);

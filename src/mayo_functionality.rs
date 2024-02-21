@@ -344,8 +344,10 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
 
         // Build the linear system Ax = y
-        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K*O]; M]; // Make matrix of size m x k*o
-        let mut y = t.clone();
+        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K*O]; 2*M]; // Make matrix of size m x k*o
+        let mut y = Vec::with_capacity(M*2);
+        y.extend(t.clone());
+        y.extend(vec![0u8 ; M]);
         let mut ell = 0;
         let mut m_matrices: Vec<Vec<Vec<u8>>> = vec![vec![vec![0u8; O]; M]; K]; // Vector of size m x o of zeroes
 
@@ -456,9 +458,11 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     }
     
+    let mut sign_con_salt = Vec::new();
     let signature_encoded = bf::encode_vector_to_bytestring(signature);
-
-    return (signature_encoded);
+    sign_con_salt.extend(signature_encoded);
+    sign_con_salt.extend(salt);
+    return sign_con_salt;
 
 }
 
