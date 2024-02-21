@@ -7,6 +7,7 @@ mod finite_field;
 mod utils;
 mod constants;
 mod bitsliced_functionality;
+mod read_kat_file;
 mod mayo_functionality;
 
 

@@ -423,39 +423,42 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             }
         }
         reduce_y_mod_f(&mut y);
+        reduce_a_mod_f(&mut a);
 
 
         // Try to solve the linear system Ax = y
-        // x = match sample_solution(a, y) {
-        //     Ok(x) => x, // If Ok
-        //     Err(e) => {
-        //         continue; // If Err (no solution found), continue to the next iteration of the loop
-        //     }
-        // };
-        // break; // If Ok (solution found), break the loop
+        x = match sample_solution(a, y) {
+            Ok(x) => x, // If Ok
+            Err(e) => {
+                continue; // If Err (no solution found), continue to the next iteration of the loop
+            }
+        };
+        break; // If Ok (solution found), break the loop
 
-    } // ctr loop end
+    } // ctr loop ends
 
 
-    return x;
+    // return x;
 
-    // // Finish and output signature
-    // let mut signature = vec![0u8; K*N];
+    // Finish and output signature
+    let mut signature = vec![0u8; K*N];
 
-    // for i in 0..K {
+    for i in 0..K {
         
 
-    //     let x_idx = vec![x[i*O..(i+1)*O].to_vec()];
-    //     let ox: Vec<u8> = ff::matrix_mul(&o, &x_idx)[0];
-    //     let vi_mat = vec![v[i].clone()];
-    //     let vi_plus_ox = ff::matrix_add(&vi_mat, &ox);
+        let mut x_idx = x[i*O..(i+1)*O].to_vec();
+        let ox: Vec<u8> = ff::matrix_vector_mul(&o, &x_idx);
+        let v_i = v[i].clone();
+        let mut vi_plus_ox: Vec<u8> = ox.iter().zip(v_i.iter()).map(| (ox_idx, v_i_idx) | ox_idx ^ v_i_idx).collect();
 
-    //     signature.append(&mut vi_plus_ox);
-    //     signature.append(&mut x_idx[0]);
+        signature.append(&mut vi_plus_ox);
+        signature.append(&mut x_idx);
 
-    // }
+    }
+    
+    let signature_encoded = bf::encode_vector_to_bytestring(signature);
 
-    // return signature;
+    return (signature_encoded);
 
 }
 
