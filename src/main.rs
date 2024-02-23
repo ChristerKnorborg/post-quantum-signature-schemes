@@ -1,4 +1,5 @@
 use constants::{SALT_BYTES, SIG_BYTES};
+use genKAT::bindings;
 
 use crate::bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices};
 
@@ -9,14 +10,21 @@ mod constants;
 mod bitsliced_functionality;
 mod read_kat_file;
 mod mayo_functionality;
-
+mod genKAT {
+    pub mod bindings;
+}
 
 
 
 
 fn main() {
+    utils::build_nist_code();
 
-    read_kat_file::read_kat();
+    let mut entropy_input: [u8] = slice::new();
+    unsafe {
+        bindings::randombytes_init(&entropy_input, 0, 256);
+    }
+    //read_kat_file::read_kat();
 
     // let (cpk, csk) = mayo_functionality::compact_key_gen();
     

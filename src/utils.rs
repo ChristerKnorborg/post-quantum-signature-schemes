@@ -1,3 +1,5 @@
+use cc;
+
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
     let num_elems: u16 = (k * o) as u16;
 
@@ -12,6 +14,12 @@ pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
 }
 
 
+
+pub fn build_nist_code() -> () {
+    cc::Build::new()
+        .file("src/genKAT/randombytes_ctrdrbg.c")
+        .compile("random_init");
+}
 
 
 
