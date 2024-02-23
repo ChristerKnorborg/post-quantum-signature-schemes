@@ -1,5 +1,3 @@
-use cc;
-
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
     let num_elems: u16 = (k * o) as u16;
 
@@ -10,35 +8,19 @@ pub fn test_random(k: u8, o: u8) -> Vec<u8> {
 pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
     mat.iter().for_each(|f| {
         println!("{:?}", f);
-})
+    })
 }
-
-
-
-pub fn build_nist_code() -> () {
-    cc::Build::new()
-        .file("src/genKAT/randombytes_ctrdrbg.c")
-        .compile("random_init");
-}
-
-
-
-
-
-
-
 
 // Convert a hex string to a byte vector by parsing each pair of hex digits
 // into a u8 and collecting them into a single Vec<u8>.
 pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
-
     let uneven: bool = hex_str.len() % 2 != 0;
 
     // Iteration will be 1 less if uneven (due to integer division)
-    let iterations = hex_str.len() / 2; 
+    let iterations = hex_str.len() / 2;
 
-
-    let mut res: Vec<u8> = hex_str.as_bytes()
+    let mut res: Vec<u8> = hex_str
+        .as_bytes()
         .chunks(2)
         .take(iterations) // Iterations depends on uneven
         .map(|chunk| {
@@ -56,7 +38,6 @@ pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
 
     return res;
 }
-
 
 // Convert a byte vector to a hex string by formatting each byte as a pair of
 // hex digits and concatenating them into a single String.
@@ -77,34 +58,14 @@ pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
     return hex_str;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // test echoleon_form
 #[cfg(test)]
 mod tests {
-  
+
     use super::*;
-    use std::vec;
     use crate::mayo_functionality as mf;
     use crate::utils as ut;
+    use std::vec;
 
     #[test]
     fn test_hex_to_bytes_and_back() {
@@ -139,7 +100,4 @@ mod tests {
         assert_eq!(count_0_message, hex_str_back_message);
         assert_eq!(count_0_sk, hex_str_back_sk);
     }
-
 }
-
-
