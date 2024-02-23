@@ -21,15 +21,13 @@ fn main() {
 
     println!("Entropy input: {:?}", entropy_input);
 
-    unsafe {
-        bindings::randombytes_init(
-            entropy_input.as_mut_ptr(),
-            personalization_string.as_ptr(), // Even if empty, this is now a valid pointer
-            256,
-        );
+    mayo_functionality::safe_randombytes_init(
+        &mut entropy_input,
+        &personalization_string, // Even if empty, this is now a valid pointer
+        256,
+    );
 
-        bindings::randombytes(entropy_input.as_mut_ptr(), nbytes);
-    }
+    mayo_functionality::safe_randomBytes(&mut entropy_input, nbytes);
 
     println!("Entropy input: {:?}", entropy_input);
     //read_kat_file::read_kat();
