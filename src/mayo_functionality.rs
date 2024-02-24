@@ -253,6 +253,8 @@ pub fn compact_key_gen(keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 
     println!("public key --------:");
     println!("{:?}", utils::bytes_to_hex_string(&cpk, false));
+    println!("secret key --------:");
+    println!("{:?}", utils::bytes_to_hex_string(&csk, false));
 
     return (cpk, csk);
 }
