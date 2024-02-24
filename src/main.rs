@@ -15,8 +15,8 @@ mod genKAT {
 }
 
 fn main() {
-    let mut entropy_input: Vec<u8> = vec![0u8; 1000]; // Example entropy input
-    let personalization_string: Vec<u8> = vec![0u8; 1000]; // Example, adjust as necessary
+    let mut entropy_input: Vec<u8> = (0..=47).collect();
+    let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
     let nbytes: u64 = entropy_input.len() as u64;
 
     println!("Entropy input: {:?}", entropy_input);
@@ -29,7 +29,17 @@ fn main() {
 
     mayo_functionality::safe_randomBytes(&mut entropy_input, nbytes);
 
-    println!("Entropy input: {:?}", entropy_input);
+    println!(
+        "Entropy input: {:?}",
+        utils::bytes_to_hex_string(&entropy_input, false)
+    );
+
+    mayo_functionality::safe_randombytes_init(
+        &mut entropy_input,
+        &personalization_string, // Even if empty, this is now a valid pointer
+        256,
+    );
+
     //read_kat_file::read_kat();
 
     // let (cpk, csk) = mayo_functionality::compact_key_gen();
