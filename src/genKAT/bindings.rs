@@ -23,3 +23,21 @@ extern "C" {
 extern "C" {
     pub fn randombytes_nist(x: &mut ccty::c_uchar, xlen: ccty::c_ulong);
 }
+
+extern "C" {
+    pub fn AES_128_CTR(
+        output: *mut ccty::c_uchar,
+        outputByteLen: ccty::c_ulonglong,
+        input: *const ccty::c_uchar,
+        inputByteLen: ccty::c_ulonglong,
+    );
+}
+
+extern "C" {
+    pub fn shake256(
+        output: *mut ccty::c_uchar,
+        outputByteLen: ccty::c_ulonglong,
+        input: *const ccty::c_uchar,
+        inputByteLen: ccty::c_ulonglong,
+    );
+}

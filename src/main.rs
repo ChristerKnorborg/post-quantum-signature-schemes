@@ -27,6 +27,9 @@ fn main() {
         256,
     );
 
+    let mut bing: Vec<u8>;
+    bing = entropy_input.clone();
+
     mayo_functionality::safe_randomBytes(&mut entropy_input, nbytes);
 
     println!(
@@ -39,6 +42,9 @@ fn main() {
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
     );
+
+    mayo_functionality::safe_randomBytes(&mut bing, nbytes);
+    mayo_functionality::safe_randomBytes(&mut bing, nbytes);
 
     mayo_functionality::compact_key_gen(entropy_input);
 

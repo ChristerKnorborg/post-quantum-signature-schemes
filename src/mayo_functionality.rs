@@ -54,6 +54,37 @@ pub fn safe_randomBytes(random_arrays: &mut [u8], nbytes: u64) {
     }
 }
 
+pub fn safe_aes_128_ctr(
+    output: &mut [u8],
+    output_byte_len: u64,
+    input: &[u8],
+    input_byte_len: u64,
+) {
+    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
+    // the C function adheres to the expected contract, and any other invariants you uphold.
+    unsafe {
+        bindings::AES_128_CTR(
+            output.as_mut_ptr(),
+            output_byte_len,
+            input.as_ptr(),
+            input_byte_len,
+        );
+    }
+}
+
+pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
+    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
+    // the C function adheres to the expected contract, and any other invariants you uphold.
+    unsafe {
+        bindings::shake256(
+            output.as_mut_ptr(),
+            output_byte_len,
+            input.as_ptr(),
+            input_byte_len,
+        );
+    }
+}
+
 pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Vec<u8> {
     type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>; // Define the type of the cipher (AES-128-CTR in little-endian mode)
 
@@ -133,9 +164,21 @@ pub fn compact_key_gen(keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     //TODO make if statement and have some check for testing
     let sk_seed: Vec<u8> = keygen_seed;
 
+    // // Derive pk_seed and Oil space from sk_seed
+    // let output_len = PK_SEED_BYTES + O_BYTES;
+    // let s = shake256(&sk_seed, output_len);
+
     // Derive pk_seed and Oil space from sk_seed
     let output_len = PK_SEED_BYTES + O_BYTES;
-    let s = shake256(&sk_seed, output_len);
+    let PK_SEED_BYTES_MAX = 16;
+    let O_BYTES_MAX = 726;
+    let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES_MAX + O_BYTES_MAX];
+    safe_shake256(
+        &mut s,
+        (PK_SEED_BYTES + O_BYTES_MAX) as u64,
+        &sk_seed,
+        sk_seed.len() as u64,
+    );
 
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
@@ -149,10 +192,24 @@ pub fn compact_key_gen(keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
     let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
 
-    // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
-    let p1_bytes = p_bytes[0..P1_BYTES].to_vec();
-    let p2_bytes = p_bytes[P1_BYTES..].to_vec();
+    // // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
+    // let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
+    // let p1_bytes = p_bytes[0..P1_BYTES].to_vec();
+    // let p2_bytes = p_bytes[P1_BYTES..].to_vec();
+
+    let P1_BYTES_MAX = 472384;
+    let P2_BYTES_MAX = 92928;
+    let size = (P1_BYTES_MAX + P2_BYTES_MAX) / 4;
+    let mut output_test: Vec<u8> = vec![0u8; size];
+    //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
+    safe_aes_128_ctr(
+        &mut output_test,
+        size as u64,
+        &pk_seed,
+        pk_seed.len() as u64,
+    );
+    let p1_bytes = output_test[0..P1_BYTES].to_vec();
+    let p2_bytes = output_test[P1_BYTES..].to_vec();
 
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
