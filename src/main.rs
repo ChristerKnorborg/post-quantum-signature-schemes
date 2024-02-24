@@ -37,14 +37,18 @@ fn main() {
         utils::bytes_to_hex_string(&entropy_input, false)
     );
 
+    mayo_functionality::safe_randomBytes(&mut bing, nbytes);
+
+    println!(
+        "Entropy input: {:?}",
+        utils::bytes_to_hex_string(&bing, false)
+    );
+
     mayo_functionality::safe_randombytes_init(
         &mut entropy_input,
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
     );
-
-    mayo_functionality::safe_randomBytes(&mut bing, nbytes);
-    mayo_functionality::safe_randomBytes(&mut bing, nbytes);
 
     mayo_functionality::compact_key_gen(entropy_input);
 

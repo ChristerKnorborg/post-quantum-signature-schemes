@@ -156,17 +156,21 @@ pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
 }
 
 // MAYO algorithm 5:
-pub fn compact_key_gen(keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     // Pick random seed (same length as salt_bytes)
     // let mut sk_seed: Vec<u8> = vec![0u8; SALT_BYTES];
     // OsRng.fill(&mut sk_seed[..]); // Fill cryptographically secure with random bytes
 
     //TODO make if statement and have some check for testing
-    let sk_seed: Vec<u8> = keygen_seed;
+    let mut sk_seed: Vec<u8> = vec![0u8; SK_SEED_BYTES];
 
     // // Derive pk_seed and Oil space from sk_seed
     // let output_len = PK_SEED_BYTES + O_BYTES;
     // let s = shake256(&sk_seed, output_len);
+
+    safe_randomBytes(&mut sk_seed, SK_SEED_BYTES as u64);
+
+    //sk_seed kun første 24
 
     // Derive pk_seed and Oil space from sk_seed
     let output_len = PK_SEED_BYTES + O_BYTES;
