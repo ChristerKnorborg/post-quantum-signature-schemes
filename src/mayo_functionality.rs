@@ -14,7 +14,7 @@ use crate::constants::{
 };
 use crate::finite_field::{matrix_mul, mul};
 use crate::sample::sample_solution;
-use crate::utils::print_matrix;
+use crate::utils::{self, print_matrix};
 use crate::{bitsliced_functionality as bf, finite_field as ff};
 
 // Function to hash a bytestring with SHAKE256 to a specified output length
@@ -125,10 +125,13 @@ pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
 }
 
 // MAYO algorithm 5:
-pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
+pub fn compact_key_gen(keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     // Pick random seed (same length as salt_bytes)
-    let mut sk_seed: Vec<u8> = vec![0u8; SALT_BYTES];
-    OsRng.fill(&mut sk_seed[..]); // Fill cryptographically secure with random bytes
+    // let mut sk_seed: Vec<u8> = vec![0u8; SALT_BYTES];
+    // OsRng.fill(&mut sk_seed[..]); // Fill cryptographically secure with random bytes
+
+    //TODO make if statement and have some check for testing
+    let sk_seed: Vec<u8> = keygen_seed;
 
     // Derive pk_seed and Oil space from sk_seed
     let output_len = PK_SEED_BYTES + O_BYTES;
@@ -190,6 +193,9 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
 
     cpk.extend_from_slice(&pk_seed); // pk_seed is an array, so we need to use extend_from_slice
     cpk.append(&mut encoded_p3);
+
+    println!("public key --------:");
+    println!("{:?}", utils::bytes_to_hex_string(&cpk, false));
 
     return (cpk, csk);
 }

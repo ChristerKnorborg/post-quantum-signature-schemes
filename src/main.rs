@@ -40,6 +40,8 @@ fn main() {
         256,
     );
 
+    mayo_functionality::compact_key_gen(entropy_input);
+
     //read_kat_file::read_kat();
 
     // let (cpk, csk) = mayo_functionality::compact_key_gen();
