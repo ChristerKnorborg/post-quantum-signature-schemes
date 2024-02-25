@@ -155,6 +155,21 @@ pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
     return transposed;
 }
 
+use std::fs::File;
+use std::io::Write;
+use std::io::Result;
+
+fn write_to_file(filename: &str, data: &[u8]) -> Result<()> {
+    let mut file = File::create(filename)?;
+    
+    writeln!(file, "\nbitsliced_P: ")?;
+    for byte in data.iter() {
+        write!(file, "{:02X}", byte)?;
+    }
+    
+    Ok(())
+}
+
 // MAYO algorithm 5:
 pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     // Pick random seed (same length as salt_bytes)
@@ -208,24 +223,19 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     println!("{:?}", o_print);
     println!("");
 
-    // // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    // let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
-    // let p1_bytes = p_bytes[0..P1_BYTES].to_vec();
-    // let p2_bytes = p_bytes[P1_BYTES..].to_vec();
 
-    let P1_BYTES_MAX = 472384;
-    let P2_BYTES_MAX = 92928;
-    let size = (P1_BYTES_MAX + P2_BYTES_MAX) / 4;
-    let mut output_test: Vec<u8> = vec![0u8; size];
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
+    let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
-        &mut output_test,
-        size as u64,
+        &mut p,
+        (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
         pk_seed.len() as u64,
     );
-    let p1_bytes = output_test[0..P1_BYTES].to_vec();
-    let p2_bytes = output_test[P1_BYTES..].to_vec();
+    let p1_bytes = p[0..P1_BYTES].to_vec();
+    let p2_bytes = p[P1_BYTES..].to_vec();
+
+   
 
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
