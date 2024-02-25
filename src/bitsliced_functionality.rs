@@ -4,35 +4,6 @@ use std::vec;
 
 
 
-// Function to encode a field element in GF(16) as a nibble. 
-// The method only reorders thelast 4 bits of the u8.
-// E.g. 0xa (00001010) is encoded as 0x5 (00000101)
-pub fn encode_field_element_to_nibble(a: u8) -> u8 {
-    
-    let mut nibble = 0;
-    nibble |= (a & 0x1) << 3; // bit 0 to position 3
-    nibble |= (a & 0x2) << 1; // bit 1 to position 2
-    nibble |= (a & 0x4) >> 1; // bit 2 to position 1
-    nibble |= (a & 0x8) >> 3; // bit 3 to position 0
-
-    return nibble
-}
-
-
-// Function to decode a nibble to a field element in GF(16)
-// The method only reorders thelast 4 bits of the u8.
-// E.g. 0xa (00001010) is encoded as 0x5 (00000101)
-pub fn decode_nibble_to_field_element(nibble: u8) -> u8 {
-
-    let mut field_element = 0;
-    field_element |= (nibble & 0x8) >> 3; // bit 3 to position 0
-    field_element |= (nibble & 0x4) >> 1; // bit 2 to position 1
-    field_element |= (nibble & 0x2) << 1; // bit 1 to position 2
-    field_element |= (nibble & 0x1) << 3; // bit 0 to position 3
-
-    return field_element
-}
-
 
 
 // Function to encode a vector of field elements in GF(16) into a bytestring.
@@ -44,13 +15,14 @@ pub fn encode_vector_to_bytestring(x: Vec<u8>) -> Vec<u8> {
     // Iterate over each element in pairs and encode them into a single byte
     for pair in x.chunks(2) {
 
-        let first_nibble = encode_field_element_to_nibble(pair[0]);
+        let first_nibble = pair[0];
         let second_nibble = if pair.len() == 2 {
-            encode_field_element_to_nibble(pair[1])
+            pair[1]
         } else {
             0 // If the length of x is odd, pad the last byte with a zero nibble
         };
-        bytestring.push(first_nibble << 4 | second_nibble);
+         // Combine the two nibbles into a single byte (second_nibble is the 4 most significant bits and first_nibble is the 4 least significant bits)
+        bytestring.push(second_nibble << 4 | first_nibble);
     }
     return bytestring
 }
@@ -68,14 +40,14 @@ pub fn decode_bytestring_to_vector(n: usize, bytestring: Vec<u8>) -> Vec<u8> {
 
     // Iterate over all bytes with two nibbles in each
     for &byte in bytestring.iter().take(full_bytes) {
-        x.push(decode_nibble_to_field_element(byte >> 4)); // Decode the first (most significant) nibble
-        x.push(decode_nibble_to_field_element(byte & 0x0F)); // Decode the second (least significant) nibble
+        x.push(byte & 0x0F); // Put the first nibble (4 least significant bits) into the first byte 
+        x.push(byte >> 4); // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
     }
 
     // Decode an extra nibble if n is odd
     if extra_nibble == 1 {
         let &last_byte = bytestring.last().unwrap(); // Unwrap is safe cause at least one byte if n is odds
-        x.push(decode_nibble_to_field_element(last_byte >> 4)); // Decode the first (most significant) nibble
+        x.push(last_byte & 0x0F); // Put the first nibble (4 least significant bits) into the last byte in the byte vector (ignore the second nibble of 0)
     }
 
     return x
@@ -270,41 +242,21 @@ mod tests {
     use rand::{distributions::Uniform, Rng};
 
 
-
-    #[test]
-    fn test_encode_and_decode_nibble() {
-        // Test the encoding and decoding of a field element
-        let original_element = 0x2; // 00000010
-        let encoded_nibble = encode_field_element_to_nibble(original_element);
-        assert_eq!(encoded_nibble, 0x4); // Should be 00000100
-
-        let decoded_element = decode_nibble_to_field_element(encoded_nibble);
-        assert_eq!(decoded_element, original_element); 
-
-
-        let original_element = 0x8; // 00001000
-        let encoded_nibble = encode_field_element_to_nibble(original_element);
-        assert_eq!(encoded_nibble, 0x1); // Should be 00000001
-
-        let decoded_element = decode_nibble_to_field_element(encoded_nibble);
-        assert_eq!(decoded_element, original_element);
-    }
-
-
     #[test]
     fn test_encode_decode_vector_to_bytestring() {
 
         // Encode and decode even length vector
-        let original_vector_even = vec![0xa, 0x1, 0x2, 0xb];
+        let original_vector_even = vec![0xa, 0x1, 0x2, 0xb]; // Should be encoded as [00011010], [10110010] (e.g [1,10] [11,2])
         let encoded_bytestring_even = encode_vector_to_bytestring(original_vector_even.clone());
+
         let decoded_vector_even = decode_bytestring_to_vector(original_vector_even.len(), encoded_bytestring_even);
         assert_eq!(decoded_vector_even, original_vector_even);
 
         // Encode and decode odd length vector
-        let original_vector_odd = vec![0xa, 0x1, 0x2];
+        let original_vector_odd = vec![0xa, 0x1, 0x2]; // Should be encoded as [00011010], [00000100] (e.g [1,10] [0,2])
         let encoded_bytestring_odd = encode_vector_to_bytestring(original_vector_odd.clone()); // Should add padding
         assert_eq!(encoded_bytestring_odd.len(), 2); // Check that the padding does not add an extra byte
-        assert_eq!(encoded_bytestring_odd[1], 64); // Check that the padding is added (should be 0100 concatenated with 0000 - 64 in decimal 0)
+        assert_eq!(encoded_bytestring_odd[1], 2); // Check that the padding is added (should be 0000 concatenated with 0010 - 2 in decimal)
         let decoded_vector_odd = decode_bytestring_to_vector(original_vector_odd.len(), encoded_bytestring_odd); // Should removes the padding
         assert_eq!(decoded_vector_odd, original_vector_odd);
     }

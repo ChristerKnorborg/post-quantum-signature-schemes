@@ -173,16 +173,17 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     //sk_seed kun første 24
 
     // Derive pk_seed and Oil space from sk_seed
-    let output_len = PK_SEED_BYTES + O_BYTES;
-    let PK_SEED_BYTES_MAX = 16;
-    let O_BYTES_MAX = 726;
-    let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES_MAX + O_BYTES_MAX];
+    let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
         &mut s,
-        (PK_SEED_BYTES + O_BYTES_MAX) as u64,
+        (PK_SEED_BYTES + O_BYTES) as u64,
         &sk_seed,
         sk_seed.len() as u64,
     );
+
+    println!("");
+    println!("s: {:?}", utils::bytes_to_hex_string(&s, false));
+    println!("");
 
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
@@ -195,6 +196,17 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
     let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
+
+
+
+    println!("");
+    println!("o: ");
+    let mut o_print: String = "".to_owned();
+    for i in 0..n_minus_o {
+        o_print.push_str(utils::bytes_to_hex_string(&o[i], false).as_str());
+    }
+    println!("{:?}", o_print);
+    println!("");
 
     // // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     // let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
