@@ -12,7 +12,7 @@ use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES,
     P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES,
 };
-use crate::finite_field::{matrix_mul, mul};
+use crate::finite_field::{add, matrix_mul, mul};
 use crate::sample::sample_solution;
 use crate::utils::{self, print_matrix};
 use crate::{bitsliced_functionality as bf, finite_field as ff};
@@ -112,18 +112,21 @@ pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Ve
     return output;
 }
 
-pub fn upper(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    let n = matrix.len(); // Assuming it's a square matrix
+// Upper(M)_ij = M_ij + M_ji for i < j
+pub fn upper(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    
+    let n = matrix.len();
 
-    let mut upper_matrix = vec![vec![0; n]; n]; // Initialize the upper triangular matrix with zeros
-
+    // Iterate over everything above the diagonal
     for i in 0..n {
-        for j in i..n {
-            upper_matrix[i][j] = matrix[i][j]; // Copy the upper triangular part
+        for j in (i+1)..n {
+            matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
+            matrix[j][i] = 0;
         }
     }
 
-    return upper_matrix;
+
+    return matrix;
 }
 
 // Helper function to transpose a matrix (as described in the MAYO paper)
@@ -196,10 +199,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         sk_seed.len() as u64,
     );
 
-    println!("");
-    println!("s: {:?}", utils::bytes_to_hex_string(&s, false));
-    println!("");
-
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
@@ -213,17 +212,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
 
 
-
-    println!("");
-    println!("o: ");
-    let mut o_print: String = "".to_owned();
-    for i in 0..n_minus_o {
-        o_print.push_str(utils::bytes_to_hex_string(&o[i], false).as_str());
-    }
-    println!("{:?}", o_print);
-    println!("");
-
-
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
@@ -234,8 +222,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     );
     let p1_bytes = p[0..P1_BYTES].to_vec();
     let p2_bytes = p[P1_BYTES..].to_vec();
-
-   
 
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
@@ -263,9 +249,9 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         let right_term: Vec<Vec<u8>> = ff::matrix_mul(&transposed_o, &p2_i);
 
         // Compute: (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
-        let sub = ff::matrix_sub(&left_term, &right_term);
+        let mut sub = ff::matrix_sub(&left_term, &right_term);
 
-        p3[i] = upper(&sub); // Upper triangular part of the result
+        p3[i] = upper(sub); // Upper triangular part of the result
     }
 
     let mut encoded_p3 = bf::encode_bit_sliced_matrices(O, O, p3, true);
@@ -276,11 +262,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 
     cpk.extend_from_slice(&pk_seed); // pk_seed is an array, so we need to use extend_from_slice
     cpk.append(&mut encoded_p3);
-
-    println!("public key --------:");
-    println!("{:?}", utils::bytes_to_hex_string(&cpk, false));
-    println!("secret key --------:");
-    println!("{:?}", utils::bytes_to_hex_string(&csk, false));
 
     return (cpk, csk);
 }

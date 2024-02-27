@@ -19,8 +19,6 @@ fn main() {
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
     let nbytes: u64 = entropy_input.len() as u64;
 
-    println!("Entropy input: {:?}", entropy_input);
-
     mayo_functionality::safe_randombytes_init(
         &mut entropy_input,
         &personalization_string, // Even if empty, this is now a valid pointer
@@ -31,18 +29,7 @@ fn main() {
     bing = entropy_input.clone();
 
     mayo_functionality::safe_randomBytes(&mut entropy_input, nbytes);
-
-    println!(
-        "Entropy input: {:?}",
-        utils::bytes_to_hex_string(&entropy_input, false)
-    );
-
     mayo_functionality::safe_randomBytes(&mut bing, nbytes);
-
-    println!(
-        "Entropy input: {:?}",
-        utils::bytes_to_hex_string(&bing, false)
-    );
 
     mayo_functionality::safe_randombytes_init(
         &mut entropy_input,
@@ -78,33 +65,6 @@ fn main() {
     //let verify: bool = mayo_functionality::verify(epk, sig, &message);
 
     //let sig = mayo_functionality::sign(esk, &message);
-
-
-
-    let matrix: Vec<Vec<u8>> = vec![
-        vec![0x2, 0x2],
-        vec![0x2, 0x2],
-    ];
-
-    let matrices = vec![matrix.clone(), matrix.clone(), matrix.clone(), matrix.clone(),
-                                           matrix.clone(), matrix.clone(), matrix.clone(), matrix.clone()];
-    
-
-    let encoding: Vec<u8> = encode_bit_sliced_matrices(2, 2, matrices, true);
-
-    println!("Encoding as bits:");
-    for (index, byte) in encoding.iter().enumerate() {
-        for bit in (0..8).rev() {
-            print!("{}", (byte >> bit) & 1);
-        }
-        if (index + 1) % 4 == 0 { // After every 4 bytes, go to the next line
-            println!();
-        } else {
-            print!(" "); // Separate bytes with a space
-        }
-    }
-
-
 
 
 }
