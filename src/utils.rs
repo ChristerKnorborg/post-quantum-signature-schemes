@@ -1,3 +1,7 @@
+use std::fs::File;
+use std::io::{Write, Result};
+
+
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
     let num_elems: u16 = (k * o) as u16;
 
@@ -10,6 +14,50 @@ pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
         println!("{:?}", f);
     })
 }
+
+
+
+// Helper function to transpose a matrix (as described in the MAYO paper)
+pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    let rows = matrix.len();
+    let cols = matrix[0].len();
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = vec![vec![0u8; rows]; cols];
+
+    for i in 0..rows {
+        for j in 0..cols {
+            transposed[j][i] = matrix[i][j]; // Swap elements
+        }
+    }
+    return transposed;
+}
+
+// Helper function to transpose a matrix (as described in the MAYO paper)
+pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
+    let rows = vector.len();
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = vec![vec![0u8; rows]; 1];
+
+    for i in 0..rows {
+        transposed[0][i] = vector[i]; // Swap elements
+    }
+    return transposed;
+}
+
+
+pub fn write_to_file(filename: &str, data: &[u8]) -> Result<()> {
+    let mut file = File::create(filename)?;
+    
+    writeln!(file, "\nbitsliced_P: ")?;
+    for byte in data.iter() {
+        write!(file, "{:02X}", byte)?;
+    }
+    
+    Ok(())
+}
+
 
 // Convert a hex string to a byte vector by parsing each pair of hex digits
 // into a u8 and collecting them into a single Vec<u8>.

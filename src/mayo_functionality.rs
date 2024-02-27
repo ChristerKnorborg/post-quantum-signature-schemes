@@ -4,7 +4,7 @@ use crate::bitsliced_functionality::{
 };
 use crate::crypto_primitives::{aes_128_ctr_seed_expansion, safe_randomBytes, shake256, safe_shake256, safe_aes_128_ctr};
 use crate::finite_field::{add, mul, sub, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul}; 
-use crate::utils::{bytes_to_hex_string, hex_string_to_bytes, print_matrix};
+use crate::utils::{bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, write_to_file, transpose_vector};
 use crate::sample::sample_solution;
 
 use crate::constants::{
@@ -31,49 +31,6 @@ pub fn upper(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return matrix;
 }
 
-// Helper function to transpose a matrix (as described in the MAYO paper)
-pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    let rows = matrix.len();
-    let cols = matrix[0].len();
-
-    // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = vec![vec![0u8; rows]; cols];
-
-    for i in 0..rows {
-        for j in 0..cols {
-            transposed[j][i] = matrix[i][j]; // Swap elements
-        }
-    }
-    return transposed;
-}
-
-// Helper function to transpose a matrix (as described in the MAYO paper)
-pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
-    let rows = vector.len();
-
-    // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = vec![vec![0u8; rows]; 1];
-
-    for i in 0..rows {
-        transposed[0][i] = vector[i]; // Swap elements
-    }
-    return transposed;
-}
-
-use std::fs::File;
-use std::io::Write;
-use std::io::Result;
-
-fn write_to_file(filename: &str, data: &[u8]) -> Result<()> {
-    let mut file = File::create(filename)?;
-    
-    writeln!(file, "\nbitsliced_P: ")?;
-    for byte in data.iter() {
-        write!(file, "{:02X}", byte)?;
-    }
-    
-    Ok(())
-}
 
 // MAYO algorithm 5:
 pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
@@ -168,6 +125,14 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     return (cpk, csk);
 }
 
+
+
+
+
+
+
+
+
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
 pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
@@ -224,6 +189,13 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
     return expanded_sk;
 }
 
+
+
+
+
+
+
+
 // Mayo algorithm 7
 // Expands a public key from its compact representation
 pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
@@ -244,7 +216,7 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
 }
 
 // MAYO algorithm 8
-//
+// Signs a message using an expanded secret key
 pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let n_minus_o = N - O; // rows of O matrix
     let mut x: Vec<u8> = vec![0u8; K * O]; // Initialize x to zero
@@ -422,6 +394,13 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     return sign_con_salt;
 }
 
+
+
+
+
+
+// MAYO algorithm 9
+// Verifies the signature of a message using an expanded public key
 pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bool {
     let n_minus_o = N - O; // rows of O matrix
 
@@ -505,6 +484,11 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     return y == t;
 }
 
+
+
+
+
+
 // Construct the matrix (P_1 P_2)
 //                      (0   P_3)
 fn create_large_matrices(
@@ -563,6 +547,10 @@ fn reduce_a_mod_f(a: &mut Vec<Vec<u8>>) {
     }
 }
 
+
+
+// MAYO algorithm 10
+// Expands a secret key from its compact representation and signs a message input
 pub fn api_sign(mut message: Vec<u8>, sk: Vec<u8>) -> Vec<u8> {
     //Expands the secret key
     let expanded_sk = expand_sk(sk);
@@ -578,6 +566,9 @@ pub fn api_sign(mut message: Vec<u8>, sk: Vec<u8>) -> Vec<u8> {
     return sign_con_mes;
 }
 
+
+// MAYO algorithm 11
+// Expands a public key from its compact representation and verifies a signature
 pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: Vec<u8>) -> (bool, Vec<u8>) {
     //Expands the public key
     let expanded_pk = expand_pk(pk);
@@ -597,6 +588,16 @@ pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: Vec<u8>) -> (bool, Vec<u8>) {
 
     return (result, message);
 }
+
+
+
+
+
+
+
+
+
+
 
 #[cfg(test)]
 mod tests {
