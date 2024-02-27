@@ -54,9 +54,14 @@ pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
             hex_str.push_str(&format!("{:02X}", byte));
         }
     }
-
     return hex_str;
 }
+
+
+
+
+
+
 
 // test echoleon_form
 #[cfg(test)]

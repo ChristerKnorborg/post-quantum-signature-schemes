@@ -1,5 +1,4 @@
-use crate::finite_field as ff;
-use crate::utils as util;
+use crate::finite_field::{add, sub, mul, inv};
 use crate::constants::{K, O};
 use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
@@ -32,9 +31,9 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
         b.swap(pivot_row, next_pivot_row);
 
         // Make the leading entry a "1" by multiplying the row by the inverse of the pivot
-        let inv_idx = ff::inv(b[pivot_row][pivot_column]);
+        let inv_idx = inv(b[pivot_row][pivot_column]);
         for j in pivot_column..cols {
-            b[pivot_row][j] = ff::mul(inv_idx, b[pivot_row][j]);
+            b[pivot_row][j] = mul(inv_idx, b[pivot_row][j]);
         }
 
         // Eliminate entries below the pivot
@@ -42,8 +41,8 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
             // From next pivot row to m - 1
             let factor = b[i][pivot_column];
             for j in pivot_column..cols {
-                let finite_mult = ff::mul(factor, b[pivot_row][j]);
-                let res = ff::sub(b[i][j], finite_mult);
+                let finite_mult = mul(factor, b[pivot_row][j]);
+                let res = sub(b[i][j], finite_mult);
                 b[i][j] = res // b[i][j] - (factor * b[pivot_row][j]);
             }
         }
@@ -90,9 +89,9 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
             let ar_val: u8 = row
                 .iter()
                 .zip(r.iter())
-                .map(|(a_row_idx, r_idx)| ff::mul(*a_row_idx, *r_idx))
-                .fold(0, |acc, x| ff::add(acc, x)); // Compute the dot product of the current row of A and r
-            ff::sub(y_val, ar_val) // Perform subtraction y - Ar
+                .map(|(a_row_idx, r_idx)| mul(*a_row_idx, *r_idx))
+                .fold(0, |acc, x| add(acc, x)); // Compute the dot product of the current row of A and r
+            sub(y_val, ar_val) // Perform subtraction y - Ar
         })
         .collect(); // Collect new vector of size m
 
@@ -118,16 +117,16 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
         // Let c be the index of first non-zero element of A[r,:]
         // Calc x_c = x_c + y[r]
         let c = a_ech[r].iter().position(|&i| i != 0).unwrap();
-        x[c] = ff::add(x[c], y_ech[r]);
+        x[c] = add(x[c], y_ech[r]);
 
         // Calc temp_mult = y[r] * A[:,c]
-        let temp_mult: Vec<u8> = a_ech.iter().map(|row| ff::mul(y_ech[r], row[c])).collect();
+        let temp_mult: Vec<u8> = a_ech.iter().map(|row| mul(y_ech[r], row[c])).collect();
 
         // Calc y = y - y[r] * A[:,c]
         y_ech = y_ech
             .iter()
             .zip(temp_mult.iter())
-            .map(|(y_idx, temp_mult_idx)| ff::sub(*y_idx, *temp_mult_idx))
+            .map(|(y_idx, temp_mult_idx)| sub(*y_idx, *temp_mult_idx))
             .collect();
     }
 
@@ -259,8 +258,8 @@ mod tests {
                         .map(|row| {
                             row.iter()
                                 .zip(x.iter())
-                                .map(|(a_row_idx, x_idx)| ff::mul(*a_row_idx, *x_idx))
-                                .fold(0, |acc, x| ff::add(acc, x))
+                                .map(|(a_row_idx, x_idx)| mul(*a_row_idx, *x_idx))
+                                .fold(0, |acc, x| add(acc, x))
                         })
                         .collect();
 

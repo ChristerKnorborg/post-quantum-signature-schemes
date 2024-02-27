@@ -1,116 +1,18 @@
-use crate::genKAT::bindings;
-use aes::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
-use byteorder::{ByteOrder, LittleEndian};
-use rand::{rngs::OsRng, Rng, RngCore, SeedableRng};
-use sha3::digest::{ExtendableOutput, Update, XofReader};
-use sha3::{Digest, Shake256};
-
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_vector, decode_bytestring_to_matrix, decode_bytestring_to_vector,
+    decode_bit_sliced_vector, decode_bytestring_to_matrix, decode_bytestring_to_vector, encode_bit_sliced_matrices,
+    encode_vector_to_bytestring, decode_bit_sliced_matrices
 };
+use crate::crypto_primitives::{aes_128_ctr_seed_expansion, safe_randomBytes, shake256, safe_shake256, safe_aes_128_ctr};
+use crate::finite_field::{add, mul, sub, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul}; 
+use crate::utils::{bytes_to_hex_string, hex_string_to_bytes, print_matrix};
+use crate::sample::sample_solution;
+
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES,
     P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES,
 };
-use crate::finite_field::{add, matrix_mul, mul};
-use crate::sample::sample_solution;
-use crate::utils::{self, print_matrix};
-use crate::{bitsliced_functionality as bf, finite_field as ff};
 
-// Function to hash a bytestring with SHAKE256 to a specified output length
-pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
-    let mut hasher = Shake256::default();
 
-    hasher.update(&bytestring);
-
-    let mut output = vec![0; output_length]; // Allocate space for the output
-    let mut reader = hasher.finalize_xof(); // Get the reader for the output
-    reader.read(&mut output); // Read the output into the allocated space
-
-    return output;
-}
-
-pub fn safe_randombytes_init(
-    entropy_input: &mut [u8],
-    personalization_string: &[u8],
-    security_strength: i32,
-) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
-    unsafe {
-        bindings::randombytes_init(
-            entropy_input.as_mut_ptr(),
-            personalization_string.as_ptr(),
-            security_strength,
-        );
-    }
-}
-
-pub fn safe_randomBytes(random_arrays: &mut [u8], nbytes: u64) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
-    unsafe {
-        bindings::randombytes(random_arrays.as_mut_ptr(), nbytes);
-    }
-}
-
-pub fn safe_aes_128_ctr(
-    output: &mut [u8],
-    output_byte_len: u64,
-    input: &[u8],
-    input_byte_len: u64,
-) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
-    unsafe {
-        bindings::AES_128_CTR(
-            output.as_mut_ptr(),
-            output_byte_len,
-            input.as_ptr(),
-            input_byte_len,
-        );
-    }
-}
-
-pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
-    unsafe {
-        bindings::shake256(
-            output.as_mut_ptr(),
-            output_byte_len,
-            input.as_ptr(),
-            input_byte_len,
-        );
-    }
-}
-
-pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Vec<u8> {
-    type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>; // Define the type of the cipher (AES-128-CTR in little-endian mode)
-
-    let key = pk_seed; // 16 bytes key
-    let iv: [u8; 16] = [0u8; 16]; // 16 bytes IV
-
-    let mut cipher = Aes128Ctr64LE::new(&key.into(), &iv.into());
-
-    let mut output = Vec::with_capacity(output_length);
-
-    let mut ctr: u128 = 0u128; // 128-bit counter (0 initial value) to encrypt
-
-    while output.len() < output_length {
-        let mut buf = [0u8; 16]; // 16 bytes buffer to store the counter
-        LittleEndian::write_u128(&mut buf, ctr); // Write the counter to the buffer (array of bytes)
-        cipher.apply_keystream(&mut buf); // Encrypt the counter with the key and IV
-        output.extend_from_slice(&buf); // Append the encrypted counter to the output vector
-
-        ctr += 1;
-    }
-
-    // Truncate the output to the desired length (if not multiple of 16 bytes)
-    output.truncate(output_length);
-
-    return output;
-}
 
 // Upper(M)_ij = M_ij + M_ji for i < j
 pub fn upper(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
@@ -209,7 +111,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
-    let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
+    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
 
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
@@ -224,10 +126,10 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     let p2_bytes = p[P1_BYTES..].to_vec();
 
     // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
+    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
 
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
+    let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
 
     // Allocate space for P_{i}^(3). Size is o × o
     let mut p3 = vec![vec![vec![0u8; O]; O]; M];
@@ -242,19 +144,19 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         let p2_i = &p2[i];
 
         // Compute: −O^{T} * P^{(1)}_i * O
-        let mut left_term = ff::matrix_mul(&transposed_o, &p1_i);
-        left_term = ff::matrix_mul(&left_term, &o);
+        let mut left_term = matrix_mul(&transposed_o, &p1_i);
+        left_term = matrix_mul(&left_term, &o);
 
         // Compute: −O^{T} * P^{(2)}_i
-        let right_term: Vec<Vec<u8>> = ff::matrix_mul(&transposed_o, &p2_i);
+        let right_term: Vec<Vec<u8>> = matrix_mul(&transposed_o, &p2_i);
 
         // Compute: (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
-        let mut sub = ff::matrix_sub(&left_term, &right_term);
+        let mut sub = matrix_sub(&left_term, &right_term);
 
         p3[i] = upper(sub); // Upper triangular part of the result
     }
 
-    let mut encoded_p3 = bf::encode_bit_sliced_matrices(O, O, p3, true);
+    let mut encoded_p3 = encode_bit_sliced_matrices(O, O, p3, true);
 
     // Public and secret keys
     let mut cpk = Vec::with_capacity(PK_SEED_BYTES + P3_BYTES); // contains pk_seed and encoded_p3
@@ -291,8 +193,8 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
 
     // m p1 matrices are of size (n−o) × (n−o)
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes.clone(), true);
-    let p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
+    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes.clone(), true);
+    let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
 
     // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
     let mut l = vec![vec![vec![0u8; O]; n_minus_o]; M];
@@ -303,14 +205,14 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
         let p2_i = &p2[i];
 
         let transposed_p1_i = transpose_matrix(p1_i);
-        let added_p1 = ff::matrix_add(&p1_i, &transposed_p1_i);
+        let added_p1 = matrix_add(&p1_i, &transposed_p1_i);
 
-        let left_term = ff::matrix_mul(&added_p1, &o);
+        let left_term = matrix_mul(&added_p1, &o);
 
-        l[i] = ff::matrix_add(&left_term, &p2_i);
+        l[i] = matrix_add(&left_term, &p2_i);
     }
 
-    let mut encoded_l = bf::encode_bit_sliced_matrices(n_minus_o, O, l, false);
+    let mut encoded_l = encode_bit_sliced_matrices(n_minus_o, O, l, false);
 
     let mut expanded_sk: Vec<u8> = Vec::with_capacity(ESK_BYTES);
 
@@ -356,9 +258,9 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let l_bytestring = expanded_sk[SK_SEED_BYTES + O_BYTES + P1_BYTES..ESK_BYTES].to_vec();
 
     // Assign matrices with decoded information
-    let o = bf::decode_bytestring_to_matrix(n_minus_o, O, o_bytestring);
-    let p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
-    let l = bf::decode_bit_sliced_matrices(n_minus_o, O, l_bytestring, false);
+    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytestring);
+    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
+    let l = decode_bit_sliced_matrices(n_minus_o, O, l_bytestring, false);
 
     // Hash message and derive salt
     let m_digest = shake256(&message, DIGEST_BYTES);
@@ -396,7 +298,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         // Derive v_i
         for i in 0..K {
             let v_bytestring_slice = v_bytestring[i * V_BYTES..(i + 1) * V_BYTES].to_vec();
-            v[i] = bf::decode_bytestring_to_vector(n_minus_o, v_bytestring_slice)
+            v[i] = decode_bytestring_to_vector(n_minus_o, v_bytestring_slice)
         }
 
         // Derive r (Notice r is redefined and have nothing to do with previous r)
@@ -416,7 +318,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             let v_i_transpose = transpose_vector(&v[i]);
 
             for j in 0..M {
-                let res = ff::matrix_mul(&v_i_transpose, &l[j]);
+                let res = matrix_mul(&v_i_transpose, &l[j]);
                 m_matrices[i][j] = res[0].clone(); // Set the j-th row of m_i (unpack (o x 1) to row vector of size o)
             }
         }
@@ -428,28 +330,28 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
                 if i == j {
                     for a in 0..M {
-                        let trans_mult = ff::matrix_mul(&v_i_transpose, &p1[a]);
+                        let trans_mult = matrix_mul(&v_i_transpose, &p1[a]);
 
                         // Size (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) gives size 1 x 1.
-                        u[a] = ff::matrix_vector_mul(&trans_mult, &v[i])[0];
+                        u[a] = matrix_vector_mul(&trans_mult, &v[i])[0];
                     }
                 } else {
                     for a in 0..M {
-                        let trans_mult = ff::matrix_mul(&v_i_transpose, &p1[a]);
-                        let left_term = ff::matrix_vector_mul(&trans_mult, &v[j])[0];
+                        let trans_mult = matrix_mul(&v_i_transpose, &p1[a]);
+                        let left_term = matrix_vector_mul(&trans_mult, &v[j])[0];
 
                         let v_j_transpose = transpose_vector(&v[j]);
-                        let trans_mult = ff::matrix_mul(&v_j_transpose, &p1[a]);
-                        let right_term = ff::matrix_vector_mul(&trans_mult, &v[i])[0];
+                        let trans_mult = matrix_mul(&v_j_transpose, &p1[a]);
+                        let right_term = matrix_vector_mul(&trans_mult, &v[i])[0];
 
-                        u[a] = ff::add(left_term, right_term);
+                        u[a] = add(left_term, right_term);
                     }
                 }
 
                 let y_sub_u: Vec<u8> = y
                     .iter()
                     .zip(u.iter())
-                    .map(|(y_idx, u_idx)| ff::sub(*y_idx, *u_idx))
+                    .map(|(y_idx, u_idx)| sub(*y_idx, *u_idx))
                     .collect();
                 for d in 0..M {
                     y[d + ell] = y_sub_u[d];
@@ -473,7 +375,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 // let e_raised_to_ell = vec![0u8; F_Z.len()]; // [0, 0, 0, 0, 0]
                 // for power in 0..ell {
                 //     for poly_idx in 0..F_Z.len() {
-                //         e_raised_to_ell[poly_idx] ^= ff::mul(F_Z[poly_idx], ell);
+                //         e_raised_to_ell[poly_idx] ^= mul(F_Z[poly_idx], ell);
 
                 //     }
                 // }
@@ -501,7 +403,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     for i in 0..K {
         let mut x_idx = x[i * O..(i + 1) * O].to_vec();
-        let ox: Vec<u8> = ff::matrix_vector_mul(&o, &x_idx);
+        let ox: Vec<u8> = matrix_vector_mul(&o, &x_idx);
         let v_i = v[i].clone();
         let mut vi_plus_ox: Vec<u8> = ox
             .iter()
@@ -514,7 +416,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     }
 
     let mut sign_con_salt = Vec::new();
-    let signature_encoded = bf::encode_vector_to_bytestring(signature);
+    let signature_encoded = encode_vector_to_bytestring(signature);
     sign_con_salt.extend(signature_encoded);
     sign_con_salt.extend(salt);
     return sign_con_salt;
@@ -529,9 +431,9 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
 
     // decodes the public information into matrices
-    let mut p1 = bf::decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
-    let mut p2 = bf::decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
-    let mut p3 = bf::decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+    let mut p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
+    let mut p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
+    let mut p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
 
     // decode signature and derive salt
     let n_times_k = if N * K % 2 == 0 {
@@ -578,17 +480,17 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
             let s_j_trans = transpose_vector(&s_matrix[j]);
 
             for a in 0..M {
-                let s_i_trans_big_p = ff::matrix_mul(&s_i_trans, &big_p[a]);
+                let s_i_trans_big_p = matrix_mul(&s_i_trans, &big_p[a]);
 
                 if i == j {
-                    u[a] = ff::matrix_vector_mul(&s_i_trans_big_p, &s_matrix[i])[0];
+                    u[a] = matrix_vector_mul(&s_i_trans_big_p, &s_matrix[i])[0];
                 } else {
-                    let left_term = ff::matrix_vector_mul(&s_i_trans_big_p, &s_matrix[j])[0];
+                    let left_term = matrix_vector_mul(&s_i_trans_big_p, &s_matrix[j])[0];
 
-                    let s_j_trans_big_p = ff::matrix_mul(&s_j_trans, &big_p[a]);
-                    let right_term = ff::matrix_vector_mul(&s_j_trans_big_p, &s_matrix[i])[0];
+                    let s_j_trans_big_p = matrix_mul(&s_j_trans, &big_p[a]);
+                    let right_term = matrix_vector_mul(&s_j_trans_big_p, &s_matrix[i])[0];
 
-                    u[a] = ff::add(left_term, right_term);
+                    u[a] = add(left_term, right_term);
                 }
             }
             // Y UPDATE HERE
@@ -641,7 +543,7 @@ fn reduce_y_mod_f(y: &mut Vec<u8>) {
     for i in (M..M + K * (K + 1) / 2 - 1).rev() {
         for j in 0..F_Z.len() {
             if i >= M + j {
-                y[i - M + j] ^= ff::mul(y[i], F_Z[j]);
+                y[i - M + j] ^= mul(y[i], F_Z[j]);
             }
         }
         y[i] = 0;
@@ -653,7 +555,7 @@ fn reduce_a_mod_f(a: &mut Vec<Vec<u8>>) {
         for k in 0..O * K {
             for j in 0..F_Z.len() {
                 if i >= M + j {
-                    a[i - M + j][k] ^= ff::mul(a[i - M + j][k], F_Z[j]);
+                    a[i - M + j][k] ^= mul(a[i - M + j][k], F_Z[j]);
                 }
             }
             a[i][k] = 0;
@@ -701,24 +603,8 @@ mod tests {
     use crate::utils::print_matrix;
 
     use super::*;
+    use rand::Rng;
 
-    #[test]
-    fn test_shake256() {
-        let input = vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05];
-        let output_length = 32;
-        let result = shake256(&input, output_length);
-        assert_eq!(result.len(), output_length);
-        println!("{:?}", result);
-    }
-
-    #[test]
-    fn test_aes_128_ctr_seed_expansion() {
-        let input = [0x00; 16];
-        let output_length = 32;
-        let result = aes_128_ctr_seed_expansion(input, output_length);
-        assert_eq!(result.len(), output_length);
-        println!("{:?}", result);
-    }
 
     #[test]
     fn test_create_large_matrices() {

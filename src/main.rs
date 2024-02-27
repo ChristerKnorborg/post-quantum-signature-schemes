@@ -4,6 +4,7 @@ use genKAT::bindings;
 use crate::bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices};
 
 mod bitsliced_functionality;
+mod crypto_primitives;
 mod constants;
 mod finite_field;
 mod mayo_functionality;
@@ -19,7 +20,7 @@ fn main() {
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
     let nbytes: u64 = entropy_input.len() as u64;
 
-    mayo_functionality::safe_randombytes_init(
+    crypto_primitives::safe_randombytes_init(
         &mut entropy_input,
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
@@ -28,10 +29,10 @@ fn main() {
     let mut bing: Vec<u8>;
     bing = entropy_input.clone();
 
-    mayo_functionality::safe_randomBytes(&mut entropy_input, nbytes);
-    mayo_functionality::safe_randomBytes(&mut bing, nbytes);
+    crypto_primitives::safe_randomBytes(&mut entropy_input, nbytes);
+    crypto_primitives::safe_randomBytes(&mut bing, nbytes);
 
-    mayo_functionality::safe_randombytes_init(
+    crypto_primitives::safe_randombytes_init(
         &mut entropy_input,
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
