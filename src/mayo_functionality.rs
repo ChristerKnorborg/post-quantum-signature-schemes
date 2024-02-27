@@ -268,7 +268,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         p3[i] = upper(&sub); // Upper triangular part of the result
     }
 
-    let mut encoded_p3 = bf::encode_bit_sliced_matrices(n_minus_o, O, p3, true);
+    let mut encoded_p3 = bf::encode_bit_sliced_matrices(O, O, p3, true);
 
     // Public and secret keys
     let mut cpk = Vec::with_capacity(PK_SEED_BYTES + P3_BYTES); // contains pk_seed and encoded_p3

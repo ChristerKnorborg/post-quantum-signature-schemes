@@ -78,4 +78,33 @@ fn main() {
     //let verify: bool = mayo_functionality::verify(epk, sig, &message);
 
     //let sig = mayo_functionality::sign(esk, &message);
+
+
+
+    let matrix: Vec<Vec<u8>> = vec![
+        vec![0x2, 0x2],
+        vec![0x2, 0x2],
+    ];
+
+    let matrices = vec![matrix.clone(), matrix.clone(), matrix.clone(), matrix.clone(),
+                                           matrix.clone(), matrix.clone(), matrix.clone(), matrix.clone()];
+    
+
+    let encoding: Vec<u8> = encode_bit_sliced_matrices(2, 2, matrices, true);
+
+    println!("Encoding as bits:");
+    for (index, byte) in encoding.iter().enumerate() {
+        for bit in (0..8).rev() {
+            print!("{}", (byte >> bit) & 1);
+        }
+        if (index + 1) % 4 == 0 { // After every 4 bytes, go to the next line
+            println!();
+        } else {
+            print!(" "); // Separate bytes with a space
+        }
+    }
+
+
+
+
 }
