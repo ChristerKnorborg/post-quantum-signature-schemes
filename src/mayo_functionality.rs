@@ -57,7 +57,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         &mut s,
         (PK_SEED_BYTES + O_BYTES) as u64,
         &sk_seed,
-        sk_seed.len() as u64,
+        SK_SEED_BYTES as u64,
     );
 
     // Set pk_seed
@@ -79,7 +79,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        pk_seed.len() as u64,
+        PK_SEED_BYTES as u64,
     );
     let p1_bytes = p[0..P1_BYTES].to_vec();
     let p2_bytes = p[P1_BYTES..].to_vec();
