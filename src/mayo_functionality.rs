@@ -226,7 +226,13 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
         .try_into()
         .expect("Slice has incorrect length");
 
-    let mut aes_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
+    let mut aes_bytes = vec![0u8; P1_BYTES + P2_BYTES];
+    safe_aes_128_ctr(
+        &mut aes_bytes,
+        (P1_BYTES + P2_BYTES) as u64,
+        &pk_seed,
+        PK_SEED_BYTES as u64,
+    );
 
     let mut expanded_pk = Vec::with_capacity(EPK_BYTES);
     let mut cpk_bytes = cpk[PK_SEED_BYTES..].to_vec();

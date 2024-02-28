@@ -43,7 +43,9 @@ fn main() {
 
     let esk = mayo_functionality::expand_sk(csk);
 
-    println!("expanded sk {:?}", bytes_to_hex_string(&esk, false));
+    let epk = mayo_functionality::expand_pk(cpk);
+
+    println!("expanded PK {:?}", bytes_to_hex_string(&epk, false));
 
     //read_kat_file::read_kat();
 
