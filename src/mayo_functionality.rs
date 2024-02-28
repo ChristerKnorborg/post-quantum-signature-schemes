@@ -1,38 +1,41 @@
+use std::vec;
+
 use libc::write;
 
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_vector, decode_bytestring_to_matrix, decode_bytestring_to_vector, encode_bit_sliced_matrices,
-    encode_vector_to_bytestring, decode_bit_sliced_matrices
+    decode_bit_sliced_matrices, decode_bit_sliced_vector, decode_bytestring_to_matrix,
+    decode_bytestring_to_vector, encode_bit_sliced_matrices, encode_vector_to_bytestring,
 };
-use crate::crypto_primitives::{aes_128_ctr_seed_expansion, safe_randomBytes, shake256, safe_shake256, safe_aes_128_ctr};
-use crate::finite_field::{add, mul, sub, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul}; 
-use crate::utils::{bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, write_to_file, transpose_vector};
+use crate::crypto_primitives::{
+    aes_128_ctr_seed_expansion, safe_aes_128_ctr, safe_randomBytes, safe_shake256, shake256,
+};
+use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
+use crate::utils::{
+    bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, transpose_vector,
+    write_to_file,
+};
 
 use crate::constants::{
-    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES,
-    P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, O_BYTES_MAX
+    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, O_BYTES_MAX,
+    P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES,
+    V_BYTES,
 };
-
-
 
 // Upper(M)_ij = M_ij + M_ji for i < j
 pub fn upper(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    
     let n = matrix.len();
 
     // Iterate over everything above the diagonal
     for i in 0..n {
-        for j in (i+1)..n {
+        for j in (i + 1)..n {
             matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
             matrix[j][i] = 0;
         }
     }
 
-
     return matrix;
 }
-
 
 // MAYO algorithm 5:
 pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
@@ -71,7 +74,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
     let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
-
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
@@ -127,18 +129,10 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     return (cpk, csk);
 }
 
-
-
-
-
-
-
-
-
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
-pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
-    let mut sk_seed: Vec<u8> = csk;
+pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
+    let mut sk_seed: &Vec<u8> = csk;
     let n_minus_o = N - O; // rows of O matrix
 
     let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
@@ -149,19 +143,15 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
         SK_SEED_BYTES as u64,
     );
 
-   
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
         .try_into()
         .expect("Slice has incorrect length");
 
-
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let mut o_bytes = s[PK_SEED_BYTES..].to_vec(); // From pk_seed_bytes to pk_seed_bytes + o_bytes
     let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytes.clone());
-
-
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let mut p_bytes: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
@@ -171,7 +161,6 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
         &pk_seed,
         PK_SEED_BYTES as u64,
     );
-
 
     let mut p1_bytes = p_bytes[0..P1_BYTES].to_vec();
     let p2_bytes = p_bytes[P1_BYTES..].to_vec();
@@ -197,12 +186,11 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
         l[i] = matrix_add(&left_term, &p2_i);
     }
 
-
     let mut encoded_l = encode_bit_sliced_matrices(n_minus_o, O, l, false);
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
-    let mut expanded_sk: Vec<u8> = Vec::with_capacity(ESK_BYTES-SK_SEED_BYTES);
+    let mut expanded_sk: Vec<u8> = Vec::with_capacity(ESK_BYTES - SK_SEED_BYTES);
 
     expanded_sk.append(&mut p1_bytes);
     expanded_sk.append(&mut encoded_l);
@@ -210,13 +198,6 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
 
     return expanded_sk;
 }
-
-
-
-
-
-
-
 
 // Mayo algorithm 7
 // Expands a public key from its compact representation
@@ -245,39 +226,71 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
 
 // MAYO algorithm 8
 // Signs a message using an expanded secret key
-pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
+pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let n_minus_o = N - O; // rows of O matrix
     let mut x: Vec<u8> = vec![0u8; K * O]; // Initialize x to zero
     let mut v: Vec<Vec<u8>> = vec![vec![0u8; n_minus_o]; K]; // Initialize v to zero
 
+    let mut expanded_sk = expand_sk(&compact_secret_key);
+
     // Decode expanded secret key
-    let sk_seed: Vec<u8> = expanded_sk[0..SK_SEED_BYTES].to_vec();
-    let o_bytestring = expanded_sk[SK_SEED_BYTES..SK_SEED_BYTES + O_BYTES].to_vec();
-    let p1_bytestring =
-        expanded_sk[SK_SEED_BYTES + O_BYTES..SK_SEED_BYTES + O_BYTES + P1_BYTES].to_vec();
-    let l_bytestring = expanded_sk[SK_SEED_BYTES + O_BYTES + P1_BYTES..ESK_BYTES].to_vec();
+    let p1_bytestring = expanded_sk[..P1_BYTES].to_vec();
+
+    let l_bytestring = expanded_sk[P1_BYTES..L_BYTES + P1_BYTES].to_vec();
+
+    let o_bytestring = expanded_sk[P1_BYTES + L_BYTES..].to_vec();
 
     // Assign matrices with decoded information
     let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytestring);
+
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
     let l = decode_bit_sliced_matrices(n_minus_o, O, l_bytestring, false);
 
     // Hash message and derive salt
-    let m_digest = shake256(&message, DIGEST_BYTES);
-    let mut r = vec![0x0 as u8, R_BYTES as u8]; // all 0's. Optimization availible (line 9 in algorithm 8)
-    let mut salt_input: Vec<u8> = Vec::new();
+    let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
+    safe_shake256(&mut m_digest, DIGEST_BYTES as u64, &message, 33 as u64);
+
+    println!("M digest: {:?}", bytes_to_hex_string(&m_digest, false));
+
+    let mut r: Vec<u8> = vec![0x0; R_BYTES]; // all 0's. Optimization availible (line 9 in algorithm 8)
+    safe_randomBytes(&mut r, R_BYTES as u64);
+
+    println!("R: {:?}", bytes_to_hex_string(&r, false));
+
+    let mut salt_input: Vec<u8> = Vec::with_capacity(DIGEST_BYTES + R_BYTES + SK_SEED_BYTES);
     salt_input.extend(&m_digest); // Extend to prevent emptying original
     salt_input.append(&mut r);
-    salt_input.extend(&sk_seed); // Extend to prevent emptying original sk_seed
-    let salt = shake256(&salt_input, SALT_BYTES);
+    salt_input.extend(compact_secret_key); // Extend to prevent emptying original sk_seed
+    let mut salt = vec![0u8; SALT_BYTES];
+    safe_shake256(
+        &mut salt,
+        SALT_BYTES as u64,
+        &salt_input,
+        (DIGEST_BYTES + R_BYTES + SK_SEED_BYTES) as u64,
+    );
+
+    println!("Salt: {:?}", bytes_to_hex_string(&salt, false));
 
     // Derive t
-    let mut t_shake_input = Vec::new();
+    let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
     t_shake_input.extend(&m_digest); // Extend to prevent emptying original
     t_shake_input.extend(&salt); // Extend to prevent emptying original
     let t_shake_output_length = if M % 2 == 0 { M / 2 } else { M / 2 + 1 }; // Ceil (M * log_2(q) / 8)
-    let t_input = shake256(&t_shake_input, t_shake_output_length);
-    let t = decode_bit_sliced_vector(t_input);
+
+    let mut t_output: Vec<u8> = vec![0u8; t_shake_output_length];
+
+    safe_shake256(
+        &mut t_output,
+        t_shake_output_length as u64,
+        &t_shake_input,
+        (DIGEST_BYTES + SALT_BYTES) as u64,
+    );
+
+    println!("T input: {:?}", bytes_to_hex_string(&t_output, false));
+
+    let t = decode_bit_sliced_vector(t_output);
+
+    println!("t: {:?}", bytes_to_hex_string(&t, false));
 
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
@@ -285,7 +298,7 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         let mut v_shake_input = Vec::new();
         v_shake_input.extend(&m_digest);
         v_shake_input.extend(&salt);
-        v_shake_input.extend(&sk_seed);
+        v_shake_input.extend(compact_secret_key);
         v_shake_input.extend(vec![ctr]);
         let ceil_exp = if K * O % 2 == 0 {
             K * O / 2
@@ -422,11 +435,6 @@ pub fn sign(expanded_sk: Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     return sign_con_salt;
 }
 
-
-
-
-
-
 // MAYO algorithm 9
 // Verifies the signature of a message using an expanded public key
 pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bool {
@@ -512,11 +520,6 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     return y == t;
 }
 
-
-
-
-
-
 // Construct the matrix (P_1 P_2)
 //                      (0   P_3)
 fn create_large_matrices(
@@ -575,16 +578,13 @@ fn reduce_a_mod_f(a: &mut Vec<Vec<u8>>) {
     }
 }
 
-
-
 // MAYO algorithm 10
 // Expands a secret key from its compact representation and signs a message input
-pub fn api_sign(mut message: Vec<u8>, sk: Vec<u8>) -> Vec<u8> {
+pub fn api_sign(mut message: Vec<u8>, csk: Vec<u8>) -> Vec<u8> {
     //Expands the secret key
-    let expanded_sk = expand_sk(sk);
 
     //creates the signature based on expanded secret key and message
-    let mut signature = sign(expanded_sk, &message);
+    let mut signature = sign(&csk, &message);
 
     //concatenates the signature and the message
     let mut sign_con_mes = Vec::new();
@@ -593,7 +593,6 @@ pub fn api_sign(mut message: Vec<u8>, sk: Vec<u8>) -> Vec<u8> {
 
     return sign_con_mes;
 }
-
 
 // MAYO algorithm 11
 // Expands a public key from its compact representation and verifies a signature
@@ -617,23 +616,12 @@ pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: Vec<u8>) -> (bool, Vec<u8>) {
     return (result, message);
 }
 
-
-
-
-
-
-
-
-
-
-
 #[cfg(test)]
 mod tests {
     use crate::utils::print_matrix;
 
     use super::*;
     use rand::Rng;
-
 
     #[test]
     fn test_create_large_matrices() {

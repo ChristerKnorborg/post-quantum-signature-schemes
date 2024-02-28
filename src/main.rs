@@ -1,11 +1,16 @@
+use std::clone;
+
 use constants::{SALT_BYTES, SIG_BYTES};
 use genKAT::bindings;
 
-use crate::{bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices}, utils::bytes_to_hex_string};
+use crate::{
+    bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices},
+    utils::bytes_to_hex_string,
+};
 
 mod bitsliced_functionality;
-mod crypto_primitives;
 mod constants;
+mod crypto_primitives;
 mod finite_field;
 mod mayo_functionality;
 mod read_kat_file;
@@ -27,10 +32,10 @@ fn main() {
     );
 
     let mut bing: Vec<u8>;
-    bing = entropy_input.clone();
+    let mut message: Vec<u8> = Vec::with_capacity(33);
 
     crypto_primitives::safe_randomBytes(&mut entropy_input, nbytes);
-    crypto_primitives::safe_randomBytes(&mut bing, nbytes);
+    crypto_primitives::safe_randomBytes(&mut message, 33 as u64);
 
     crypto_primitives::safe_randombytes_init(
         &mut entropy_input,
@@ -40,10 +45,14 @@ fn main() {
 
     let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
 
-
-    let esk = mayo_functionality::expand_sk(csk);
+    let esk = mayo_functionality::expand_sk(&csk);
 
     let epk = mayo_functionality::expand_pk(cpk);
+
+    //TODO(i think this is correct)) Need to do this, because they call it in sign to get counter correct
+    let esk1 = mayo_functionality::expand_sk(&csk);
+
+    mayo_functionality::sign(&csk, &message);
 
     println!("expanded PK {:?}", bytes_to_hex_string(&epk, false));
 
@@ -73,6 +82,4 @@ fn main() {
     //let verify: bool = mayo_functionality::verify(epk, sig, &message);
 
     //let sig = mayo_functionality::sign(esk, &message);
-
-
 }
