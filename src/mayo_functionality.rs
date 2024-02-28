@@ -248,7 +248,12 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     // Hash message and derive salt
     let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
-    safe_shake256(&mut m_digest, DIGEST_BYTES as u64, &message, 33 as u64);
+    safe_shake256(
+        &mut m_digest,
+        DIGEST_BYTES as u64,
+        &message,
+        message.len() as u64,
+    );
 
     println!("M digest: {:?}", bytes_to_hex_string(&m_digest, false));
 
@@ -286,7 +291,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
 
-    println!("T input: {:?}", bytes_to_hex_string(&t_output, false));
+    println!("T output: {:?}", bytes_to_hex_string(&t_output, false));
 
     let t = decode_bit_sliced_vector(t_output);
 
