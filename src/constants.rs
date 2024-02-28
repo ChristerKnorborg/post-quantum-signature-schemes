@@ -120,6 +120,7 @@ mod other_features {
     pub const  Q: usize = 16;
     pub const M_BYTES: usize = 32;
     pub const O_BYTES: usize = 232;
+    pub const O_BYTES_MAX: usize = 726;
     pub const V_BYTES: usize = 29;
     pub const R_BYTES: usize = 36;
     pub const P1_BYTES: usize = 54752;

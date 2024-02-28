@@ -52,7 +52,7 @@ pub fn write_to_file(filename: &str, data: &[u8]) -> Result<()> {
     
     writeln!(file, "\nbitsliced_P: ")?;
     for byte in data.iter() {
-        write!(file, "{:02X}", byte)?;
+        write!(file, "{:}", byte)?;
     }
     
     Ok(())

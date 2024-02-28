@@ -1,7 +1,7 @@
 use constants::{SALT_BYTES, SIG_BYTES};
 use genKAT::bindings;
 
-use crate::bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices};
+use crate::{bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices}, utils::bytes_to_hex_string};
 
 mod bitsliced_functionality;
 mod crypto_primitives;
@@ -38,7 +38,12 @@ fn main() {
         256,
     );
 
-    mayo_functionality::compact_key_gen(entropy_input);
+    let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
+
+
+    let esk = mayo_functionality::expand_sk(csk);
+
+    println!("expanded sk {:?}", bytes_to_hex_string(&esk, false));
 
     //read_kat_file::read_kat();
 

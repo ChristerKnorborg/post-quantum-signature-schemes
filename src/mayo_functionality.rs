@@ -1,3 +1,5 @@
+use libc::write;
+
 use crate::bitsliced_functionality::{
     decode_bit_sliced_vector, decode_bytestring_to_matrix, decode_bytestring_to_vector, encode_bit_sliced_matrices,
     encode_vector_to_bytestring, decode_bit_sliced_matrices
@@ -9,7 +11,7 @@ use crate::sample::sample_solution;
 
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES,
-    P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES,
+    P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, O_BYTES_MAX
 };
 
 
@@ -139,20 +141,38 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
     let mut sk_seed: Vec<u8> = csk;
     let n_minus_o = N - O; // rows of O matrix
 
-    let s = shake256(&sk_seed, PK_SEED_BYTES + O_BYTES);
+    let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
+    safe_shake256(
+        &mut s,
+        (PK_SEED_BYTES + O_BYTES) as u64,
+        &sk_seed,
+        SK_SEED_BYTES as u64,
+    );
 
-    // Derive pk_seed from sk_seed
+   
+    // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
         .try_into()
         .expect("Slice has incorrect length");
 
-    // Derive O from sk_seed
-    let mut o_bytestring = s[PK_SEED_BYTES..].to_vec();
-    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytestring.clone());
 
-    // Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    let p_bytes = aes_128_ctr_seed_expansion(pk_seed, P1_BYTES + P2_BYTES);
+    // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
+    let mut o_bytes = s[PK_SEED_BYTES..].to_vec(); // From pk_seed_bytes to pk_seed_bytes + o_bytes
+    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytes.clone());
+
+
+
+    //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
+    let mut p_bytes: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
+    safe_aes_128_ctr(
+        &mut p_bytes,
+        (P1_BYTES + P2_BYTES) as u64,
+        &pk_seed,
+        PK_SEED_BYTES as u64,
+    );
+
+
     let mut p1_bytes = p_bytes[0..P1_BYTES].to_vec();
     let p2_bytes = p_bytes[P1_BYTES..].to_vec();
 
@@ -177,14 +197,16 @@ pub fn expand_sk(csk: Vec<u8>) -> Vec<u8> {
         l[i] = matrix_add(&left_term, &p2_i);
     }
 
+
     let mut encoded_l = encode_bit_sliced_matrices(n_minus_o, O, l, false);
 
-    let mut expanded_sk: Vec<u8> = Vec::with_capacity(ESK_BYTES);
+    // To follow the refference implementation append O_bytestring at the end
+    // Do not add sk_seed to the expanded secret key
+    let mut expanded_sk: Vec<u8> = Vec::with_capacity(ESK_BYTES-SK_SEED_BYTES);
 
-    expanded_sk.append(&mut sk_seed);
-    expanded_sk.append(&mut o_bytestring);
     expanded_sk.append(&mut p1_bytes);
     expanded_sk.append(&mut encoded_l);
+    expanded_sk.append(&mut o_bytes);
 
     return expanded_sk;
 }
