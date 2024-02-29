@@ -74,11 +74,11 @@ pub fn sample_rand() -> Vec<u8> {
 
 // MAYO Algorithm 2: Sample Solution
 // Function to solve the equation Ax = y in GF(16) using gaussian elimination.
-pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>, r: Vec<u8>) -> Result<Vec<u8>, &'static str> {
     let rows = a.len();
 
 
-    let r: Vec<u8> = sample_rand();
+    //let r: Vec<u8> = sample_rand();
     let mut x: Vec<u8> = r.clone();
 
     // Perform y = y - Ar in single iteration over y and A
@@ -148,6 +148,8 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>) -> Result<Vec<u8>, &
 // test echoleon_form
 #[cfg(test)]
 mod tests {
+    use rand::seq::index::sample;
+
     use crate::{constants::M, utils::print_matrix};
 
     use super::*;
@@ -220,7 +222,7 @@ mod tests {
             }
 
             let echelon_matrix = echelon_form(matrix.clone());
-            print_matrix(echelon_matrix.clone());
+           // print_matrix(echelon_matrix.clone());
             assert!(is_echelon_form(&echelon_matrix));
         }
     }
@@ -247,8 +249,9 @@ mod tests {
 
             let a_input = a.clone(); // Clone the matrix for result comparison
             let expected: Vec<u8> = (0..rows).map(|_| rng.gen_range(0..=15)).collect(); // Expected result aka. y
+            let r: Vec<u8> = sample_rand();
 
-            match sample_solution(a, expected.clone()) {
+            match sample_solution(a, expected.clone(), r) {
                 Ok(x) => {
 
 
@@ -264,8 +267,8 @@ mod tests {
                         .collect();
 
 
-                    println!("Ax_eq_y:  {:?}", a_times_x_equal_y);
-                    println!("expected: {:?}", expected);
+                    /* println!("Ax_eq_y:  {:?}", a_times_x_equal_y);
+                    println!("expected: {:?}", expected); */
 
                     assert_eq!(
                         a_times_x_equal_y, expected,

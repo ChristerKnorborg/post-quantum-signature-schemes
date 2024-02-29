@@ -408,7 +408,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         reduce_a_mod_f(&mut a);
 
         // Try to solve the linear system Ax = y
-        x = match sample_solution(a, y) {
+        x = match sample_solution(a, y, r) {
             Ok(x) => x, // If Ok
             Err(e) => {
                 continue; // If Err (no solution found), continue to the next iteration of the loop
