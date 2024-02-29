@@ -235,14 +235,11 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     // Decode expanded secret key
     let p1_bytestring = expanded_sk[..P1_BYTES].to_vec();
-
     let l_bytestring = expanded_sk[P1_BYTES..L_BYTES + P1_BYTES].to_vec();
-
     let o_bytestring = expanded_sk[P1_BYTES + L_BYTES..].to_vec();
 
     // Assign matrices with decoded information
     let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytestring);
-
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
     let l = decode_bit_sliced_matrices(n_minus_o, O, l_bytestring, false);
 
@@ -255,12 +252,9 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         message.len() as u64,
     );
 
-    println!("M digest: {:?}", bytes_to_hex_string(&m_digest, false));
-
     let mut r: Vec<u8> = vec![0x0; R_BYTES]; // all 0's. Optimization availible (line 9 in algorithm 8)
     safe_randomBytes(&mut r, R_BYTES as u64);
 
-    println!("R: {:?}", bytes_to_hex_string(&r, false));
 
     let mut salt_input: Vec<u8> = Vec::with_capacity(DIGEST_BYTES + R_BYTES + SK_SEED_BYTES);
     salt_input.extend(&m_digest); // Extend to prevent emptying original
@@ -283,7 +277,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let t_shake_output_length = if M % 2 == 0 { M / 2 } else { M / 2 + 1 }; // Ceil (M * log_2(q) / 8)
 
     let mut t_output: Vec<u8> = vec![0u8; t_shake_output_length];
-
     safe_shake256(
         &mut t_output,
         t_shake_output_length as u64,
@@ -291,11 +284,8 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
 
-    println!("T output: {:?}", bytes_to_hex_string(&t_output, false));
+    let t = decode_bytestring_to_vector(M, t_output);
 
-    let t = decode_bit_sliced_vector(t_output);
-
-    println!("t: {:?}", bytes_to_hex_string(&t, false));
 
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
