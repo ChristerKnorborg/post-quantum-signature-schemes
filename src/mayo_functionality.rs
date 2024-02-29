@@ -301,7 +301,14 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             K * O / 2 + 1
         }; // Ceil (K*O * log_2(q) / 8)
         let v_shake_output_length = K * V_BYTES + ceil_exp;
-        let v_bytestring = shake256(&v_shake_input, v_shake_output_length);
+
+        let mut v_bytestring: Vec<u8> = vec![0u8; v_shake_output_length];
+        safe_shake256(
+            &mut v_bytestring,
+            v_shake_output_length as u64,
+            &v_shake_input,
+            (DIGEST_BYTES + SALT_BYTES + SK_SEED_BYTES + 1) as u64,
+        );
 
         // Derive v_i
         for i in 0..K {
@@ -309,10 +316,16 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             v[i] = decode_bytestring_to_vector(n_minus_o, v_bytestring_slice)
         }
 
+        println!("V: {:?}", bytes_to_hex_string(&v_bytestring, false));
+        
+
+
         // Derive r (Notice r is redefined and have nothing to do with previous r)
         let v_bytestring_remainder = v_bytestring[K * V_BYTES..].to_vec();
         let r = decode_bytestring_to_vector(K * O, v_bytestring_remainder); // Remainding part of v_bytestring.
 
+
+        println!("R: {:?}", bytes_to_hex_string(&r, false));
         // Build the linear system Ax = y
         let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; 2 * M]; // Make matrix of size m x k*o
         let mut y = Vec::with_capacity(M * 2);
