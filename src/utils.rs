@@ -50,7 +50,6 @@ pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
 pub fn write_to_file(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
     
-    writeln!(file, "\nbitsliced_P: ")?;
     for byte in data.iter() {
         write!(file, "{:}", byte)?;
     }

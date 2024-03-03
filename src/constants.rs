@@ -130,7 +130,8 @@ mod other_features {
     pub const L_BYTES: usize = M * (N - O) * O / 2;
 
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
-    pub const F_Z: [u8; 5] = [8, 0, 2, 8, 0]; // f(z) =  z^64         + x^3*z^3 + x*z^2         + x^3
+    pub const F_Z_REF: [u8; 5] = [8, 0, 2, 8, 0]; // f(z) =  z^64         + x^3*z^3 + x*z^2         + x^3
+    pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
 }
 
 // Re-export the constants from the included module so they can be accessed directly

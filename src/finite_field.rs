@@ -62,6 +62,7 @@ pub fn div(x: u8, y: u8) -> u8 {
 
 
 
+
 pub fn matrix_add(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 
     assert_eq!(a.len(), b.len(), "Matrices must have the same number of rows");
@@ -88,6 +89,16 @@ pub fn matrix_sub(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
                 .map(|(&val_a, &val_b)| sub(val_a, val_b))
                 .collect()
         })
+        .collect()
+}
+
+// Matrix subtraction over GF(16)
+pub fn vector_sub(a: &Vec<u8>, b: &Vec<u8>) -> Vec<u8> {
+
+    //assert_eq!(a.len(), b.len(), "Vectors must have the same length");
+
+    return a.iter().zip(b.iter())
+        .map(|(&val_a, &val_b)| sub(val_a, val_b))
         .collect()
 }
 

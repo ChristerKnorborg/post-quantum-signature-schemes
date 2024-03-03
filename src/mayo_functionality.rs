@@ -1,3 +1,4 @@
+
 use std::vec;
 
 use libc::write;
@@ -17,9 +18,7 @@ use crate::utils::{
 };
 
 use crate::constants::{
-    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, O_BYTES_MAX,
-    P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES,
-    V_BYTES,
+    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, F_Z_REF, K, L_BYTES, M, N, O, O_BYTES, O_BYTES_MAX, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
 };
 
 // Upper(M)_ij = M_ij + M_ji for i < j
@@ -286,7 +285,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     let t = decode_bytestring_to_vector(M, t_output);
 
-
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
         // Derive v_i and r
@@ -315,8 +313,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             let v_bytestring_slice = v_bytestring[i * V_BYTES..(i + 1) * V_BYTES].to_vec();
             v[i] = decode_bytestring_to_vector(n_minus_o, v_bytestring_slice)
         }
-
-        println!("V: {:?}", bytes_to_hex_string(&v_bytestring, false));
         
 
 
@@ -325,12 +321,15 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         let r = decode_bytestring_to_vector(K * O, v_bytestring_remainder); // Remainding part of v_bytestring.
 
 
-        println!("R: {:?}", bytes_to_hex_string(&r, false));
+
         // Build the linear system Ax = y
-        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; 2 * M]; // Make matrix of size m x k*o
-        let mut y = Vec::with_capacity(M * 2);
+
+        let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
+        println!("Shifts: {}", shifts);
+        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; M + shifts]; 
+        let mut y = Vec::with_capacity(M + shifts);
         y.extend(t.clone());
-        y.extend(vec![0u8; M]);
+        y.extend(vec![0u8; shifts]); 
         let mut ell = 0;
         let mut m_matrices: Vec<Vec<Vec<u8>>> = vec![vec![vec![0u8; O]; M]; K]; // Vector of size m x o of zeroes
 
@@ -369,43 +368,71 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                     }
                 }
 
-                let y_sub_u: Vec<u8> = y
-                    .iter()
-                    .zip(u.iter())
-                    .map(|(y_idx, u_idx)| sub(*y_idx, *u_idx))
-                    .collect();
+                // y = y - u * z^ell - Instead of subtracting with shifted u,
+                // we just sub with shifted y for easier loop structre since
+                // XOR (sub) and shift are both linear operations.
                 for d in 0..M {
-                    y[d + ell] = y_sub_u[d];
+                    y[d + ell] ^= u[d];
                 }
 
-                // Calculate A
-                for d in 0..M {
-                    for a_entry in 0..O {
-                        a[d + ell][a_entry] ^= m_matrices[j][d][a_entry];
+
+
+                // Update A cols with + z^ell * Mj 
+                for row in 0..M {
+                    for a_entry in i*O..(i+1)*O {
+                        a[row][a_entry] ^= m_matrices[j][row][a_entry % O];
                     }
                 }
-                if i != j {
-                    for d in 0..M {
-                        for a_entry in 0..O {
-                            a[d + ell][a_entry] ^= m_matrices[i][d][a_entry];
+
+
+                if i == 0{
+                    println!("\n");
+                    println!("Iteration {}: \n", j);
+                }
+                for kahoot in 0..M+shifts {
+                    if i == 0 {
+                        println!("{:?}", bytes_to_hex_string(&a[kahoot], false));
+                    }
+                }
+                
+
+
+                // Update A cols with + z^ell * Mi 
+                if i != j {        
+                    for row in 0..M {
+                        for a_entry in i*O..(i+1)*O {
+                            a[row][a_entry+ell] ^= m_matrices[i][row][a_entry % O];
                         }
                     }
-                }
+                } 
+
+
+
+                
+
+
+
+
+
                 ell += 1;
+                
 
-                // let e_raised_to_ell = vec![0u8; F_Z.len()]; // [0, 0, 0, 0, 0]
-                // for power in 0..ell {
-                //     for poly_idx in 0..F_Z.len() {
-                //         e_raised_to_ell[poly_idx] ^= mul(F_Z[poly_idx], ell);
-
-                //     }
-                // }
-
-                //
             }
         }
-        reduce_y_mod_f(&mut y);
-        reduce_a_mod_f(&mut a);
+
+
+        println!("Christer Y before reduce: \n {:?}", bytes_to_hex_string(&y, false));
+        //reduce_y_mod_f_from_ref(&mut y);
+
+       // println!("Søren Y reduced \n: {:?}", bytes_to_hex_string(&y, false));
+
+        let christer_y = reduce_y_mod_f_z(y);
+
+        println!("Christer Y after reduce: \n {:?}", bytes_to_hex_string(&christer_y, false));
+
+
+
+        return vec![0u8; M*M];
 
         // Try to solve the linear system Ax = y
         x = match sample_solution(a, y, r) {
@@ -520,7 +547,7 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
             ell = ell + 1;
 
-            //println!("U: {:?}", u);
+
         }
     }
 
@@ -562,23 +589,84 @@ fn create_large_matrices(
     return result;
 }
 
-fn reduce_y_mod_f(y: &mut Vec<u8>) {
+pub fn reduce_y_mod_f_from_ref(y: &mut Vec<u8>) {
+
     for i in (M..M + K * (K + 1) / 2 - 1).rev() {
-        for j in 0..F_Z.len() {
-            if i >= M + j {
-                y[i - M + j] ^= mul(y[i], F_Z[j]);
-            }
+        for j in 0..F_Z_REF.len() {
+                y[i - M + j] ^= mul(y[i], F_Z_REF[j]);
         }
         y[i] = 0;
     }
 }
 
-fn reduce_a_mod_f(a: &mut Vec<Vec<u8>>) {
+
+
+pub fn reduce_y_mod_f_z(mut polynomial: Vec<u8>) -> Vec<u8> {
+
+    // Perform the reduction of with f(z)
+    for i in (M..polynomial.len()).rev() {
+
+            for (shift, coef) in F_Z {
+
+                let mul_res = mul(polynomial[i], coef);
+
+                polynomial[i-M+shift] = sub(polynomial[i-M+shift], mul_res); 
+            }
+            polynomial[i] = 0; // set original term to 0 After distributing coefficient
+    }
+    // Truncate to first m entries (every other entry is zero after reduction)
+    polynomial.truncate(M);
+    
+    return polynomial;
+}
+
+
+
+// pub fn reduce_a_mod_f_z(mut polynomial_matrix: Vec<Vec<u8>>) -> Vec<u8> {
+
+
+//     for row in polynomial_matrix.iter(){
+
+//         for i in (0..K).rev() {
+
+
+
+
+
+
+//         }
+
+
+//         // chunck the polynomial into m chunks
+
+
+
+
+//     }
+        
+    
+//     return polynomial_matrix;
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pub fn reduce_a_mod_f_from_ref(a: &mut Vec<Vec<u8>>) {
     for i in (M..M + K * (K + 1) / 2 - 1).rev() {
         for k in 0..O * K {
-            for j in 0..F_Z.len() {
+            for j in 0..F_Z_REF.len() {
                 if i >= M + j {
-                    a[i - M + j][k] ^= mul(a[i - M + j][k], F_Z[j]);
+                    a[i - M + j][k] ^= mul(a[i - M + j][k], F_Z_REF[j]);
                 }
             }
             a[i][k] = 0;
