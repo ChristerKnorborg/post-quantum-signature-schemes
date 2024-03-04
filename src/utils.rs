@@ -47,13 +47,23 @@ pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
 }
 
 
-pub fn write_to_file(filename: &str, data: &[u8]) -> Result<()> {
+pub fn write_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
     
     for byte in data.iter() {
         write!(file, "{:}", byte)?;
     }
     
+    Ok(())
+}
+
+pub fn write_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
+    let mut file = File::create(filename)?;
+
+    for byte in data.iter() {
+        write!(file, "{:02X}", byte)?;
+    }
+
     Ok(())
 }
 

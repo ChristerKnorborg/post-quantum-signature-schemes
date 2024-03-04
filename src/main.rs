@@ -33,13 +33,9 @@ fn main() {
     let mut bing: Vec<u8>;
     let mut message: Vec<u8> = vec![0u8; 33];
 
-    println!("Message: {:?}", bytes_to_hex_string(&message, false));
-
     crypto_primitives::safe_randomBytes(&mut entropy_input, nbytes);
     //SAFE_RANDOMBYTES SUSPISIOUS
     crypto_primitives::safe_randomBytes(&mut message, 33 as u64);
-
-    println!("Message: {:?}", bytes_to_hex_string(&message, false));
 
     crypto_primitives::safe_randombytes_init(
         &mut entropy_input,

@@ -13,8 +13,7 @@ use crate::crypto_primitives::{
 use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
 use crate::utils::{
-    bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, transpose_vector,
-    write_to_file,
+    bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, transpose_vector, write_to_file_byte,
 };
 
 use crate::constants::{
@@ -267,8 +266,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         (DIGEST_BYTES + R_BYTES + SK_SEED_BYTES) as u64,
     );
 
-    println!("Salt: {:?}", bytes_to_hex_string(&salt, false));
-
     // Derive t
     let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
     t_shake_input.extend(&m_digest); // Extend to prevent emptying original
@@ -326,7 +323,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
         let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
         println!("Shifts: {}", shifts);
-        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; M + shifts]; 
+        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O + shifts]; M];
         let mut y = Vec::with_capacity(M + shifts);
         y.extend(t.clone());
         y.extend(vec![0u8; shifts]); 
@@ -379,39 +376,50 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
                 // Update A cols with + z^ell * Mj 
                 for row in 0..M {
+                    
+                    let mut temp: Vec<u8> = a[row][i * O..(i + 1) * O].to_vec();
+                    let mut zeroes: Vec<u8> = vec![0u8; ell];
+                    temp.append(&mut zeroes);
+
+
                     for a_entry in i*O..(i+1)*O {
-                        a[row][a_entry] ^= m_matrices[j][row][a_entry % O];
+                        let temp_idx = a_entry % O;
+                        temp[temp_idx+ell] ^= m_matrices[j][row][a_entry % O]; // Shift indexes with ell
                     }
+
+                    a[row][i * O..(i + 1) * O + ell].clone_from_slice(&temp); // Need this seems stupid
                 }
 
 
-                if i == 0{
-                    println!("\n");
-                    println!("Iteration {}: \n", j);
-                }
-                for kahoot in 0..M+shifts {
-                    if i == 0 {
-                        println!("{:?}", bytes_to_hex_string(&a[kahoot], false));
-                    }
-                }
+                // if i == 0{
+                //     println!("\n");
+                //     println!("Iteration {}: \n", j);
+                // }
+                // for kahoot in 0..M {
+                //     if i == 0 {
+                //         println!("{:?}", bytes_to_hex_string(&a[kahoot], false));
+                //     }
+                // }
                 
 
 
                 // Update A cols with + z^ell * Mi 
                 if i != j {        
                     for row in 0..M {
-                        for a_entry in i*O..(i+1)*O {
-                            a[row][a_entry+ell] ^= m_matrices[i][row][a_entry % O];
+
+                        let mut temp: Vec<u8> = a[row][j * O..(j + 1) * O].to_vec();
+                        let mut zeroes: Vec<u8> = vec![0u8; ell];
+                        temp.append(&mut zeroes);
+
+                        for a_entry in j*O..(j+1)*O {
+                            let temp_idx = a_entry % O;
+                            temp[temp_idx+ell] ^= m_matrices[i][row][a_entry % O]; // Add Mi to A shifted down with ell
+
                         }
+
+                        a[row][j * O..(j + 1) * O + ell].clone_from_slice(&temp); // Need this seems stupid
                     }
                 } 
-
-
-
-                
-
-
-
 
 
                 ell += 1;
@@ -421,14 +429,37 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         }
 
 
-        println!("Christer Y before reduce: \n {:?}", bytes_to_hex_string(&y, false));
-        //reduce_y_mod_f_from_ref(&mut y);
+        println!("A BEFORE REDUCE: \n");
 
-       // println!("Søren Y reduced \n: {:?}", bytes_to_hex_string(&y, false));
+        for row in 0..M {
+            println!("{:?}", bytes_to_hex_string(&a[row], false));
+        }
 
-        let christer_y = reduce_y_mod_f_z(y);
 
-        println!("Christer Y after reduce: \n {:?}", bytes_to_hex_string(&christer_y, false));
+        // println!("Christer Y before reduce: \n {:?}", bytes_to_hex_string(&y, false));
+
+        let flattened: Vec<u8> = a.clone().into_iter().flatten().collect();
+        let array: Box<[u8]> = flattened.into_boxed_slice();
+        let array_ref: &[u8] = &*array;
+
+
+
+        write_to_file_byte("A BEFORE REDUCE", array_ref);
+        y = reduce_mod_f(y);
+        a = reduce_matrix_mod_f(a);
+
+
+        println!("A after reduce: \n");
+
+        for row in 0..M {
+            println!("{:?}", bytes_to_hex_string(&a[row], false));
+        }
+
+
+        // println!("Christer Y after reduce: \n {:?}", bytes_to_hex_string(&christer_y, false));
+
+
+
 
 
 
@@ -601,7 +632,7 @@ pub fn reduce_y_mod_f_from_ref(y: &mut Vec<u8>) {
 
 
 
-pub fn reduce_y_mod_f_z(mut polynomial: Vec<u8>) -> Vec<u8> {
+pub fn reduce_mod_f(mut polynomial: Vec<u8>) -> Vec<u8> {
 
     // Perform the reduction of with f(z)
     for i in (M..polynomial.len()).rev() {
@@ -621,43 +652,16 @@ pub fn reduce_y_mod_f_z(mut polynomial: Vec<u8>) -> Vec<u8> {
 }
 
 
+pub fn reduce_matrix_mod_f(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 
-// pub fn reduce_a_mod_f_z(mut polynomial_matrix: Vec<Vec<u8>>) -> Vec<u8> {
+    // Perform the reduction of with f(z) for every row
+    for i in 0..M {
 
+        matrix[i] = reduce_mod_f(matrix[i].clone());
 
-//     for row in polynomial_matrix.iter(){
-
-//         for i in (0..K).rev() {
-
-
-
-
-
-
-//         }
-
-
-//         // chunck the polynomial into m chunks
-
-
-
-
-//     }
-        
-    
-//     return polynomial_matrix;
-// }
-
-
-
-
-
-
-
-
-
-
-
+    }
+    return matrix;
+}
 
 
 
