@@ -48,10 +48,6 @@ fn main() {
     let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
 
 
-    let epk = mayo_functionality::expand_pk(cpk);
-
-
-
     let signature = mayo_functionality::api_sign(message.clone(), csk.clone());
 
     let flattened: Vec<u8> = signature.clone().into_iter().collect();
@@ -59,7 +55,7 @@ fn main() {
     let array_ref: &[u8] = &*array;
     let _ = write_to_file_byte("sig", array_ref);
 
-    let ver = mayo_functionality::api_sign_open(signature, epk);
+    let ver = mayo_functionality::api_sign_open(signature, cpk);
 
     println!("{:?}", ver);
 

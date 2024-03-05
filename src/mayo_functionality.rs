@@ -1,7 +1,7 @@
 
 use std::vec;
 
-use libc::write;
+use libc::{printf, write};
 
 use crate::bitsliced_functionality::{
     decode_bit_sliced_matrices, decode_bit_sliced_vector, decode_bytestring_to_matrix,
@@ -17,7 +17,7 @@ use crate::utils::{
 };
 
 use crate::constants::{
-    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, F_Z_REF, K, L_BYTES, M, N, O, O_BYTES, O_BYTES_MAX, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
+    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, F_Z_REF, K, L_BYTES, M, N, O, O_BYTES, O_BYTES_MAX, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
 };
 
 // Upper(M)_ij = M_ij + M_ji for i < j
@@ -83,6 +83,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     );
     let p1_bytes = p[0..P1_BYTES].to_vec();
     let p2_bytes = p[P1_BYTES..].to_vec();
+
 
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
@@ -285,7 +286,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
         // Derive v_i and r
-        let mut v_shake_input = Vec::new();
+        let mut v_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1);
         v_shake_input.extend(&m_digest);
         v_shake_input.extend(&salt);
         v_shake_input.extend(compact_secret_key);
@@ -363,9 +364,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                         u[a] = add(left_term, right_term);
                     }
                 }
-                if i == 0 {
-                    println!("U sign: {:?}", bytes_to_hex_string(&u, false));
-                }
 
                 // y = y - u * z^ell - Instead of subtracting with shifted u,
                 // we just sub with shifted y for easier loop structre since
@@ -425,7 +423,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         signature.append(&mut x_idx);
     }
 
-    let mut sign_con_salt = Vec::new();
+    let mut sign_con_salt = Vec::with_capacity(SIG_BYTES + SALT_BYTES);
     let signature_encoded = encode_vector_to_bytestring(signature);
     sign_con_salt.extend(signature_encoded);
     sign_con_salt.extend(salt);
@@ -441,11 +439,14 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let p1_bytestring = expanded_pk[0..P1_BYTES].to_vec();
     let p2_bytestring = expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES].to_vec();
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
-
+    
     // decodes the public information into matrices
-    let mut p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
-    let mut p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
-    let mut p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
+    let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
+    let p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+
+
+
 
     // decode signature and derive salt
     let n_times_k = if N * K % 2 == 0 {
@@ -455,10 +456,13 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     }; // Ceil (N*K/2)
     let salt = signature[n_times_k..n_times_k + SALT_BYTES].to_vec();
     let s = decode_bytestring_to_vector(K * N, signature);
-    let mut s_matrix = vec![vec![0u8; N]; s.len()];
+
+
+    let mut s_matrix = vec![vec![0u8; N]; K];
     for i in 0..K {
         s_matrix[i] = s[i * N..(i + 1) * N].to_vec();
     }
+
 
     // Hash message and derive salt
     let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
@@ -488,21 +492,21 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
     // Compute P*(s)
     let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
-    let mut y = Vec::with_capacity(M + shifts);
-    y.extend(t.clone());
-    y.extend(vec![0u8; shifts]); 
+    let mut y = vec![0u8 ; M + shifts];
     let mut ell = 0;
 
     // Construct the M matrices of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [M]                    (0     P^3_a)
     let big_p = create_large_matrices(p1, p2, p3);
 
+
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
+        
 
         for j in (i..K).rev() {
             let mut u = vec![0u8; M];
-            let s_j_trans = transpose_vector(&s_matrix[i]);
+            let s_j_trans = transpose_vector(&s_matrix[j]);
 
             for a in 0..M {
                 let s_i_trans_big_p = matrix_mul(&s_i_trans, &big_p[a]);
@@ -519,9 +523,6 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
                 }
             }
 
-            if i == 0 {
-                println!("U verify: {:?}", bytes_to_hex_string(&u, false));
-            }
             for d in 0..M {
                 y[d + ell] ^= u[d];
             }
@@ -532,6 +533,7 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
         }
     }
+    println!("Y before reduce: {:?}" , bytes_to_hex_string(&y , false));
     y = reduce_mod_f(y);
 
     // Accept signature if y = t
@@ -553,14 +555,14 @@ fn create_large_matrices(
         let mut zero_rows = vec![vec![0u8; N - O]; O]; // O rows of zeroes of len N-O.
 
         for i in 0..(N - O) {
-            let new_vec = Vec::new();
+            let new_vec = Vec::with_capacity(N);
             rows.push(new_vec);
             rows[i].append(&mut p1[mat][i]);
             rows[i].append(&mut p2[mat][i]);
         }
 
         for i in (N - O)..N {
-            let new_vec = Vec::new();
+            let new_vec = Vec::with_capacity(N);
             rows.push(new_vec);
             rows[i].append(&mut zero_rows[i - (N - O)]);
             rows[i].append(&mut p3[mat][i - (N - O)]);
@@ -662,7 +664,7 @@ pub fn api_sign(mut message: Vec<u8>, csk: Vec<u8>) -> Vec<u8> {
     let mut signature = sign(&csk, &message);
 
     //concatenates the signature and the message
-    let mut sign_con_mes = Vec::new();
+    let mut sign_con_mes = Vec::with_capacity(SIG_BYTES + message.len());
     sign_con_mes.append(&mut signature);
     sign_con_mes.append(&mut message);
 
