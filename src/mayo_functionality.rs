@@ -13,7 +13,7 @@ use crate::crypto_primitives::{
 use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
 use crate::utils::{
-    bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, transpose_vector, write_to_file_byte,
+    bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, transpose_vector, write_to_file_byte, write_to_file_int
 };
 
 use crate::constants::{
@@ -110,7 +110,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         let right_term: Vec<Vec<u8>> = matrix_mul(&transposed_o, &p2_i);
 
         // Compute: (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
-        let mut sub = matrix_sub(&left_term, &right_term);
+        let sub = matrix_sub(&left_term, &right_term);
 
         p3[i] = upper(sub); // Upper triangular part of the result
     }
@@ -126,11 +126,11 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 
     return (cpk, csk);
 }
-
+ 
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
 pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
-    let mut sk_seed: &Vec<u8> = csk;
+    let sk_seed: &Vec<u8> = csk;
     let n_minus_o = N - O; // rows of O matrix
 
     let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
@@ -322,8 +322,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         // Build the linear system Ax = y
 
         let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
-        println!("Shifts: {}", shifts);
-        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O + shifts]; M];
+        let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; M + shifts];
         let mut y = Vec::with_capacity(M + shifts);
         y.extend(t.clone());
         y.extend(vec![0u8; shifts]); 
@@ -364,6 +363,9 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                         u[a] = add(left_term, right_term);
                     }
                 }
+                if i == 0 {
+                    println!("U sign: {:?}", bytes_to_hex_string(&u, false));
+                }
 
                 // y = y - u * z^ell - Instead of subtracting with shifted u,
                 // we just sub with shifted y for easier loop structre since
@@ -372,113 +374,42 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                     y[d + ell] ^= u[d];
                 }
 
-
-
                 // Update A cols with + z^ell * Mj 
-                for row in 0..M {
-                    
-                    let mut temp: Vec<u8> = a[row][i * O..(i + 1) * O].to_vec();
-                    let mut zeroes: Vec<u8> = vec![0u8; ell];
-                    temp.append(&mut zeroes);
-
-
-                    for a_entry in i*O..(i+1)*O {
-                        let temp_idx = a_entry % O;
-                        temp[temp_idx+ell] ^= m_matrices[j][row][a_entry % O]; // Shift indexes with ell
+                for col in i*O..(i+1)*O {
+                    for row in 0..M {
+                        a[row+ell][col] ^= m_matrices[j][row][col % O];
                     }
-
-                    a[row][i * O..(i + 1) * O + ell].clone_from_slice(&temp); // Need this seems stupid
                 }
 
-
-                // if i == 0{
-                //     println!("\n");
-                //     println!("Iteration {}: \n", j);
-                // }
-                // for kahoot in 0..M {
-                //     if i == 0 {
-                //         println!("{:?}", bytes_to_hex_string(&a[kahoot], false));
-                //     }
-                // }
-                
-
-
-                // Update A cols with + z^ell * Mi 
-                if i != j {        
-                    for row in 0..M {
-
-                        let mut temp: Vec<u8> = a[row][j * O..(j + 1) * O].to_vec();
-                        let mut zeroes: Vec<u8> = vec![0u8; ell];
-                        temp.append(&mut zeroes);
-
-                        for a_entry in j*O..(j+1)*O {
-                            let temp_idx = a_entry % O;
-                            temp[temp_idx+ell] ^= m_matrices[i][row][a_entry % O]; // Add Mi to A shifted down with ell
-
+                if i != j {    
+                    // Update A cols with + z^ell * Mi     
+                    for col in j*O..(j+1)*O {
+                        for row in 0..M {
+                            a[row+ell][col] ^= m_matrices[i][row][col % O];
                         }
-
-                        a[row][j * O..(j + 1) * O + ell].clone_from_slice(&temp); // Need this seems stupid
                     }
                 } 
-
-
                 ell += 1;
-                
-
             }
         }
 
-
-        println!("A BEFORE REDUCE: \n");
-
-        for row in 0..M {
-            println!("{:?}", bytes_to_hex_string(&a[row], false));
-        }
-
-
-        // println!("Christer Y before reduce: \n {:?}", bytes_to_hex_string(&y, false));
-
-        let flattened: Vec<u8> = a.clone().into_iter().flatten().collect();
-        let array: Box<[u8]> = flattened.into_boxed_slice();
-        let array_ref: &[u8] = &*array;
-
-
-
-        write_to_file_byte("A BEFORE REDUCE", array_ref);
         y = reduce_mod_f(y);
-        a = reduce_matrix_mod_f(a);
-
-
-        println!("A after reduce: \n");
-
-        for row in 0..M {
-            println!("{:?}", bytes_to_hex_string(&a[row], false));
-        }
-
-
-        // println!("Christer Y after reduce: \n {:?}", bytes_to_hex_string(&christer_y, false));
-
-
-
-
-
-
-        return vec![0u8; M*M];
+        a = reduce_a_mod_f(a);
 
         // Try to solve the linear system Ax = y
         x = match sample_solution(a, y, r) {
-            Ok(x) => x, // If Ok
+            Ok(x) => x,  // If Ok
             Err(e) => {
                 continue; // If Err (no solution found), continue to the next iteration of the loop
             }
         };
-        break; // If Ok (solution found), break the loop
+        break // If Ok, break the loop
+
     } // ctr loop ends
 
-    // return x;
 
     // Finish and output signature
-    let mut signature = vec![0u8; K * N];
+    let mut signature = Vec::with_capacity(K * N);
 
     for i in 0..K {
         let mut x_idx = x[i * O..(i + 1) * O].to_vec();
@@ -529,36 +460,49 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         s_matrix[i] = s[i * N..(i + 1) * N].to_vec();
     }
 
-    // derive and decode t
-    let m_digest = shake256(&message, DIGEST_BYTES);
-    let mut t_shake_input = Vec::new();
-    t_shake_input.extend(&m_digest);
-    t_shake_input.extend(&salt);
+    // Hash message and derive salt
+    let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
+    safe_shake256(
+        &mut m_digest,
+        DIGEST_BYTES as u64,
+        &message,
+        message.len() as u64,
+    );
+
+    let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
+    t_shake_input.extend(&m_digest); // Extend to prevent emptying original
+    t_shake_input.extend(&salt); // Extend to prevent emptying original
     let t_shake_output_length = if M % 2 == 0 { M / 2 } else { M / 2 + 1 }; // Ceil (M * log_2(q) / 8)
-    let t_input: Vec<u8> = shake256(&t_shake_input, t_shake_output_length);
-    let t: Vec<u8> = decode_bit_sliced_vector(t_input);
+
+    let mut t_output: Vec<u8> = vec![0u8; t_shake_output_length];
+    safe_shake256(
+        &mut t_output,
+        t_shake_output_length as u64,
+        &t_shake_input,
+        (DIGEST_BYTES + SALT_BYTES) as u64,
+    );
+
+
+    let t = decode_bytestring_to_vector(M, t_output);
+
 
     // Compute P*(s)
-    let y: Vec<u8> = vec![0u8; M];
-    let mut ell: u8 = 0;
+    let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
+    let mut y = Vec::with_capacity(M + shifts);
+    y.extend(t.clone());
+    y.extend(vec![0u8; shifts]); 
+    let mut ell = 0;
 
     // Construct the M matrices of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [M]                    (0     P^3_a)
     let big_p = create_large_matrices(p1, p2, p3);
-
-    for m in 0..M {
-        println!("");
-        println!("NEW");
-
-        print_matrix(big_p[m].clone());
-    }
 
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
 
         for j in (i..K).rev() {
             let mut u = vec![0u8; M];
-            let s_j_trans = transpose_vector(&s_matrix[j]);
+            let s_j_trans = transpose_vector(&s_matrix[i]);
 
             for a in 0..M {
                 let s_i_trans_big_p = matrix_mul(&s_i_trans, &big_p[a]);
@@ -574,13 +518,21 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
                     u[a] = add(left_term, right_term);
                 }
             }
-            // Y UPDATE HERE
+
+            if i == 0 {
+                println!("U verify: {:?}", bytes_to_hex_string(&u, false));
+            }
+            for d in 0..M {
+                y[d + ell] ^= u[d];
+            }
+            
 
             ell = ell + 1;
 
 
         }
     }
+    y = reduce_mod_f(y);
 
     // Accept signature if y = t
     return y == t;
@@ -655,7 +607,7 @@ pub fn reduce_mod_f(mut polynomial: Vec<u8>) -> Vec<u8> {
 pub fn reduce_matrix_mod_f(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 
     // Perform the reduction of with f(z) for every row
-    for i in 0..M {
+    for i in 0..O {
 
         matrix[i] = reduce_mod_f(matrix[i].clone());
 
@@ -663,19 +615,42 @@ pub fn reduce_matrix_mod_f(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return matrix;
 }
 
+pub fn reduce_a_mod_f(mut a: Vec<Vec<u8>>) -> Vec<Vec<u8>>{
+    
 
+    let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
 
-pub fn reduce_a_mod_f_from_ref(a: &mut Vec<Vec<u8>>) {
-    for i in (M..M + K * (K + 1) / 2 - 1).rev() {
-        for k in 0..O * K {
-            for j in 0..F_Z_REF.len() {
-                if i >= M + j {
-                    a[i - M + j][k] ^= mul(a[i - M + j][k], F_Z_REF[j]);
-                }
+    for col in 0..K * O {
+        for row in (M..M+shifts).rev() {
+            for (shift, coef) in F_Z {
+
+                let mul_res = mul(a[row][col], coef);
+
+                a[row-M+shift][col] = sub(a[row-M+shift][col], mul_res);
             }
-            a[i][k] = 0;
+            a[row][col] = 0;
         }
     }
+
+    // Remove additional rows from reduction 
+    a.truncate(M);
+
+    return a;
+}
+
+
+pub fn reduce_a_mod_f_from_ref(a: &mut Vec<u8>) {
+    let a_cols = K*O+1;
+
+    for i in (M..M + K * (K + 1) / 2 - 1).rev() {
+            for  kk in 0..a_cols {
+                for j in 0..F_Z_REF.len() {
+                    a[(i - M + j) * a_cols + kk] ^= mul(a[i * a_cols + kk], F_Z_REF[j]);
+                }
+                a[i * a_cols + kk] = 0;
+            }
+    }
+    a.truncate(M*(K*O+1));
 }
 
 // MAYO algorithm 10
@@ -737,11 +712,11 @@ mod tests {
                 for j in 0..N - O {
                     p1[m][i][j] = rng.gen_range(00..=15);
 
-                    if (j < O) {
+                    if j < O {
                         p2[m][i][j] = rng.gen_range(00..=15);
                     }
 
-                    if (i < O && j < O) {
+                    if i < O && j < O {
                         p3[m][i][j] = rng.gen_range(00..=15);
                     }
                 }

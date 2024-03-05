@@ -2,6 +2,8 @@ use std::clone;
 
 use constants::{SALT_BYTES, SIG_BYTES};
 use genKAT::bindings;
+use utils::write_to_file_int;
+use utils::write_to_file_byte;
 
 use crate::{
     bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices}, constants::M, finite_field::{add, mul}, utils::bytes_to_hex_string
@@ -45,14 +47,20 @@ fn main() {
 
     let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
 
-    let esk = mayo_functionality::expand_sk(&csk);
 
     let epk = mayo_functionality::expand_pk(cpk);
 
 
 
-    mayo_functionality::sign(&csk, &message);
+    let signature = mayo_functionality::api_sign(message.clone(), csk.clone());
 
-    
+    let flattened: Vec<u8> = signature.clone().into_iter().collect();
+    let array: Box<[u8]> = flattened.into_boxed_slice();
+    let array_ref: &[u8] = &*array;
+    let _ = write_to_file_byte("sig", array_ref);
+
+    let ver = mayo_functionality::api_sign_open(signature, epk);
+
+    println!("{:?}", ver);
 
 }

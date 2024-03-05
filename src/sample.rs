@@ -1,5 +1,6 @@
-use crate::finite_field::{add, sub, mul, inv};
-use crate::constants::{K, O};
+use crate::finite_field::{add, inv, matrix_vector_mul, mul, sub, vector_sub};
+use crate::constants::{M, K, O};
+use crate::utils::{bytes_to_hex_string, write_to_file_byte};
 use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
 
@@ -7,8 +8,8 @@ use rand::{Rng, SeedableRng};
 // MAYO Algorithm 1: Echelon Form
 // Function to perform the echelon form algorithm on matrix B.
 pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    let rows = b.len();
-    let cols = b[0].len();
+    let rows = M;
+    let cols = K*O+1;
     let mut pivot_row = 0;
     let mut pivot_column = 0;
 
@@ -74,35 +75,29 @@ pub fn sample_rand() -> Vec<u8> {
 
 // MAYO Algorithm 2: Sample Solution
 // Function to solve the equation Ax = y in GF(16) using gaussian elimination.
-pub fn sample_solution(mut a: Vec<Vec<u8>>, mut y: Vec<u8>, r: Vec<u8>) -> Result<Vec<u8>, &'static str> {
-    let rows = a.len();
-
+pub fn sample_solution(mut a: Vec<Vec<u8>>, y: Vec<u8>, r: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+    let rows = M;
 
     //let r: Vec<u8> = sample_rand();
     let mut x: Vec<u8> = r.clone();
 
-    // Perform y = y - Ar in single iteration over y and A
-    y = a
-        .iter()
-        .zip(y.iter())
-        .map(|(row, &y_val)| {
-            let ar_val: u8 = row
-                .iter()
-                .zip(r.iter())
-                .map(|(a_row_idx, r_idx)| mul(*a_row_idx, *r_idx))
-                .fold(0, |acc, x| add(acc, x)); // Compute the dot product of the current row of A and r
-            sub(y_val, ar_val) // Perform subtraction y - Ar
-        })
-        .collect(); // Collect new vector of size m
 
+    //test_r.append(&mut vec![0u8]);
+    let ar = matrix_vector_mul(&a, &r);
+
+
+    let y_sub_ar = vector_sub(&y, &ar);
 
     // Append the first element of y to the first row of A, the second element of y to the second row of A etc.
-    for (row, &y_val) in a.iter_mut().zip(y.iter()) {
+    for (row, &y_val) in a.iter_mut().zip(y_sub_ar.iter()) {
         row.push(y_val);
     }
 
+
+
     // Put (A | y) in echelon form with leading 1's.
     let a = echelon_form(a);
+
 
     // Split the matrix into A and y
     let a_ech: Vec<Vec<u8>> = a.iter().map(|row| row[0..row.len() - 1].to_vec()).collect();

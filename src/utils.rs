@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::{Write, Result};
+use std::io::{self, Read};
+use std::path::Path;
 
 
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
@@ -115,9 +117,19 @@ pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
 }
 
 
+fn read_file_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    Ok(contents)
+}
 
+pub fn compare_hex_files<P: AsRef<Path>>(file1_path: P, file2_path: P) -> io::Result<bool> {
+    let file1_contents = read_file_to_string(file1_path)?;
+    let file2_contents = read_file_to_string(file2_path)?;
 
-
+    Ok(file1_contents == file2_contents)
+}
 
 
 // test echoleon_form
