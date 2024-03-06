@@ -44,6 +44,7 @@ fn main() {
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
     );
+    println!("Seed input: {:?}", bytes_to_hex_string(&entropy_input, false));
 
     let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
 
@@ -58,5 +59,7 @@ fn main() {
     let ver = mayo_functionality::api_sign_open(signature, cpk);
 
     println!("{:?}", ver);
+
+    read_kat_file::read_kat();
 
 }

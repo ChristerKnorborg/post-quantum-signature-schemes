@@ -2,7 +2,8 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use crate::utils::{bytes_to_hex_string, hex_string_to_bytes};
-use crate::mayo_functionality as mf;
+use crate::mayo_functionality::{self as mf, api_sign_open};
+use crate::crypto_primitives::{safe_randombytes_init, safe_randomBytes};
 pub fn read_kat() -> () {
     let mut file = File::open("./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_1.txt").unwrap();
 
@@ -16,8 +17,20 @@ pub fn read_kat() -> () {
     let mut sk_bytes: Vec<u8> = Vec::new();
     let mut sm_bytes: Vec<u8> = Vec::new();
 
+    let mut entropy_input: Vec<u8> = (0..=47).collect();
+    let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
+    let nbytes: u64 = entropy_input.len() as u64;
+
+
+    // Init the randombytes like NIST correctly
+    safe_randombytes_init(
+        &mut entropy_input,
+        &personalization_string,
+        256,
+    );
+    safe_randomBytes(&mut entropy_input, nbytes);
+
     for line in contents.lines() {
-        println!("{}", line);
 
 
         if line.starts_with("count") {
@@ -26,15 +39,22 @@ pub fn read_kat() -> () {
             let comp = res.parse::<i32>().unwrap();
             if ctr != 0 || ctr != comp {
 
+                safe_randombytes_init(
+                    &mut seed_bytes,
+                    &personalization_string,
+                    256,
+                );
+                println!("Current round: {}", comp);
+                let (cpk, csk) = mf::compact_key_gen(seed_bytes.clone());
+                
+                assert_eq!(csk, sk_bytes);
+                assert_eq!(cpk, pk_bytes);
 
-                let res_sm = mf::api_sign(msg_bytes.clone(), sk_bytes.clone());
-                println!("msg_bytes len: {:?}", msg_bytes.len());
-                println!("sk_bytes len: {:?}", sk_bytes.len());
-                println!("msg_bytes: {:?}", msg_bytes);
-                println!("sk_bytes: {:?}", sk_bytes);
 
-                println!("back to hex: {:?}", bytes_to_hex_string(&msg_bytes, false));
-                println!("back to hex: {:?}", bytes_to_hex_string(&sk_bytes, false));
+                let res_sm = mf::api_sign(msg_bytes.clone(), csk);
+                let (ver_cor, _) = mf::api_sign_open(res_sm.clone(), cpk);
+
+                assert!(ver_cor);
             
                 assert_eq!(res_sm, sm_bytes);
             }
