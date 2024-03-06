@@ -2,11 +2,14 @@ use std::clone;
 
 use constants::{SALT_BYTES, SIG_BYTES};
 use genKAT::bindings;
-use utils::write_to_file_int;
 use utils::write_to_file_byte;
+use utils::write_to_file_int;
 
 use crate::{
-    bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices}, constants::M, finite_field::{add, mul}, utils::bytes_to_hex_string
+    bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices},
+    constants::M,
+    finite_field::{add, mul},
+    utils::bytes_to_hex_string,
 };
 
 mod bitsliced_functionality;
@@ -44,10 +47,12 @@ fn main() {
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
     );
-    println!("Seed input: {:?}", bytes_to_hex_string(&entropy_input, false));
+    println!(
+        "Seed input: {:?}",
+        bytes_to_hex_string(&entropy_input, false)
+    );
 
     let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
-
 
     let signature = mayo_functionality::api_sign(message.clone(), csk.clone());
 
@@ -61,5 +66,4 @@ fn main() {
     println!("{:?}", ver);
 
     read_kat_file::read_kat();
-
 }

@@ -13,6 +13,13 @@ mayo1 = []
 [build-dependencies]
 cc = "1.0"
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "my_benchmark"
+harness = false
+
 
 [dependencies]
 rand = "0.8.5"
@@ -23,3 +30,4 @@ cipher = "0.4.4"
 aes-prng = "0.2.1"
 byteorder = "1.4.3"
 libc = "0.2"
+gnuplot = "0.0.42"
