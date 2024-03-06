@@ -21,11 +21,18 @@ mod mayo1_features {
     pub const DIGEST_BYTES: usize = 32;
     pub const PK_SEED_BYTES: usize = 16;
     pub const SK_SEED_BYTES: usize = 24;
-    pub const L_BYTES: usize = M * (N - O) * O / 2;
+    pub const L_BYTES: usize = 14848;
+
+
+    // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
+    pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
+
+    // File to compare the KAT results with
+    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_1.txt";
 }
 
 #[cfg(feature = "mayo2")]
-mod mayo1_features {
+mod mayo2_features {
     pub const N: usize = 78;
     pub const M: usize = 64;
     pub const O: usize = 18;
@@ -47,11 +54,18 @@ mod mayo1_features {
     pub const DIGEST_BYTES: usize = 32;
     pub const PK_SEED_BYTES: usize = 16;
     pub const SK_SEED_BYTES: usize = 24;
-    pub const L_BYTES: usize = M * (N - O) * O / 2;
+    pub const L_BYTES: usize = 14848;
+
+    // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
+    pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
+
+
+    // File to compare the KAT results with
+    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_2.txt";
 }
 
 #[cfg(feature = "mayo3")]
-mod mayo1_features {
+mod mayo3_features {
     pub const N: usize = 99;
     pub const M: usize = 96;
     pub const O: usize = 10;
@@ -73,11 +87,18 @@ mod mayo1_features {
     pub const DIGEST_BYTES: usize = 48;
     pub const PK_SEED_BYTES: usize = 16;
     pub const SK_SEED_BYTES: usize = 32;
-    pub const L_BYTES: usize = M * (N - O) * O / 2;
+    pub const L_BYTES: usize = 42720;
+
+    // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^3 + z^m]
+    pub const F_Z: [(usize, u8); 4] = [(0, 0x2), (1, 0x2), (3, 0x2)]; // f(z) =  1z^128          + x*z^3 + x*z^1 + x
+
+
+    // File to compare the KAT results with
+    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_32_MAYO_3.txt";
 }
 
 #[cfg(feature = "mayo5")]
-mod mayo1_features {
+mod mayo5_features {
     pub const N: usize = 133;
     pub const M: usize = 128;
     pub const O: usize = 12;
@@ -99,51 +120,28 @@ mod mayo1_features {
     pub const DIGEST_BYTES: usize = 64;
     pub const PK_SEED_BYTES: usize = 16;
     pub const SK_SEED_BYTES: usize = 40;
-    pub const L_BYTES: usize = M * (N - O) * O / 2;
+    pub const L_BYTES: usize = 92928;
+
+    // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^3 + z^4 + z^m]
+    pub const F_Z: [(usize, u8); 4] = [(0, 0x4), (1, 0x8), (3, 0x4), (4, 0x2)]; // f(z) =  1z^128         + x*z^4 + x^2*z^3 + x^3*z^1 + x^2
+
+
+    // File to compare the KAT results with
+    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_40_MAYO_5.txt";
 }
 
-#[cfg(not(feature = "mayo1"))]
-mod other_features {
-
-    pub const N: usize = 66;
-    pub const M: usize = 64;
-    pub const O: usize = 8;
-    pub const K: usize = 9;
-    pub const Q: usize = 16;
-    pub const M_BYTES: usize = 32;
-    pub const O_BYTES: usize = 232;
-    pub const O_BYTES_MAX: usize = 726;
-    pub const V_BYTES: usize = 29;
-    pub const R_BYTES: usize = 24;
-    pub const P1_BYTES: usize = 54752;
-    pub const P2_BYTES: usize = 14848;
-    pub const P3_BYTES: usize = 1152;
-    pub const CSK_BYTES: usize = 24;
-    pub const ESK_BYTES: usize = 69856;
-    pub const CPK_BYTES: usize = 1168;
-    pub const EPK_BYTES: usize = 70752;
-    pub const SIG_BYTES: usize = 321;
-    pub const SALT_BYTES: usize = 24;
-    pub const DIGEST_BYTES: usize = 32;
-    pub const PK_SEED_BYTES: usize = 16;
-    pub const SK_SEED_BYTES: usize = 24;
-    pub const L_BYTES: usize = M * (N - O) * O / 2;
-
-    // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
-    pub const F_Z_REF: [u8; 5] = [8, 0, 2, 8, 0]; // f(z) =  z^64         + x^3*z^3 + x*z^2         + x^3
-    pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
-}
 
 // Re-export the constants from the included module so they can be accessed directly
 // through this common `constants` module.
 #[cfg(feature = "mayo1")]
 pub use mayo1_features::*;
 
-#[cfg(not(feature = "mayo1"))]
-pub use other_features::*;
+#[cfg(feature = "mayo2")]
+pub use mayo2_features::*;
 
-// thread_local! {
-//     pub const I: std::cell::Cell<u8> = std::cell::Cell::new(1);
-//     pub const K: std::cell::Cell<u8> = std::cell::Cell::new(2);
-//     pub const O: std::cell::Cell<u8> = std::cell::Cell::new(4);
-// }
+#[cfg(feature = "mayo3")]
+pub use mayo3_features::*;
+
+#[cfg(feature = "mayo5")]
+pub use mayo5_features::*;
+

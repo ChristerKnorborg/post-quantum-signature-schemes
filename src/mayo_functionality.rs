@@ -1,23 +1,21 @@
 
 use std::vec;
 
-use libc::{printf, write};
-
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_matrices, decode_bit_sliced_vector, decode_bytestring_to_matrix,
+    decode_bit_sliced_matrices, decode_bytestring_to_matrix,
     decode_bytestring_to_vector, encode_bit_sliced_matrices, encode_vector_to_bytestring,
 };
 use crate::crypto_primitives::{
-    aes_128_ctr_seed_expansion, safe_aes_128_ctr, safe_randomBytes, safe_shake256, shake256,
+    safe_aes_128_ctr, safe_randomBytes, safe_shake256
 };
 use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
 use crate::utils::{
-    bytes_to_hex_string, hex_string_to_bytes, print_matrix, transpose_matrix, transpose_vector, write_to_file_byte, write_to_file_int
+    transpose_matrix, transpose_vector
 };
 
 use crate::constants::{
-    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, F_Z_REF, K, L_BYTES, M, N, O, O_BYTES, O_BYTES_MAX, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
+    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
 };
 
 // Upper(M)_ij = M_ij + M_ji for i < j
@@ -533,7 +531,6 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
         }
     }
-    println!("Y before reduce: {:?}" , bytes_to_hex_string(&y , false));
     y = reduce_mod_f(y);
 
     // Accept signature if y = t
@@ -574,27 +571,14 @@ fn create_large_matrices(
     return result;
 }
 
-pub fn reduce_y_mod_f_from_ref(y: &mut Vec<u8>) {
-
-    for i in (M..M + K * (K + 1) / 2 - 1).rev() {
-        for j in 0..F_Z_REF.len() {
-                y[i - M + j] ^= mul(y[i], F_Z_REF[j]);
-        }
-        y[i] = 0;
-    }
-}
-
-
 
 pub fn reduce_mod_f(mut polynomial: Vec<u8>) -> Vec<u8> {
 
     // Perform the reduction of with f(z)
     for i in (M..polynomial.len()).rev() {
-
             for (shift, coef) in F_Z {
 
                 let mul_res = mul(polynomial[i], coef);
-
                 polynomial[i-M+shift] = sub(polynomial[i-M+shift], mul_res); 
             }
             polynomial[i] = 0; // set original term to 0 After distributing coefficient
@@ -605,17 +589,6 @@ pub fn reduce_mod_f(mut polynomial: Vec<u8>) -> Vec<u8> {
     return polynomial;
 }
 
-
-pub fn reduce_matrix_mod_f(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-
-    // Perform the reduction of with f(z) for every row
-    for i in 0..O {
-
-        matrix[i] = reduce_mod_f(matrix[i].clone());
-
-    }
-    return matrix;
-}
 
 pub fn reduce_a_mod_f(mut a: Vec<Vec<u8>>) -> Vec<Vec<u8>>{
     
@@ -641,19 +614,6 @@ pub fn reduce_a_mod_f(mut a: Vec<Vec<u8>>) -> Vec<Vec<u8>>{
 }
 
 
-pub fn reduce_a_mod_f_from_ref(a: &mut Vec<u8>) {
-    let a_cols = K*O+1;
-
-    for i in (M..M + K * (K + 1) / 2 - 1).rev() {
-            for  kk in 0..a_cols {
-                for j in 0..F_Z_REF.len() {
-                    a[(i - M + j) * a_cols + kk] ^= mul(a[i * a_cols + kk], F_Z_REF[j]);
-                }
-                a[i * a_cols + kk] = 0;
-            }
-    }
-    a.truncate(M*(K*O+1));
-}
 
 // MAYO algorithm 10
 // Expands a secret key from its compact representation and signs a message input

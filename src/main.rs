@@ -25,6 +25,7 @@ mod genKAT {
 }
 
 fn main() {
+<<<<<<< HEAD
     let mut entropy_input: Vec<u8> = (0..=47).collect();
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
     let nbytes: u64 = entropy_input.len() as u64;
@@ -64,6 +65,16 @@ fn main() {
     let ver = mayo_functionality::api_sign_open(signature, cpk);
 
     println!("{:?}", ver);
+=======
 
+
+>>>>>>> 97883ac9dfa6284c8d2d018e7d4ad927203d9d83
+
+    
+    println!("file name: {} \n", constants::COMPARE_FILE_NAME);
+    println!("O: {} \n", constants::O);
+    println!("K: {} \n", constants::K);
+    println!("N: {} \n", constants::N);
+    println!("M: {} \n", constants::M);
     read_kat_file::read_kat();
 }
