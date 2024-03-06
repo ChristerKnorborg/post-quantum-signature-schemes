@@ -54,10 +54,11 @@ pub fn read_kat() -> () {
 
                 let res_sm = mf::api_sign(msg_bytes.clone(), csk);
                 let (ver_cor, _) = mf::api_sign_open(res_sm.clone(), cpk);
-
+                
+                assert_eq!(res_sm, sm_bytes);
                 assert!(ver_cor);
             
-                assert_eq!(res_sm, sm_bytes);
+                
             }
             ctr += 1;
         }

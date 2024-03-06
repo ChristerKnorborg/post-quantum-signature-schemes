@@ -23,23 +23,8 @@ pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
 
 
 // Method to set the random number generator seed for debugging and testing purposes
-pub fn set_seed_for_test(){
-    let mut entropy_input: Vec<u8> = (0..=47).collect();
+pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
-    let nbytes: u64 = entropy_input.len() as u64;
-
-    safe_randombytes_init(
-        &mut entropy_input,
-        &personalization_string, // Even if empty, this is now a valid pointer
-        256,
-    );
-
-    let mut bing: Vec<u8>;
-    let mut message: Vec<u8> = vec![0u8; 33];
-
-    safe_randomBytes(&mut entropy_input, nbytes);
-    //SAFE_RANDOMBYTES SUSPISIOUS
-    safe_randomBytes(&mut message, 33 as u64);
 
     safe_randombytes_init(
         &mut entropy_input,

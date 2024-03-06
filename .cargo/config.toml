@@ -1,0 +1,5 @@
+[alias]
+mayo1 = "run --no-default-features --features mayo1"
+mayo2 = "run --no-default-features --features mayo2"
+mayo3 = "run --no-default-features --features mayo3"
+mayo5 = "run --no-default-features --features mayo5"

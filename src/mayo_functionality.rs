@@ -11,7 +11,7 @@ use crate::crypto_primitives::{
 use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
 use crate::utils::{
-    transpose_matrix, transpose_vector
+    bytes_to_hex_string, transpose_matrix, transpose_vector, write_to_file_byte
 };
 
 use crate::constants::{
@@ -438,10 +438,17 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let p2_bytestring = expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES].to_vec();
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
     
+
+
+    // write_to_file_byte("P1 bytestring", &p1_bytestring);
+    // write_to_file_byte("P2 bytestring", &p2_bytestring);
+    // write_to_file_byte("P3 bytestring", &p3_bytestring);
+    
     // decodes the public information into matrices
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
     let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
     let p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+
 
 
 
@@ -456,11 +463,21 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let s = decode_bytestring_to_vector(K * N, signature);
 
 
+    //write_to_file_byte("s", &s);
+    //write_to_file_byte("salt", &salt);
+
+
     let mut s_matrix = vec![vec![0u8; N]; K];
     for i in 0..K {
         s_matrix[i] = s[i * N..(i + 1) * N].to_vec();
     }
 
+
+
+        let flattened: Vec<u8> = s_matrix.clone().into_iter().flatten().collect();
+        let array: Box<[u8]> = flattened.into_boxed_slice();
+        let array_ref: &[u8] = &*array;
+        //write_to_file_byte("s_matrix bytestring", &array_ref);
 
     // Hash message and derive salt
     let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
@@ -470,6 +487,9 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         &message,
         message.len() as u64,
     );
+
+
+    // write_to_file_byte("m_digest bytestring", &m_digest);
 
     let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
     t_shake_input.extend(&m_digest); // Extend to prevent emptying original
@@ -486,6 +506,9 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
 
     let t = decode_bytestring_to_vector(M, t_output);
+
+
+    // write_to_file_byte("t bytestring", &t);
 
 
     // Compute P*(s)
@@ -531,7 +554,25 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
         }
     }
+
+
+    let flattened: Vec<u8> = y.clone().into_iter().collect();
+    let array: Box<[u8]> = flattened.into_boxed_slice();
+    let array_ref: &[u8] = &*array;
+
+    // write_to_file_byte("y bytestring BEFORE reduce", &array_ref);
+
+
+
     y = reduce_mod_f(y);
+
+
+    let flattened: Vec<u8> = y.clone().into_iter().collect();
+    let array: Box<[u8]> = flattened.into_boxed_slice();
+    let array_ref: &[u8] = &*array;
+
+    // write_to_file_byte("y bytestring AFTER reduce", &array_ref);
+
 
     // Accept signature if y = t
     return y == t;

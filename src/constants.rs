@@ -54,7 +54,7 @@ mod mayo2_features {
     pub const DIGEST_BYTES: usize = 32;
     pub const PK_SEED_BYTES: usize = 16;
     pub const SK_SEED_BYTES: usize = 24;
-    pub const L_BYTES: usize = 14848;
+    pub const L_BYTES: usize = 34560;
 
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
     pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
@@ -90,7 +90,7 @@ mod mayo3_features {
     pub const L_BYTES: usize = 42720;
 
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^3 + z^m]
-    pub const F_Z: [(usize, u8); 4] = [(0, 0x2), (1, 0x2), (3, 0x2)]; // f(z) =  1z^128          + x*z^3 + x*z^1 + x
+    pub const F_Z: [(usize, u8); 3] = [(0, 0x2), (1, 0x2), (3, 0x2)]; // f(z) =  1z^96          + x*z^3 + x*z^1 + x
 
 
     // File to compare the KAT results with
