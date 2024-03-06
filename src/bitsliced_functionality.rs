@@ -38,12 +38,12 @@ pub fn decode_bytestring_to_vector(n: usize, bytestring: Vec<u8>) -> Vec<u8> {
     
 
 
-    let mut x = Vec::with_capacity(n);
+    
 
     // Calculate the number of full bytes and if there's an extra nibble
     let full_bytes = n / 2;
     let extra_nibble = n % 2;
-
+    let mut x = Vec::with_capacity(n + extra_nibble);
 
     // Iterate over all bytes with two nibbles in each
     for &byte in bytestring.iter().take(full_bytes) {
@@ -51,10 +51,15 @@ pub fn decode_bytestring_to_vector(n: usize, bytestring: Vec<u8>) -> Vec<u8> {
         x.push(byte >> 4); // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
     }
 
+
+
     // Decode an extra nibble if n is odd
     if extra_nibble == 1 {
-        let &last_byte = bytestring.last().unwrap(); // Unwrap is safe cause at least one byte if n is odds
+        let &last_byte = bytestring.get(n/2).unwrap(); // Unwrap is safe cause at least one byte if n is odds
+
+    
         x.push(last_byte & 0x0F); // Put the first nibble (4 least significant bits) into the last byte in the byte vector (ignore the second nibble of 0)
+
     }
 
     return x
