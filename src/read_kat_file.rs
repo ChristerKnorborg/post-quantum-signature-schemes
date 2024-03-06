@@ -1,14 +1,15 @@
 use std::fs::File;
 use std::io::prelude::*;
 
+use crate::constants::COMPARE_FILE_NAME;
 use crate::utils::{bytes_to_hex_string, hex_string_to_bytes};
 use crate::mayo_functionality::{self as mf, api_sign_open};
 use crate::crypto_primitives::{safe_randombytes_init, safe_randomBytes};
 pub fn read_kat() -> () {
-    let mut file = File::open("./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_1.txt").unwrap();
+    let mut file = File::open(COMPARE_FILE_NAME).unwrap();
 
     let mut contents = String::new(); 
-    file.read_to_string(&mut contents);
+    _ = file.read_to_string(&mut contents);
 
     let mut ctr = 0;
     let mut seed_bytes: Vec<u8> = Vec::new();

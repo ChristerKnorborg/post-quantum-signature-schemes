@@ -7,8 +7,11 @@ edition = "2021"
 
 
 [features]
-default = []
+default = ["mayo1"]
 mayo1 = []
+mayo2 = []
+mayo3 = []
+mayo5 = []
 
 [build-dependencies]
 cc = "1.0"

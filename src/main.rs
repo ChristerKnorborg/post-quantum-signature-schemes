@@ -22,44 +22,15 @@ mod genKAT {
 }
 
 fn main() {
-    let mut entropy_input: Vec<u8> = (0..=47).collect();
-    let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
-    let nbytes: u64 = entropy_input.len() as u64;
-
-    crypto_primitives::safe_randombytes_init(
-        &mut entropy_input,
-        &personalization_string, // Even if empty, this is now a valid pointer
-        256,
-    );
-
-    let mut bing: Vec<u8>;
-    let mut message: Vec<u8> = vec![0u8; 33];
-
-    crypto_primitives::safe_randomBytes(&mut entropy_input, nbytes);
-    //SAFE_RANDOMBYTES SUSPISIOUS
-    crypto_primitives::safe_randomBytes(&mut message, 33 as u64);
-
-    crypto_primitives::safe_randombytes_init(
-        &mut entropy_input,
-        &personalization_string, // Even if empty, this is now a valid pointer
-        256,
-    );
-    println!("Seed input: {:?}", bytes_to_hex_string(&entropy_input, false));
-
-    let (cpk, csk) = mayo_functionality::compact_key_gen(entropy_input);
 
 
-    let signature = mayo_functionality::api_sign(message.clone(), csk.clone());
 
-    let flattened: Vec<u8> = signature.clone().into_iter().collect();
-    let array: Box<[u8]> = flattened.into_boxed_slice();
-    let array_ref: &[u8] = &*array;
-    let _ = write_to_file_byte("sig", array_ref);
-
-    let ver = mayo_functionality::api_sign_open(signature, cpk);
-
-    println!("{:?}", ver);
-
+    
+    println!("file name: {} \n", constants::COMPARE_FILE_NAME);
+    println!("O: {} \n", constants::O);
+    println!("K: {} \n", constants::K);
+    println!("N: {} \n", constants::N);
+    println!("M: {} \n", constants::M);
     read_kat_file::read_kat();
 
 }
