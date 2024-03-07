@@ -9,8 +9,6 @@
         "./Cargo.toml"
     ],
 
-    "rust-analyzer.cargo.allFeatures": true,
-
     "files.associations": {
         "rng.h": "c",
         "ctype.h": "c"

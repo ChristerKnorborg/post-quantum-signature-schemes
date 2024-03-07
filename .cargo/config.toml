@@ -3,3 +3,9 @@ mayo1 = "run --no-default-features --features mayo1"
 mayo2 = "run --no-default-features --features mayo2"
 mayo3 = "run --no-default-features --features mayo3"
 mayo5 = "run --no-default-features --features mayo5"
+
+bench_mayo1 = "bench --no-default-features --features mayo1 --bench my_benchmark -- --verbose"
+bench_mayo2 = "bench --no-default-features --features mayo2 --bench my_benchmark -- --verbose"
+bench_mayo3 = "bench --no-default-features --features mayo3 --bench my_benchmark -- --verbose"
+bench_mayo5 = "bench --no-default-features --features mayo5 --bench my_benchmark -- --verbose"
+

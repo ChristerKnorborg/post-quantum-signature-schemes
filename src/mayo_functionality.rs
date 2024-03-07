@@ -1,21 +1,17 @@
-
 use std::vec;
 
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_matrices, decode_bytestring_to_matrix,
-    decode_bytestring_to_vector, encode_bit_sliced_matrices, encode_vector_to_bytestring,
+    decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_vector,
+    encode_bit_sliced_matrices, encode_vector_to_bytestring,
 };
-use crate::crypto_primitives::{
-    safe_aes_128_ctr, safe_randomBytes, safe_shake256
-};
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
 use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::{
-    transpose_matrix, transpose_vector
-};
+use crate::utils::{transpose_matrix, transpose_vector};
 
 use crate::constants::{
-    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
+    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES,
+    P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES,
 };
 
 // Upper(M)_ij = M_ij + M_ji for i < j
@@ -82,7 +78,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     let p1_bytes = p[0..P1_BYTES].to_vec();
     let p2_bytes = p[P1_BYTES..].to_vec();
 
-
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
 
@@ -125,7 +120,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 
     return (cpk, csk);
 }
- 
+
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
 pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
@@ -252,7 +247,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let mut r: Vec<u8> = vec![0x0; R_BYTES]; // all 0's. Optimization availible (line 9 in algorithm 8)
     safe_randomBytes(&mut r, R_BYTES as u64);
 
-
     let mut salt_input: Vec<u8> = Vec::with_capacity(DIGEST_BYTES + R_BYTES + SK_SEED_BYTES);
     salt_input.extend(&m_digest); // Extend to prevent emptying original
     salt_input.append(&mut r);
@@ -309,22 +303,18 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             let v_bytestring_slice = v_bytestring[i * V_BYTES..(i + 1) * V_BYTES].to_vec();
             v[i] = decode_bytestring_to_vector(n_minus_o, v_bytestring_slice)
         }
-        
-
 
         // Derive r (Notice r is redefined and have nothing to do with previous r)
         let v_bytestring_remainder = v_bytestring[K * V_BYTES..].to_vec();
         let r = decode_bytestring_to_vector(K * O, v_bytestring_remainder); // Remainding part of v_bytestring.
 
-
-
         // Build the linear system Ax = y
 
-        let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
+        let shifts: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
         let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; M + shifts];
         let mut y = Vec::with_capacity(M + shifts);
         y.extend(t.clone());
-        y.extend(vec![0u8; shifts]); 
+        y.extend(vec![0u8; shifts]);
         let mut ell = 0;
         let mut m_matrices: Vec<Vec<Vec<u8>>> = vec![vec![vec![0u8; O]; M]; K]; // Vector of size m x o of zeroes
 
@@ -370,21 +360,21 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                     y[d + ell] ^= u[d];
                 }
 
-                // Update A cols with + z^ell * Mj 
-                for col in i*O..(i+1)*O {
+                // Update A cols with + z^ell * Mj
+                for col in i * O..(i + 1) * O {
                     for row in 0..M {
-                        a[row+ell][col] ^= m_matrices[j][row][col % O];
+                        a[row + ell][col] ^= m_matrices[j][row][col % O];
                     }
                 }
 
-                if i != j {    
-                    // Update A cols with + z^ell * Mi     
-                    for col in j*O..(j+1)*O {
+                if i != j {
+                    // Update A cols with + z^ell * Mi
+                    for col in j * O..(j + 1) * O {
                         for row in 0..M {
-                            a[row+ell][col] ^= m_matrices[i][row][col % O];
+                            a[row + ell][col] ^= m_matrices[i][row][col % O];
                         }
                     }
-                } 
+                }
                 ell += 1;
             }
         }
@@ -394,15 +384,13 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
         // Try to solve the linear system Ax = y
         x = match sample_solution(a, y, r) {
-            Ok(x) => x,  // If Ok
+            Ok(x) => x, // If Ok
             Err(e) => {
                 continue; // If Err (no solution found), continue to the next iteration of the loop
             }
         };
-        break // If Ok, break the loop
-
+        break; // If Ok, break the loop
     } // ctr loop ends
-
 
     // Finish and output signature
     let mut signature = Vec::with_capacity(K * N);
@@ -437,24 +425,20 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let p1_bytestring = expanded_pk[0..P1_BYTES].to_vec();
     let p2_bytestring = expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES].to_vec();
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
-    
-    
+
     // decodes the public information into matrices
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
     let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
     let p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
 
-
     // decode signature and derive salt
-    let salt = signature[SIG_BYTES-SALT_BYTES..SIG_BYTES].to_vec();
+    let salt = signature[SIG_BYTES - SALT_BYTES..SIG_BYTES].to_vec();
     let s = decode_bytestring_to_vector(K * N, signature);
-
 
     let mut s_matrix = vec![vec![0u8; N]; K];
     for i in 0..K {
         s_matrix[i] = s[i * N..(i + 1) * N].to_vec();
     }
-
 
     // Hash message and derive salt
     let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
@@ -464,7 +448,6 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         &message,
         message.len() as u64,
     );
-
 
     let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
     t_shake_input.extend(&m_digest); // Extend to prevent emptying original
@@ -478,24 +461,20 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         &t_shake_input,
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
-    
 
     let t = decode_bytestring_to_vector(M, t_output);
 
-
     // Compute P*(s)
-    let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
-    let mut y = vec![0u8 ; M + shifts];
+    let shifts: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
+    let mut y = vec![0u8; M + shifts];
     let mut ell = 0;
 
     // Construct the M matrices of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [M]                    (0     P^3_a)
     let big_p = create_large_matrices(p1, p2, p3);
 
-
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
-        
 
         for j in (i..K).rev() {
             let mut u = vec![0u8; M];
@@ -519,17 +498,12 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
             for d in 0..M {
                 y[d + ell] ^= u[d];
             }
-            
 
             ell = ell + 1;
-
-
         }
     }
 
-
     y = reduce_mod_f(y);
-
 
     // Accept signature if y = t
     return y == t;
@@ -569,49 +543,40 @@ fn create_large_matrices(
     return result;
 }
 
-
 pub fn reduce_mod_f(mut polynomial: Vec<u8>) -> Vec<u8> {
-
     // Perform the reduction of with f(z)
     for i in (M..polynomial.len()).rev() {
-            for (shift, coef) in F_Z {
-
-                let mul_res = mul(polynomial[i], coef);
-                polynomial[i-M+shift] = sub(polynomial[i-M+shift], mul_res); 
-            }
-            polynomial[i] = 0; // set original term to 0 After distributing coefficient
+        for (shift, coef) in F_Z {
+            let mul_res = mul(polynomial[i], coef);
+            polynomial[i - M + shift] = sub(polynomial[i - M + shift], mul_res);
+        }
+        polynomial[i] = 0; // set original term to 0 After distributing coefficient
     }
     // Truncate to first m entries (every other entry is zero after reduction)
     polynomial.truncate(M);
-    
+
     return polynomial;
 }
 
-
-pub fn reduce_a_mod_f(mut a: Vec<Vec<u8>>) -> Vec<Vec<u8>>{
-    
-
-    let shifts: usize = (K * (K + 1) / 2) - 1 ; // Number of shifts in the polynomial (max ell)
+pub fn reduce_a_mod_f(mut a: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    let shifts: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     for col in 0..K * O {
-        for row in (M..M+shifts).rev() {
+        for row in (M..M + shifts).rev() {
             for (shift, coef) in F_Z {
-
                 let mul_res = mul(a[row][col], coef);
 
-                a[row-M+shift][col] = sub(a[row-M+shift][col], mul_res);
+                a[row - M + shift][col] = sub(a[row - M + shift][col], mul_res);
             }
             a[row][col] = 0;
         }
     }
 
-    // Remove additional rows from reduction 
+    // Remove additional rows from reduction
     a.truncate(M);
 
     return a;
 }
-
-
 
 // MAYO algorithm 10
 // Expands a secret key from its compact representation and signs a message input

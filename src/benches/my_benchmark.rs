@@ -3,10 +3,10 @@ use gnuplot::{Caption, Color, Figure};
 
 use criterion_cycles_per_byte::CyclesPerByte;
 
-use mylib::crypto_primitives::{
+use lib::crypto_primitives::{
     safe_aes_128_ctr, safe_randomBytes, safe_randombytes_init, safe_shake256,
 };
-use mylib::mayo_functionality::{api_sign, compact_key_gen};
+use lib::mayo_functionality::{api_sign, compact_key_gen};
 
 fn fibonacci(n: u64) -> u64 {
     let mut a = 0;
@@ -41,6 +41,8 @@ fn criterion_benchmark(c: &mut Criterion, //<CyclesPerByte>
     //compact_key_gen(seed_bytes.clone());
 
     // fibonacci(20);
+    println!("constants {}", lib::constants::M);
+
     c.bench_function("compact_key_gen SLOWW", |b| {
         b.iter(|| compact_key_gen(black_box(seed_bytes.clone())))
     });
