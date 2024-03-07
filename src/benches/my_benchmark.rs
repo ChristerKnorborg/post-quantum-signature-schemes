@@ -33,7 +33,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bencher.iter_batched(
             || seed_bytes.clone(),
             |input| {
-                black_box(compact_key_gen(input))
+                compact_key_gen(input)
             },
             BatchSize::LargeInput,
         );
@@ -43,7 +43,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bencher.iter_batched(
             || compact_key_gen(seed_bytes.clone()),
             |(_, csk)| {
-                black_box(expand_sk(&csk))
+                expand_sk(&csk)
             },
             BatchSize::LargeInput,
         );
@@ -53,7 +53,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bencher.iter_batched(
             || compact_key_gen(seed_bytes.clone()),
             |(cpk, _)| {
-                black_box(expand_pk(cpk))
+                expand_pk(cpk)
             },
             BatchSize::LargeInput,
         );
@@ -70,7 +70,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 (message_vec, csk)
             },
             |(message, csk)| {
-                black_box(api_sign(message, csk))
+                api_sign(message, csk)
             },
             BatchSize::LargeInput,
         );
@@ -89,7 +89,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 (signature, cpk)
             },
             |(message, cpk)| {
-                black_box(api_sign_open(message, cpk))
+                api_sign_open(message, cpk)
             },
             BatchSize::LargeInput,
         );
