@@ -1,5 +1,7 @@
 use std::vec;
 
+use crate::{constants::{K, N}, utils::bytes_to_hex_string};
+
 
 
 
@@ -32,11 +34,16 @@ pub fn encode_vector_to_bytestring(x: Vec<u8>) -> Vec<u8> {
 // Two nibbles previously represented in a single byte encoding are now decoded to two individual bytes.
 pub fn decode_bytestring_to_vector(n: usize, bytestring: Vec<u8>) -> Vec<u8> {
 
-    let mut x = Vec::with_capacity(n);
+ 
+    
+
+
+    
 
     // Calculate the number of full bytes and if there's an extra nibble
     let full_bytes = n / 2;
     let extra_nibble = n % 2;
+    let mut x = Vec::with_capacity(n + extra_nibble);
 
     // Iterate over all bytes with two nibbles in each
     for &byte in bytestring.iter().take(full_bytes) {
@@ -44,10 +51,15 @@ pub fn decode_bytestring_to_vector(n: usize, bytestring: Vec<u8>) -> Vec<u8> {
         x.push(byte >> 4); // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
     }
 
+
+
     // Decode an extra nibble if n is odd
     if extra_nibble == 1 {
-        let &last_byte = bytestring.last().unwrap(); // Unwrap is safe cause at least one byte if n is odds
+        let &last_byte = bytestring.get(n/2).unwrap(); // Unwrap is safe cause at least one byte if n is odds
+
+    
         x.push(last_byte & 0x0F); // Put the first nibble (4 least significant bits) into the last byte in the byte vector (ignore the second nibble of 0)
+
     }
 
     return x
@@ -257,7 +269,7 @@ mod tests {
         let encoded_bytestring_odd = encode_vector_to_bytestring(original_vector_odd.clone()); // Should add padding
         assert_eq!(encoded_bytestring_odd.len(), 2); // Check that the padding does not add an extra byte
         assert_eq!(encoded_bytestring_odd[1], 2); // Check that the padding is added (should be 0000 concatenated with 0010 - 2 in decimal)
-        let decoded_vector_odd = decode_bytestring_to_vector(original_vector_odd.len(), encoded_bytestring_odd); // Should removes the padding
+        let decoded_vector_odd = decode_bytestring_to_vector(original_vector_odd.len(), encoded_bytestring_odd); // Should remove the padding
         assert_eq!(decoded_vector_odd, original_vector_odd);
     }
 

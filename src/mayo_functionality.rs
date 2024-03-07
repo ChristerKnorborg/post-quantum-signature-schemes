@@ -438,21 +438,15 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let p2_bytestring = expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES].to_vec();
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
     
+    
     // decodes the public information into matrices
     let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
     let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
     let p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
 
 
-
-
     // decode signature and derive salt
-    let n_times_k = if N * K % 2 == 0 {
-        N * K / 2
-    } else {
-        N * K / 2 + 1
-    }; // Ceil (N*K/2)
-    let salt = signature[n_times_k..n_times_k + SALT_BYTES].to_vec();
+    let salt = signature[SIG_BYTES-SALT_BYTES..SIG_BYTES].to_vec();
     let s = decode_bytestring_to_vector(K * N, signature);
 
 
@@ -471,6 +465,7 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         message.len() as u64,
     );
 
+
     let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
     t_shake_input.extend(&m_digest); // Extend to prevent emptying original
     t_shake_input.extend(&salt); // Extend to prevent emptying original
@@ -483,7 +478,7 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         &t_shake_input,
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
-
+    
 
     let t = decode_bytestring_to_vector(M, t_output);
 
@@ -531,7 +526,10 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
         }
     }
+
+
     y = reduce_mod_f(y);
+
 
     // Accept signature if y = t
     return y == t;
