@@ -113,7 +113,7 @@ pub fn write_kat_file() {
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
-        .append(true)
+        .truncate(true) // Remove the file if it already exists
         .open(file_path)
         .unwrap();
 
