@@ -184,8 +184,12 @@ pub fn write_kat_file() {
 }
 
 
-compare_files("output.txt", COMPARE_FILE_NAME);
+let correct_file_produced =  compare_files("output.txt", COMPARE_FILE_NAME);
 
+if correct_file_produced {
+    // Delete the file if the test passed
+    std::fs::remove_file("output.txt").unwrap();
+} 
 
     
 }
@@ -207,7 +211,7 @@ fn read_file_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     Ok(contents)
 }
 
-pub fn compare_files<P: AsRef<Path>>(file1_path: P, file2_path: P) {
+pub fn compare_files<P: AsRef<Path>>(file1_path: P, file2_path: P) -> bool{
     let file1_contents = read_file_to_string(file1_path).unwrap();
     let file2_contents = read_file_to_string(file2_path).unwrap();
 
@@ -242,8 +246,10 @@ pub fn compare_files<P: AsRef<Path>>(file1_path: P, file2_path: P) {
 
     if is_different {
         println!("^^^^^^ INCORRECT VALUES PRODUCED!. CHECK DIFFERENCES ABOVE ^^^^^^");
+        return false;
     } else {
         println!("CORRECT VALUES PROCUCED!");
+        return true;
     }
 }
 
