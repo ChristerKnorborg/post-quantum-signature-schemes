@@ -3,6 +3,7 @@ use criterion_cycles_per_byte::CyclesPerByte;
 use gnuplot::{Caption, Color, Figure};
 
 
+use lib::constants::VERSION;
 use lib::crypto_primitives::{
     safe_aes_128_ctr, safe_randomBytes, safe_randombytes_init, safe_shake256,
 };
@@ -10,6 +11,9 @@ use lib::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_p
 
 
 fn criterion_benchmark(c: &mut Criterion) {
+
+    println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
+
 
     
 
