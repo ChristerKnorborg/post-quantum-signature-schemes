@@ -1,34 +1,19 @@
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use criterion_cycles_per_byte::CyclesPerByte;
 use gnuplot::{Caption, Color, Figure};
 
-use criterion_cycles_per_byte::CyclesPerByte;
 
 use lib::crypto_primitives::{
     safe_aes_128_ctr, safe_randomBytes, safe_randombytes_init, safe_shake256,
 };
 use lib::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
 
-fn fibonacci(n: u64) -> u64 {
-    let mut a = 0;
-    let mut b = 1;
 
-    match n {
-        0 => b,
-        _ => {
-            for _ in 0..n {
-                let c = a + b;
-                a = b;
-                b = c;
-            }
-            b
-        }
-    }
-}
+fn criterion_benchmark(c: &mut Criterion) {
 
-fn criterion_benchmark(c: &mut Criterion, //<CyclesPerByte>
-) {
+    
+
     let mut seed_bytes: Vec<u8> = Vec::with_capacity(24);
-
     let mut entropy_input: Vec<u8> = (0..=47).collect();
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
     let nbytes: u64 = entropy_input.len() as u64;
@@ -38,71 +23,69 @@ fn criterion_benchmark(c: &mut Criterion, //<CyclesPerByte>
     safe_randomBytes(&mut entropy_input, nbytes);
 
     safe_randombytes_init(&mut seed_bytes, &personalization_string, 256);
-    //compact_key_gen(seed_bytes.clone());
 
-    println!("constants {}", lib::constants::M);
 
-    // c.bench_function("compact_key_gen SLOWW", |bencher| {
-    //     bencher.iter(|| compact_key_gen(seed_bytes.clone()))
-    // });
-
-    c.bench_function("compact_key_gen", |bencher| {
+    c.bench_function("KeyGen", |bencher| {
         bencher.iter_batched(
             || seed_bytes.clone(),
             |input| {
-                compact_key_gen(input);
+                black_box(compact_key_gen(input))
             },
             BatchSize::LargeInput,
         );
     });
 
-    c.bench_function("expand secret key", |bencher| {
+    c.bench_function("ExpandSK", |bencher| {
         bencher.iter_batched(
             || compact_key_gen(seed_bytes.clone()),
             |(_, csk)| {
-                expand_sk(&csk);
+                black_box(expand_sk(&csk))
             },
             BatchSize::LargeInput,
         );
     });
 
-    c.bench_function("expand public key", |bencher| {
+    c.bench_function("ExpandPK", |bencher| {
         bencher.iter_batched(
             || compact_key_gen(seed_bytes.clone()),
             |(cpk, _)| {
-                expand_pk(cpk);
+                black_box(expand_pk(cpk))
             },
             BatchSize::LargeInput,
         );
     });
 
-    c.bench_function("api sign", |bencher| {
+    c.bench_function("ExpandSK + Sign", |bencher| {
         bencher.iter_batched(
             || {
                 let (_, csk) = compact_key_gen(seed_bytes.clone());
-                let message = vec![0u8; 32];
+                let mut message = [0u8; 32];
+                safe_randomBytes(&mut message, 32);
+                let message_vec = message.to_vec();
 
-                (message, csk)
+                (message_vec, csk)
             },
             |(message, csk)| {
-                api_sign(message, csk);
+                black_box(api_sign(message, csk))
             },
             BatchSize::LargeInput,
         );
     });
 
-    c.bench_function("api verify", |bencher| {
+    c.bench_function("ExpandPK + Verify", |bencher| {
         bencher.iter_batched(
             || {
-                let (cpk, csk) = compact_key_gen(seed_bytes.clone());
-                let message = vec![0u8; 32];
+                let (cpk, csk) = compact_key_gen(seed_bytes.clone());      
+                let mut message = [0u8; 32];
+                safe_randomBytes(&mut message, 32);
+                let message_vec = message.to_vec();
 
-                let signature = api_sign(message, csk);
+                let signature = api_sign(message_vec, csk);
 
                 (signature, cpk)
             },
             |(message, cpk)| {
-                api_sign_open(message, cpk);
+                black_box(api_sign_open(message, cpk))
             },
             BatchSize::LargeInput,
         );
@@ -113,12 +96,8 @@ fn criterion_benchmark(c: &mut Criterion, //<CyclesPerByte>
 
 criterion_group!(
     name = my_bench;
-    config = Criterion::default()
-    //.with_measurement(CyclesPerByte)
-    ;
+    config = Criterion::default(); //.with_measurement(CyclesPerByte)
     targets = criterion_benchmark
+    
 );
 criterion_main!(my_bench);
-
-// criterion_group!(benches, criterion_benchmark);
-// criterion_main!(benches);

@@ -1,5 +1,7 @@
 #[cfg(feature = "mayo1")]
 mod mayo1_features {
+
+    pub const VERSION: &str = "MAYO_1";
     pub const N: usize = 66;
     pub const M: usize = 64;
     pub const O: usize = 8;
@@ -33,6 +35,8 @@ mod mayo1_features {
 
 #[cfg(feature = "mayo2")]
 mod mayo2_features {
+
+    pub const VERSION: &str = "MAYO_2";
     pub const N: usize = 78;
     pub const M: usize = 64;
     pub const O: usize = 18;
@@ -66,6 +70,8 @@ mod mayo2_features {
 
 #[cfg(feature = "mayo3")]
 mod mayo3_features {
+
+    pub const VERSION: &str = "MAYO_3";
     pub const N: usize = 99;
     pub const M: usize = 96;
     pub const O: usize = 10;
@@ -99,6 +105,8 @@ mod mayo3_features {
 
 #[cfg(feature = "mayo5")]
 mod mayo5_features {
+
+    pub const VERSION: &str = "MAYO_5";
     pub const N: usize = 133;
     pub const M: usize = 128;
     pub const O: usize = 12;

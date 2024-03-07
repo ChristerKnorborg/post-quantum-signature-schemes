@@ -16,6 +16,7 @@ mayo2 = []
 mayo3 = []
 mayo5 = []
 
+
 [lib]
 name = "lib"
 path = "src/lib.rs"
@@ -35,6 +36,9 @@ criterion = { version = "0.5", features = ["html_reports"] }
 name = "my_benchmark"
 harness = false
 path = "src/benches/my_benchmark.rs"
+
+
+
 
 
 [dependencies]
