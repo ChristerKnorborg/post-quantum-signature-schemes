@@ -6,7 +6,7 @@ use criterion_cycles_per_byte::CyclesPerByte;
 use lib::crypto_primitives::{
     safe_aes_128_ctr, safe_randomBytes, safe_randombytes_init, safe_shake256,
 };
-use lib::mayo_functionality::{api_sign, compact_key_gen, expand_pk, expand_sk};
+use lib::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
 
 fn fibonacci(n: u64) -> u64 {
     let mut a = 0;
@@ -25,7 +25,8 @@ fn fibonacci(n: u64) -> u64 {
     }
 }
 
-fn criterion_benchmark(c: &mut Criterion<CyclesPerByte>) {
+fn criterion_benchmark(c: &mut Criterion, //<CyclesPerByte>
+) {
     let mut seed_bytes: Vec<u8> = Vec::with_capacity(24);
 
     let mut entropy_input: Vec<u8> = (0..=47).collect();
@@ -75,27 +76,46 @@ fn criterion_benchmark(c: &mut Criterion<CyclesPerByte>) {
         );
     });
 
-    // let mut message: Vec<u8> = (0..=255).collect();
+    c.bench_function("api sign", |bencher| {
+        bencher.iter_batched(
+            || {
+                let (_, csk) = compact_key_gen(seed_bytes.clone());
+                let message = vec![0u8; 32];
 
-    // c.bench_function("api sign", |bencher| {
-    //     bencher.iter_batched(
-    //         || {
-    //             let (cpk, csk) = compact_key_gen(seed_bytes.clone());
+                (message, csk)
+            },
+            |(message, csk)| {
+                api_sign(message, csk);
+            },
+            BatchSize::LargeInput,
+        );
+    });
 
-    //         },
-    //         |(_, csk)| {
-    //             api_sign(message, csk);
-    //         },
-    //         BatchSize::LargeInput,
-    //     );
-    // });
+    c.bench_function("api verify", |bencher| {
+        bencher.iter_batched(
+            || {
+                let (cpk, csk) = compact_key_gen(seed_bytes.clone());
+                let message = vec![0u8; 32];
+
+                let signature = api_sign(message, csk);
+
+                (signature, cpk)
+            },
+            |(message, cpk)| {
+                api_sign_open(message, cpk);
+            },
+            BatchSize::LargeInput,
+        );
+    });
 
     //c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
 
 criterion_group!(
     name = my_bench;
-    config = Criterion::default().with_measurement(CyclesPerByte);
+    config = Criterion::default()
+    //.with_measurement(CyclesPerByte)
+    ;
     targets = criterion_benchmark
 );
 criterion_main!(my_bench);
