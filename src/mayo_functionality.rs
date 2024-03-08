@@ -1,17 +1,15 @@
 use std::vec;
 
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_vector,
-    encode_bit_sliced_matrices, encode_vector_to_bytestring,
+    decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_vector, decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, encode_bit_sliced_matrices, encode_p3_bit_sliced_matrices_array, encode_vector_to_bytestring
 };
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
-use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub};
+use crate::finite_field::{add, matrix_add, matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::{transpose_matrix, transpose_vector};
+use crate::utils::{transpose_matrix, transpose_o_matrix_array, transpose_vector};
 
 use crate::constants::{
-    CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES,
-    P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES,
+    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
 };
 
 // Upper(M)_ij = M_ij + M_ji for i < j
@@ -29,14 +27,28 @@ pub fn upper(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return matrix;
 }
 
+pub fn upper_array_p3(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
+    let n = O;
+
+    // Iterate over everything above the diagonal
+    for i in 0..n {
+        for j in (i + 1)..n {
+            matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
+            matrix[j][i] = 0;
+        }
+    }
+
+    return matrix;
+}
+
 // MAYO algorithm 5:
-pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
     // Pick random seed (same length as salt_bytes)
     // let mut sk_seed: Vec<u8> = vec![0u8; SALT_BYTES];
     // OsRng.fill(&mut sk_seed[..]); // Fill cryptographically secure with random bytes
 
     //TODO make if statement and have some check for testing
-    let mut sk_seed: Vec<u8> = vec![0u8; SK_SEED_BYTES];
+    let mut sk_seed = [0u8; SK_SEED_BYTES];
 
     // // Derive pk_seed and Oil space from sk_seed
     // let output_len = PK_SEED_BYTES + O_BYTES;
@@ -47,7 +59,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     //sk_seed kun første 24
 
     // Derive pk_seed and Oil space from sk_seed
-    let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
+    let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
         &mut s,
         (PK_SEED_BYTES + O_BYTES) as u64,
@@ -64,61 +76,59 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     let n_minus_o = N - O;
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
-    let o_bytes = s[PK_SEED_BYTES..].to_vec();
-    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytes);
+    let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
+    let o = decode_o_bytestring_to_matrix_array(n_minus_o, O, o_bytes);
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
+    let mut p = [0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
         PK_SEED_BYTES as u64,
     );
-    let p1_bytes = p[0..P1_BYTES].to_vec();
-    let p2_bytes = p[P1_BYTES..].to_vec();
+    let p1_bytes = &p[0..P1_BYTES];
+    let p2_bytes = &p[P1_BYTES..];
 
     // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes, true);
+    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes, true);
 
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
+    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes, false);
 
     // Allocate space for P_{i}^(3). Size is o × o
-    let mut p3 = vec![vec![vec![0u8; O]; O]; M];
+    let mut p3 = [[[0u8; O]; O]; M];
 
     // Compute P_{i}^(3) as (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
     for i in 0..M {
         // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
-        let transposed_o = transpose_matrix(&o);
+        let transposed_o = transpose_o_matrix_array(o);
 
         let p1_i = &p1[i];
         let p2_i = &p2[i];
 
-        // Compute: −O^{T} * P^{(1)}_i * O
-        let mut left_term = matrix_mul(&transposed_o, &p1_i);
-        left_term = matrix_mul(&left_term, &o);
+        // P3 = O^t * (P1*O + P2)
+        // Compute: P1*O + P2
+        let p1_times_o = matrix_mul_o_p1(*p1_i, o);
+        let mult_add_p2 = matrix_add_array(p1_times_o, *p2_i);
 
-        // Compute: −O^{T} * P^{(2)}_i
-        let right_term: Vec<Vec<u8>> = matrix_mul(&transposed_o, &p2_i);
 
-        // Compute: (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
-        let sub = matrix_sub(&left_term, &right_term);
-
-        p3[i] = upper(sub); // Upper triangular part of the result
+        p3[i] = upper_array_p3(matrix_mul_array_p2(transposed_o, mult_add_p2)); // Upper triangular part of the result
     }
 
-    let mut encoded_p3 = encode_bit_sliced_matrices(O, O, p3, true);
+    let encoded_p3: [u8 ; P3_BYTES] = encode_p3_bit_sliced_matrices_array(p3, true);
 
     // Public and secret keys
-    let mut cpk = Vec::with_capacity(PK_SEED_BYTES + P3_BYTES); // contains pk_seed and encoded_p3
-    let csk = sk_seed;
+    let mut cpk: [u8; PK_SEED_BYTES + P3_BYTES] = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3
+    let csk: [u8 ; CSK_BYTES] = sk_seed;
 
-    cpk.extend_from_slice(&pk_seed); // pk_seed is an array, so we need to use extend_from_slice
-    cpk.append(&mut encoded_p3);
+    cpk[..PK_SEED_BYTES].copy_from_slice(&pk_seed);
 
-    return (cpk, csk);
+    cpk[PK_SEED_BYTES..].copy_from_slice(&encoded_p3);
+
+
+    return (cpk.to_vec(), csk.to_vec());
 }
 
 // MAYO algorithm 6.

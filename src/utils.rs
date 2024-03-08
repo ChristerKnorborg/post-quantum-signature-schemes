@@ -3,6 +3,7 @@ use std::io::{Write, Result};
 use std::io::{self, Read};
 use std::path::Path;
 
+use crate::constants::{N, O};
 use crate::crypto_primitives::{safe_randomBytes, safe_randombytes_init};
 
 
@@ -42,6 +43,21 @@ pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 
     // Create a new transposed matrix with the dimensions swapped
     let mut transposed = vec![vec![0u8; rows]; cols];
+
+    for i in 0..rows {
+        for j in 0..cols {
+            transposed[j][i] = matrix[i][j]; // Swap elements
+        }
+    }
+    return transposed;
+}
+
+pub fn transpose_o_matrix_array(matrix: [[u8 ; O]; N-O]) -> [[u8 ; N-O]; O]{
+    let rows = N-O;
+    let cols = O;
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = [[0u8; N-O]; O];
 
     for i in 0..rows {
         for j in 0..cols {

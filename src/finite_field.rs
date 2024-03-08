@@ -2,6 +2,8 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
+use crate::constants::{N, O};
+
 
 // Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
 // Hence, -a = a in binary fields (GF(2^n)).  
@@ -113,6 +115,62 @@ pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     let cols_b = b[0].len();
 
     let mut result = vec![vec![0; cols_b]; rows_a];
+
+    for i in 0..rows_a {
+        for j in 0..cols_b {
+            for k in 0..cols_a {
+                // Take the dot product of the i-th row of A and the j-th column of B
+                result[i][j] = add(result[i][j], mul(a[i][k], b[k][j])); 
+
+            }
+        }
+    }
+    return result
+}
+
+
+pub fn matrix_add_array(a: [[u8; O]; N-O], b: [[u8; O]; N-O]) -> [[u8; O]; N-O] {
+
+    let mut result = [[0; O]; N - O]; // Initialize the result array
+
+    for i in 0..(N - O) {
+        for j in 0..O {
+            result[i][j] = add(a[i][j], b[i][j]); // Perform addition for corresponding elements
+        }
+    }
+    result
+}
+
+pub fn matrix_mul_array_p2(a: [[u8; N-O]; O], b: [[u8; O]; N-O]) -> [[u8 ; O]; O] {
+
+
+    let rows_a = O;
+    let cols_a = N-O;
+    let cols_b = O;
+
+    let mut result = [[0; O]; O];
+
+    for i in 0..rows_a {
+        for j in 0..cols_b {
+            for k in 0..cols_a {
+                // Take the dot product of the i-th row of A and the j-th column of B
+                result[i][j] = add(result[i][j], mul(a[i][k], b[k][j])); 
+
+            }
+        }
+    }
+    return result
+}
+
+
+pub fn matrix_mul_o_p1(a: [[u8; N-O]; N-O], b: [[u8; O]; N-O]) -> [[u8 ; O]; N-O] {
+
+
+    let rows_a = N-O;
+    let cols_a = N-O;
+    let cols_b = O;
+
+    let mut result = [[0; O]; N-O];
 
     for i in 0..rows_a {
         for j in 0..cols_b {
