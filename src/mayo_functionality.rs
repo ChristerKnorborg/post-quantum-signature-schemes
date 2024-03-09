@@ -6,7 +6,7 @@ use crate::bitsliced_functionality::{
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
 use crate::finite_field::{add, matrix_add, matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_sub, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::{transpose_matrix, transpose_o_matrix_array, transpose_vector};
+use crate::utils::{bytes_to_hex_string, transpose_matrix, transpose_o_matrix_array, transpose_vector};
 
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
@@ -67,6 +67,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
         SK_SEED_BYTES as u64,
     );
 
+
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
@@ -77,7 +78,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_o_bytestring_to_matrix_array(n_minus_o, O, o_bytes);
+    let o = decode_o_bytestring_to_matrix_array(o_bytes);
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let mut p = [0u8; P1_BYTES + P2_BYTES];
@@ -108,7 +109,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
         let p1_i = &p1[i];
         let p2_i = &p2[i];
 
-        // P3 = O^t * (P1*O + P2)
+        // P3 = O^t * (P1*O + P2) 
         // Compute: P1*O + P2
         let p1_times_o = matrix_mul_o_p1(*p1_i, o);
         let mult_add_p2 = matrix_add_array(p1_times_o, *p2_i);

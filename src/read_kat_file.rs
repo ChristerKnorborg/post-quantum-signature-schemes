@@ -156,7 +156,6 @@ pub fn write_kat_file() {
     let (cpk, csk) = compact_key_gen(cur_seed.clone());
     let signature = api_sign(messages[count].clone(), csk.clone());
     let (ver_cor, _) = api_sign_open(signature.clone(), cpk.clone());
-    assert!(ver_cor);
 
 
 
@@ -180,7 +179,7 @@ pub fn write_kat_file() {
     writeln!(file, "sm = {}", sm_hex).unwrap();
     writeln!(file, "").unwrap(); 
 
-
+    assert!(ver_cor);
 }
 
 

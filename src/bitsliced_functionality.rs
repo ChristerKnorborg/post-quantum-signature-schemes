@@ -67,10 +67,12 @@ pub fn decode_bytestring_to_matrix(rows: usize, cols: usize, bytestring: Vec<u8>
 }
 
 // Function to decode a byte-string back into a matrix.
-pub fn decode_o_bytestring_to_matrix_array(rows: usize, cols: usize, bytestring: &[u8]) -> [[u8; O] ; N-O ] {
+pub fn decode_o_bytestring_to_matrix_array(bytestring: &[u8]) -> [[u8; O] ; N-O ] {
+
     // Decode the bytestring into a vector.
     let v = decode_bytestring_to_vector_array( bytestring);
 
+    println!("Before chunks: {:?}", bytes_to_hex_string(&v.to_vec(), false));
     // Chunk the flat array back into a matrix.
     let mut result: [[u8; O]; N - O] = [[0; O]; N - O]; // Array of arrays
 
@@ -89,7 +91,7 @@ pub fn decode_bytestring_to_vector_array(bytestring: &[u8]) -> [u8; (N-O)*O] {
 
     let mut idx = 0;
     // Iterate over all bytes with two nibbles in each
-    for &byte in bytestring.iter().take((N-O)*O/2) {
+    for &byte in bytestring.iter().take(O_BYTES) {
         x[idx] = byte & 0x0F; // Put the first nibble (4 least significant bits) into the first byte
         idx += 1;
         x[idx] = byte >> 4; // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
