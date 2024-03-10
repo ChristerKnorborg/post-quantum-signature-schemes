@@ -96,8 +96,16 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         let p1_i = &p1[i];
         let p2_i = &p2[i];
 
+        // Compute using O^T*(P1*O + P2)
+        let p1_times_o = matrix_mul(&p1_i, &o);
+        let plus_p2 = matrix_add(&p1_times_o, &p2_i);
+
+        let final_mult = matrix_mul(&transposed_o, &plus_p2);
+        p3[i] = upper(final_mult);
+
+
         // Compute: −O^{T} * P^{(1)}_i * O
-        let mut left_term = matrix_mul(&transposed_o, &p1_i);
+        /* let mut left_term = matrix_mul(&transposed_o, &p1_i);
         left_term = matrix_mul(&left_term, &o);
 
         // Compute: −O^{T} * P^{(2)}_i
@@ -106,7 +114,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
         // Compute: (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
         let sub = matrix_sub(&left_term, &right_term);
 
-        p3[i] = upper(sub); // Upper triangular part of the result
+        p3[i] = upper(sub); // Upper triangular part of the result */ 
     }
 
     let mut encoded_p3 = encode_bit_sliced_matrices(O, O, p3, true);
