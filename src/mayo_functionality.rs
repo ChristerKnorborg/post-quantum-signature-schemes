@@ -409,7 +409,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         signature.append(&mut x_idx);
     }
 
-    let mut sign_con_salt = Vec::with_capacity(SIG_BYTES + SALT_BYTES);
+    let mut sign_con_salt = Vec::with_capacity(SIG_BYTES);
     let signature_encoded = encode_vector_to_bytestring(signature);
     sign_con_salt.extend(signature_encoded);
     sign_con_salt.extend(salt);
