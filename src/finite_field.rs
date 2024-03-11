@@ -2,7 +2,7 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use crate::constants::{N, O};
+use crate::constants::{N, V, O};
 
 
 // Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
@@ -135,6 +135,18 @@ pub fn matrix_add_array(a: [[u8; O]; N-O], b: [[u8; O]; N-O]) -> [[u8; O]; N-O] 
 
     for i in 0..(N - O) {
         for j in 0..O {
+            result[i][j] = add(a[i][j], b[i][j]); // Perform addition for corresponding elements
+        }
+    }
+    result
+}
+
+pub fn matrix_v_add_array(a: [[u8; V]; V], b: [[u8; V]; V]) -> [[u8; V]; V] {
+
+    let mut result = [[0; V]; V]; // Initialize the result array
+
+    for i in 0..V {
+        for j in 0..V {
             result[i][j] = add(a[i][j], b[i][j]); // Perform addition for corresponding elements
         }
     }

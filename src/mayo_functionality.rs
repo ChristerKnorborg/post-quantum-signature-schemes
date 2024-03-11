@@ -1,15 +1,15 @@
 use std::vec;
 
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_vector, decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, encode_bit_sliced_matrices, encode_p3_bit_sliced_matrices_array, encode_vector_to_bytestring
+    decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_vector, decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, encode_bit_sliced_matrices, encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array, encode_vector_to_bytestring
 };
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
-use crate::finite_field::{add, matrix_add, matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_sub, matrix_vector_mul, mul, sub};
+use crate::finite_field::{add, matrix_add, matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_sub, matrix_v_add_array, matrix_vector_mul, mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::{bytes_to_hex_string, transpose_matrix, transpose_o_matrix_array, transpose_vector};
+use crate::utils::{bytes_to_hex_string, transpose_matrix, transpose_o_matrix_array, transpose_p1_matrix_array, transpose_vector};
 
 use crate::constants::{
-    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
+    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES
 };
 
 // Upper(M)_ij = M_ij + M_ji for i < j
@@ -44,19 +44,10 @@ pub fn upper_array_p3(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 // MAYO algorithm 5:
 pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
     // Pick random seed (same length as salt_bytes)
-    // let mut sk_seed: Vec<u8> = vec![0u8; SALT_BYTES];
-    // OsRng.fill(&mut sk_seed[..]); // Fill cryptographically secure with random bytes
-
-    //TODO make if statement and have some check for testing
     let mut sk_seed = [0u8; SK_SEED_BYTES];
 
     // // Derive pk_seed and Oil space from sk_seed
-    // let output_len = PK_SEED_BYTES + O_BYTES;
-    // let s = shake256(&sk_seed, output_len);
-
     safe_randomBytes(&mut sk_seed, SK_SEED_BYTES as u64);
-
-    //sk_seed kun første 24
 
     // Derive pk_seed and Oil space from sk_seed
     let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
@@ -137,9 +128,9 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
 // Expands a secret key from its compact representation
 pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
     let sk_seed: &Vec<u8> = csk;
-    let n_minus_o = N - O; // rows of O matrix
 
-    let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
+    // Derive pk_seed and Oil space from sk_seed
+    let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
         &mut s,
         (PK_SEED_BYTES + O_BYTES) as u64,
@@ -154,53 +145,55 @@ pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
         .expect("Slice has incorrect length");
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
-    let mut o_bytes = s[PK_SEED_BYTES..].to_vec(); // From pk_seed_bytes to pk_seed_bytes + o_bytes
-    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytes.clone());
+    let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
+    let o = decode_o_bytestring_to_matrix_array(o_bytes);
+
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    let mut p_bytes: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
+    let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
-        &mut p_bytes,
+        &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
         PK_SEED_BYTES as u64,
     );
-
-    let mut p1_bytes = p_bytes[0..P1_BYTES].to_vec();
-    let p2_bytes = p_bytes[P1_BYTES..].to_vec();
+    let p1_bytes = &p[0..P1_BYTES];
+    let p2_bytes = &p[P1_BYTES..];
 
     // m p1 matrices are of size (n−o) × (n−o)
+    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes, true);
+
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytes.clone(), true);
-    let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytes, false);
+    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes, false);
+
 
     // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
-    let mut l = vec![vec![vec![0u8; O]; n_minus_o]; M];
+    let mut l = [[[0u8; O]; V]; M];
 
     // Compute L matrices
     for i in 0..M {
         let p1_i = &p1[i];
         let p2_i = &p2[i];
 
-        let transposed_p1_i = transpose_matrix(p1_i);
-        let added_p1 = matrix_add(&p1_i, &transposed_p1_i);
+        let transposed_p1_i = transpose_p1_matrix_array(*p1_i);
+        let added_p1 = matrix_v_add_array(*p1_i, transposed_p1_i);
 
-        let left_term = matrix_mul(&added_p1, &o);
+        let left_term = matrix_mul_o_p1(added_p1, o);
 
-        l[i] = matrix_add(&left_term, &p2_i);
+        l[i] = matrix_add_array(left_term, *p2_i);
     }
 
-    let mut encoded_l = encode_bit_sliced_matrices(n_minus_o, O, l, false);
+    let encoded_l = encode_l_bit_sliced_matrices_array(l, false);
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
-    let mut expanded_sk: Vec<u8> = Vec::with_capacity(ESK_BYTES - SK_SEED_BYTES);
+    let mut expanded_sk = [0u8 ; ESK_BYTES - SK_SEED_BYTES];
 
-    expanded_sk.append(&mut p1_bytes);
-    expanded_sk.append(&mut encoded_l);
-    expanded_sk.append(&mut o_bytes);
+    expanded_sk[..P1_BYTES].copy_from_slice(&p1_bytes);
+    expanded_sk[P1_BYTES..P1_BYTES+L_BYTES].copy_from_slice(&encoded_l);
+    expanded_sk[P1_BYTES+L_BYTES..].copy_from_slice(&o_bytes);
 
-    return expanded_sk;
+    return expanded_sk.to_vec();
 }
 
 // Mayo algorithm 7
@@ -219,21 +212,20 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
         PK_SEED_BYTES as u64,
     );
 
-    let mut expanded_pk = Vec::with_capacity(EPK_BYTES);
-    let mut cpk_bytes = cpk[PK_SEED_BYTES..].to_vec();
+    let mut expanded_pk = [0u8 ; EPK_BYTES];
+    let cpk_bytes = &cpk[PK_SEED_BYTES..];
+    expanded_pk[..P1_BYTES + P2_BYTES].copy_from_slice(&aes_bytes);
+    expanded_pk[P1_BYTES + P2_BYTES..].copy_from_slice(&cpk_bytes);
 
-    expanded_pk.append(&mut aes_bytes);
-    expanded_pk.append(&mut cpk_bytes);
-
-    return expanded_pk;
+    return expanded_pk.to_vec();
 }
 
 // MAYO algorithm 8
 // Signs a message using an expanded secret key
 pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
-    let n_minus_o = N - O; // rows of O matrix
+
     let mut x: Vec<u8> = vec![0u8; K * O]; // Initialize x to zero
-    let mut v: Vec<Vec<u8>> = vec![vec![0u8; n_minus_o]; K]; // Initialize v to zero
+    let mut v: Vec<Vec<u8>> = vec![vec![0u8; V]; K]; // Initialize v to zero
 
     let mut expanded_sk = expand_sk(&compact_secret_key);
 
@@ -243,9 +235,9 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let o_bytestring = expanded_sk[P1_BYTES + L_BYTES..].to_vec();
 
     // Assign matrices with decoded information
-    let o = decode_bytestring_to_matrix(n_minus_o, O, o_bytestring);
-    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
-    let l = decode_bit_sliced_matrices(n_minus_o, O, l_bytestring, false);
+    let o = decode_bytestring_to_matrix(V, O, o_bytestring);
+    let p1 = decode_bit_sliced_matrices(V, V, p1_bytestring, true);
+    let l = decode_bit_sliced_matrices(V, O, l_bytestring, false);
 
     // Hash message and derive salt
     let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
@@ -313,7 +305,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         // Derive v_i
         for i in 0..K {
             let v_bytestring_slice = v_bytestring[i * V_BYTES..(i + 1) * V_BYTES].to_vec();
-            v[i] = decode_bytestring_to_vector(n_minus_o, v_bytestring_slice)
+            v[i] = decode_bytestring_to_vector(V, v_bytestring_slice)
         }
 
         // Derive r (Notice r is redefined and have nothing to do with previous r)
@@ -431,7 +423,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 // MAYO algorithm 9
 // Verifies the signature of a message using an expanded public key
 pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bool {
-    let n_minus_o = N - O; // rows of O matrix
+
 
     // retrieves the public information from the expanded public key
     let p1_bytestring = expanded_pk[0..P1_BYTES].to_vec();
@@ -439,8 +431,8 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
 
     // decodes the public information into matrices
-    let p1 = decode_bit_sliced_matrices(n_minus_o, n_minus_o, p1_bytestring, true);
-    let p2 = decode_bit_sliced_matrices(n_minus_o, O, p2_bytestring, false);
+    let p1 = decode_bit_sliced_matrices(V, V, p1_bytestring, true);
+    let p2 = decode_bit_sliced_matrices(V, O, p2_bytestring, false);
     let p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
 
     // decode signature and derive salt
@@ -533,7 +525,7 @@ fn create_large_matrices(
     for mat in 0..M {
         let mut rows = Vec::with_capacity(N);
 
-        let mut zero_rows = vec![vec![0u8; N - O]; O]; // O rows of zeroes of len N-O.
+        let mut zero_rows = vec![vec![0u8; V]; O]; // O rows of zeroes of len N-O.
 
         for i in 0..(N - O) {
             let new_vec = Vec::with_capacity(N);

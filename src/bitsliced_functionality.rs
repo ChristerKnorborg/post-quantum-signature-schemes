@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::{
-    constants::{K, M, N, N_MINUS_O, O, O_BYTES, P3_BYTES},
+    constants::{K, L_BYTES, M, N, V, O, O_BYTES, P3_BYTES},
     utils::bytes_to_hex_string,
 };
 
@@ -67,7 +67,7 @@ pub fn decode_bytestring_to_matrix(rows: usize, cols: usize, bytestring: Vec<u8>
 }
 
 // Function to decode a byte-string back into a matrix.
-pub fn decode_o_bytestring_to_matrix_array(bytestring: &[u8]) -> [[u8; O] ; N-O ] {
+pub fn decode_o_bytestring_to_matrix_array(bytestring: &[u8]) -> [[u8; O] ; V ] {
 
     // Decode the bytestring into a vector.
     let v = decode_bytestring_to_vector_array( bytestring);
@@ -84,9 +84,9 @@ pub fn decode_o_bytestring_to_matrix_array(bytestring: &[u8]) -> [[u8; O] ; N-O 
 
 // Function to decode a bytestring back into a vector of field elements in GF(16).
 // Two nibbles previously represented in a single byte encoding are now decoded to two individual bytes.
-pub fn decode_bytestring_to_vector_array(bytestring: &[u8]) -> [u8; (N-O)*O] {
+pub fn decode_bytestring_to_vector_array(bytestring: &[u8]) -> [u8; (V)*O] {
     // Calculate the number of full bytes and if there's an extra nibble
-    let mut x = [0u8 ; (N-O)*O];
+    let mut x = [0u8 ; (V)*O];
 
     let mut idx = 0;
     // Iterate over all bytes with two nibbles in each
@@ -221,6 +221,39 @@ pub fn encode_bit_sliced_array(v: [u8 ; M]) -> [u8 ; M/2]{
     return bytestring;
 }
 
+pub fn encode_l_bit_sliced_matrices_array(a: [[[u8; O]; V]; M],is_triangular: bool,) -> [u8 ; L_BYTES] {
+    let mut bytestring = [0u8 ; L_BYTES];
+
+    // Encode bits from the matrices in the following order:
+    // A0[0, 0], A1[0, 0], . . . , Am−1[0, 0]
+    // Ai[0, 1] entries up to the Ai[0, c − 1]
+    // Ai[r − 1, c − 1]
+    let mut byte_index = 0;
+
+    for i in 0..V {
+        for j in 0..O {
+            if i <= j || is_triangular == false {
+                let mut indices_arr = [0u8 ; M];
+
+                let mut idx = 0;
+                for mat in &a {
+                    // concatenate the bitsliced representation of the triangular matrix
+                    indices_arr[idx] = mat[i][j];
+                    idx += 1;
+                }
+
+                let encoded_bits = encode_bit_sliced_array(indices_arr);
+
+                bytestring[byte_index*M/2..(byte_index+1)*M/2].copy_from_slice(&encoded_bits);
+                byte_index += 1;
+            }
+        }
+    }
+
+    return bytestring;
+}
+
+
 pub fn encode_p3_bit_sliced_matrices_array(a: [[[u8; O]; O]; M],is_triangular: bool,) -> [u8 ; P3_BYTES] {
     let mut bytestring = [0u8 ; P3_BYTES];
 
@@ -295,16 +328,15 @@ pub fn decode_bit_sliced_matrices(
 }
 
 
-pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; N-O]; N-O]; M]  {
-    let num_matrices = (4 * bytestring.len()) / (N_MINUS_O * (N_MINUS_O + 1));
+pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; V]; V]; M]  {
 
-    let sub_byte_end = num_matrices / 2;
+    let sub_byte_end = M / 2;
     let mut curr_byte_idx = 0;
 
-    let mut a = [[[0u8; N-O]; N-O]; M]; // Initialize the matrices array
+    let mut a = [[[0u8; V]; V]; M]; // Initialize the matrices array
 
-    for i in 0.. N_MINUS_O {
-        for j in 0.. N_MINUS_O {
+    for i in 0.. V {
+        for j in 0.. V {
             if i <= j || !is_triangular {
                 let slice_end = curr_byte_idx + sub_byte_end;
                 let encoded_bits = &bytestring[curr_byte_idx..slice_end];
@@ -322,15 +354,15 @@ pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool
 
 
 // Remember p2 is not triangular
-pub fn decode_p2_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; O]; N-O]; M]  {
-        let num_matrices = (2 * bytestring.len()) / (N_MINUS_O * O);
+pub fn decode_p2_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; O]; V]; M]  {
+        
     
-        let sub_byte_end = num_matrices / 2;
+        let sub_byte_end = M / 2;
         let mut curr_byte_idx = 0;
     
-        let mut a = [[[0u8; O]; N-O]; M]; // Initialize the matrices array
+        let mut a = [[[0u8; O]; V]; M]; // Initialize the matrices array
     
-        for i in 0..N_MINUS_O {
+        for i in 0..V {
             for j in 0..O {
                 if i <= j || !is_triangular {
                     let slice_end = curr_byte_idx + sub_byte_end;
