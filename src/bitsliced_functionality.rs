@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::{
-    constants::{K, L_BYTES, M, N, V, O, O_BYTES, P3_BYTES},
+    constants::{DIGEST_BYTES, K, L_BYTES, M, N, O, O_BYTES, P3_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, V, V_BYTES},
     utils::bytes_to_hex_string,
 };
 
@@ -21,6 +21,26 @@ pub fn encode_vector_to_bytestring(x: Vec<u8>) -> Vec<u8> {
         // Combine the two nibbles into a single byte (second_nibble is the 4 most significant bits and first_nibble is the 4 least significant bits)
         bytestring.push(second_nibble << 4 | first_nibble);
     }
+    return bytestring;
+}
+ 
+pub fn encode_signature_to_bytestring(x: [u8 ; K*N]) -> [u8 ; SIG_BYTES-SALT_BYTES] {
+    let mut bytestring = [0u8 ; SIG_BYTES-SALT_BYTES];
+
+    // Iterate over each element in pairs and encode them into a single byte
+    let mut byteindex = 0;
+    for pair in x.chunks(2) {
+        let first_nibble = pair[0];
+        let second_nibble = if pair.len() == 2 {
+            pair[1]
+        } else {
+            0 // If the length of x is odd, pad the last byte with a zero nibble
+        };
+        // Combine the two nibbles into a single byte (second_nibble is the 4 most significant bits and first_nibble is the 4 least significant bits)
+        bytestring[byteindex] = second_nibble << 4 | first_nibble;
+        byteindex +=1;
+    }
+
     return bytestring;
 }
 
@@ -99,6 +119,57 @@ pub fn decode_bytestring_to_vector_array(bytestring: &[u8]) -> [u8; (V)*O] {
 
     return x;
 }
+
+pub fn decode_t_bytestring_to_array(bytestring: &[u8]) -> [u8; M] {
+    // Calculate the number of full bytes and if there's an extra nibble
+    let mut x = [0u8 ; M];
+
+    let mut idx = 0;
+    // Iterate over all bytes with two nibbles in each
+    for &byte in bytestring.iter().take(DIGEST_BYTES) {
+        x[idx] = byte & 0x0F; // Put the first nibble (4 least significant bits) into the first byte
+        idx += 1;
+        x[idx] = byte >> 4; // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
+        idx += 1;
+    }
+
+    return x;
+}
+
+pub fn decode_v_bytestring_to_array(bytestring: &[u8]) -> [u8; V] {
+    // Calculate the number of full bytes and if there's an extra nibble
+    let mut x = [0u8 ; V];
+
+    let mut idx = 0;
+    // Iterate over all bytes with two nibbles in each
+    for &byte in bytestring.iter().take(V_BYTES) {
+        x[idx] = byte & 0x0F; // Put the first nibble (4 least significant bits) into the first byte
+        idx += 1;
+        x[idx] = byte >> 4; // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
+        idx += 1;
+    }
+
+    return x;
+}
+
+pub fn decode_r_bytestring_to_array(bytestring: &[u8]) -> [u8; K*O] {
+    // Calculate the number of full bytes and if there's an extra nibble
+    let mut x = [0u8 ; K*O];
+
+    let mut idx = 0;
+    // Iterate over all bytes with two nibbles in each
+    for &byte in bytestring.iter().take(K*O/2) {
+        x[idx] = byte & 0x0F; // Put the first nibble (4 least significant bits) into the first byte
+        idx += 1;
+        x[idx] = byte >> 4; // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
+        idx += 1;
+    }
+
+    return x;
+}
+
+
+
 
 // Mayo Algorithm 4: Encodes a vector v ∈ F_{16}^{m} into a bitsliced representation
 pub fn encode_bit_sliced_vector(v: Vec<u8>) -> Vec<u8> {

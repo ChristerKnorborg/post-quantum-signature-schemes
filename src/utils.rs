@@ -52,6 +52,19 @@ pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return transposed;
 }
 
+// Helper function to transpose a matrix (as described in the MAYO paper)
+pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
+    let rows = vector.len();
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = vec![vec![0u8; rows]; 1];
+
+    for i in 0..rows {
+        transposed[0][i] = vector[i]; // Swap elements
+    }
+    return transposed;
+}
+
 pub fn transpose_o_matrix_array(matrix: [[u8 ; O]; N-O]) -> [[u8 ; N-O]; O]{
     let rows = N-O;
     let cols = O;
@@ -80,13 +93,12 @@ pub fn transpose_p1_matrix_array(matrix: [[u8 ; V]; V]) -> [[u8 ; V]; V]{
 }
 
 // Helper function to transpose a matrix (as described in the MAYO paper)
-pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
-    let rows = vector.len();
+pub fn transpose_v_array(vector: [u8; V]) -> [[u8; V] ; 1] {
 
     // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = vec![vec![0u8; rows]; 1];
+    let mut transposed = [[0u8; V]; 1];
 
-    for i in 0..rows {
+    for i in 0..V {
         transposed[0][i] = vector[i]; // Swap elements
     }
     return transposed;

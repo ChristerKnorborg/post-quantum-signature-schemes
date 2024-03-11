@@ -27,8 +27,11 @@ mod mayo1_features {
     pub const L_BYTES: usize = 14848;
 
 
+
+
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
     pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
+    pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
     pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_1.txt";
@@ -64,7 +67,7 @@ mod mayo2_features {
 
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
     pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
-
+    pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
     pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_2.txt";
@@ -100,7 +103,7 @@ mod mayo3_features {
 
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^3 + z^m]
     pub const F_Z: [(usize, u8); 3] = [(0, 0x2), (1, 0x2), (3, 0x2)]; // f(z) =  1z^96          + x*z^3 + x*z^1 + x
-
+    pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
     pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_32_MAYO_3.txt";
@@ -136,7 +139,7 @@ mod mayo5_features {
 
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^3 + z^4 + z^m]
     pub const F_Z: [(usize, u8); 4] = [(0, 0x4), (1, 0x8), (3, 0x4), (4, 0x2)]; // f(z) =  1z^128         + x*z^4 + x^2*z^3 + x^3*z^1 + x^2
-
+    pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
     pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_40_MAYO_5.txt";

@@ -2,7 +2,7 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use crate::constants::{N, V, O};
+use crate::constants::{K, M, N, O, V};
 
 
 // Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
@@ -196,6 +196,35 @@ pub fn matrix_mul_o_p1(a: [[u8; N-O]; N-O], b: [[u8; O]; N-O]) -> [[u8 ; O]; N-O
     return result
 }
 
+pub fn matrix_mul_v_l(a: [[u8; V]; 1], b: [[u8; O]; V]) -> [u8 ; O] {
+
+    let mut result = [0; O];
+
+    for j in 0..V {
+        for k in 0..O {
+            // Take the dot product of the i-th row of A and the j-th column of B
+            result[k] = add(result[k], mul(a[0][j], b[j][k])); 
+
+        }
+    }
+    return result
+}
+
+pub fn matrix_mul_v_p1(a: [[u8; V]; 1], b: [[u8; V]; V]) -> [[u8 ; V]; 1] {
+
+    let mut result = [[0; V]; 1];
+
+    for j in 0..V {
+        for k in 0..V {
+            // Take the dot product of the i-th row of A and the j-th column of B
+            result[0][j] = add(result[0][j], mul(a[0][k], b[k][j])); 
+
+        }
+    }
+    return result
+}
+
+
 // Vector-matrix multiplication over GF(16).
 // Returns a vector of size equal to the number of columns in the matrix.
 pub fn vector_matrix_mul(vec: &Vec<u8>, matrix: &Vec<Vec<u8>>) -> Vec<u8> {
@@ -237,6 +266,46 @@ pub fn matrix_vector_mul(matrix: &Vec<Vec<u8>>, vec: &Vec<u8>) -> Vec<u8> {
     return result;
 }
 
+pub fn a_mul_r(matrix: [[u8; K*O]; M], array: [u8 ; K*O]) -> [u8 ; M] {
+    let mut result = [0; M]; // rows_matrix x 1 vector
+
+
+    for i in 0..M {
+        for j in 0..K*O {
+            // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
+            result[i] = add(result[i], mul(matrix[i][j], array[j])); 
+        }
+    }
+    return result;
+}
+
+
+pub fn o_matrix_x_idx_mul(matrix: [[u8; O]; V], array: &[u8]) -> [u8 ; V] {
+    let mut result = [0u8 ; V]; // V x 1 vector
+
+    for i in 0..V {
+        for j in 0..O {
+            // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
+            result[i] = add(result[i], mul(matrix[i][j], array[j])); 
+        }
+    }
+
+    return result;
+}
+
+
+
+pub fn p1_matrix_v_mul(matrix: [[u8; V]; 1], array: [u8 ; V]) -> u8 {
+    let mut result = 0; // rows_matrix x 1 vector
+
+
+    for i in 0..V {
+        // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
+        result = add(result, mul(matrix[0][i], array[i])); 
+    }
+
+    return result;
+}
 
 // Matrix negation over GF(16)
 pub fn matrix_neg(a: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
