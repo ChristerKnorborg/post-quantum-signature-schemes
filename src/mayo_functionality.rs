@@ -74,8 +74,6 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
         .try_into()
         .expect("Slice has incorrect length");
 
-    let n_minus_o = N - O;
-
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
     let o = decode_o_bytestring_to_matrix_array(o_bytes);
@@ -94,8 +92,10 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
     // m p1 matrices are of size (n−o) × (n−o)
     let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes, true);
 
+
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
     let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes, false);
+
 
     // Allocate space for P_{i}^(3). Size is o × o
     let mut p3 = [[[0u8; O]; O]; M];
@@ -119,6 +119,7 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
     }
 
     let encoded_p3: [u8 ; P3_BYTES] = encode_p3_bit_sliced_matrices_array(p3, true);
+
 
     // Public and secret keys
     let mut cpk: [u8; PK_SEED_BYTES + P3_BYTES] = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3

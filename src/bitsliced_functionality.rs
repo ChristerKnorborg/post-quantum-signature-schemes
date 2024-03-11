@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::{
-    constants::{K, M, N, O, O_BYTES, P3_BYTES},
+    constants::{K, M, N, N_MINUS_O, O, O_BYTES, P3_BYTES},
     utils::bytes_to_hex_string,
 };
 
@@ -72,7 +72,6 @@ pub fn decode_o_bytestring_to_matrix_array(bytestring: &[u8]) -> [[u8; O] ; N-O 
     // Decode the bytestring into a vector.
     let v = decode_bytestring_to_vector_array( bytestring);
 
-    println!("Before chunks: {:?}", bytes_to_hex_string(&v.to_vec(), false));
     // Chunk the flat array back into a matrix.
     let mut result: [[u8; O]; N - O] = [[0; O]; N - O]; // Array of arrays
 
@@ -297,18 +296,15 @@ pub fn decode_bit_sliced_matrices(
 
 
 pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; N-O]; N-O]; M]  {
-    let rows = N-O;
-    let cols = N-O;
-    
-    let num_matrices = (4 * bytestring.len()) / (rows * (rows + 1));
+    let num_matrices = (4 * bytestring.len()) / (N_MINUS_O * (N_MINUS_O + 1));
 
     let sub_byte_end = num_matrices / 2;
     let mut curr_byte_idx = 0;
 
     let mut a = [[[0u8; N-O]; N-O]; M]; // Initialize the matrices array
 
-    for i in 0..rows {
-        for j in 0..cols {
+    for i in 0.. N_MINUS_O {
+        for j in 0.. N_MINUS_O {
             if i <= j || !is_triangular {
                 let slice_end = curr_byte_idx + sub_byte_end;
                 let encoded_bits = &bytestring[curr_byte_idx..slice_end];
@@ -325,20 +321,17 @@ pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool
 }
 
 
-
+// Remember p2 is not triangular
 pub fn decode_p2_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; O]; N-O]; M]  {
-        let rows = N-O;
-        let cols = O;
-        
-        let num_matrices = (4 * bytestring.len()) / (rows * (rows + 1));
+        let num_matrices = (2 * bytestring.len()) / (N_MINUS_O * O);
     
         let sub_byte_end = num_matrices / 2;
         let mut curr_byte_idx = 0;
     
         let mut a = [[[0u8; O]; N-O]; M]; // Initialize the matrices array
     
-        for i in 0..rows {
-            for j in 0..cols {
+        for i in 0..N_MINUS_O {
+            for j in 0..O {
                 if i <= j || !is_triangular {
                     let slice_end = curr_byte_idx + sub_byte_end;
                     let encoded_bits = &bytestring[curr_byte_idx..slice_end];
