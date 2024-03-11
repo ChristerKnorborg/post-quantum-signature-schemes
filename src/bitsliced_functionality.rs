@@ -140,13 +140,20 @@ pub fn decode_v_bytestring_to_array(bytestring: &[u8]) -> [u8; V] {
     // Calculate the number of full bytes and if there's an extra nibble
     let mut x = [0u8 ; V];
 
+    let extra_nibble = V % 2;
+    let full_bytes = V_BYTES - extra_nibble;
+
     let mut idx = 0;
     // Iterate over all bytes with two nibbles in each
-    for &byte in bytestring.iter().take(V_BYTES) {
+    for &byte in bytestring.iter().take(full_bytes) {
         x[idx] = byte & 0x0F; // Put the first nibble (4 least significant bits) into the first byte
         idx += 1;
         x[idx] = byte >> 4; // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
         idx += 1;
+    }
+    if extra_nibble == 1 {
+        // Put the first nibble (4 least significant bits) into the last byte in the byte vector (ignore the second nibble of 0)
+        x[idx] = bytestring.get(V_BYTES/2).unwrap() & 0x0F;
     }
 
     return x;
