@@ -1,8 +1,7 @@
-use crate::finite_field::{a_mul_r, add, inv, matrix_vector_mul, mul, sub, vector_sub};
+use crate::finite_field::{a_mul_r, add, inv, mul, sub};
 use crate::constants::{M, K, O};
 use crate::utils::{bytes_to_hex_string, write_to_file_byte};
-use rand::rngs::StdRng as rng;
-use rand::{Rng, SeedableRng};
+use rand::{Rng};
 
 
 // MAYO Algorithm 1: Echelon Form

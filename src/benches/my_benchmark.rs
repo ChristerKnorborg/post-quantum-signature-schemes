@@ -43,7 +43,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bencher.iter_batched(
             || compact_key_gen(seed_bytes.clone()),
             |(_, csk)| {
-                expand_sk(&csk)
+                expand_sk(csk)
             },
             BatchSize::LargeInput,
         );

@@ -1,31 +1,16 @@
 use std::vec;
 
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_matrices, decode_bytestring_to_vector, decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, decode_p3_bit_sliced_matrices_array, decode_r_bytestring_to_array, decode_signature_bytestring_to_array, decode_t_bytestring_to_array, decode_v_bytestring_to_array, encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array, encode_signature_to_bytestring
+    decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, decode_p3_bit_sliced_matrices_array, decode_r_bytestring_to_array, decode_signature_bytestring_to_array, decode_t_bytestring_to_array, decode_v_bytestring_to_array, encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array, encode_signature_to_bytestring
 };
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
-use crate::finite_field::{add, array_mul_s_p, matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_mul_s_trans_big_p, matrix_mul_v_l, matrix_mul_v_p1, matrix_v_add_array, matrix_vector_mul, mul, o_matrix_x_idx_mul, p1_matrix_v_mul, sub};
+use crate::finite_field::{add, array_mul_s_p, matrix_add_array, matrix_mul_array_p2, matrix_mul_o_p1, transpose_o_matrix_array, transpose_p1_matrix_array, matrix_mul_s_trans_big_p, matrix_mul_v_l, matrix_mul_v_p1, matrix_v_add_array, mul, o_matrix_x_idx_mul, p1_matrix_v_mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::{bytes_to_hex_string, transpose_matrix, transpose_o_matrix_array, transpose_p1_matrix_array, transpose_v_array, transpose_vector};
+use crate::utils::{bytes_to_hex_string};
 
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
-
-// Upper(M)_ij = M_ij + M_ji for i < j
-pub fn upper(mut matrix: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    let n = matrix.len();
-
-    // Iterate over everything above the diagonal
-    for i in 0..n {
-        for j in (i + 1)..n {
-            matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
-            matrix[j][i] = 0;
-        }
-    }
-
-    return matrix;
-}
 
 pub fn upper_array_p3(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
     let n = O;
@@ -42,7 +27,7 @@ pub fn upper_array_p3(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 }
 
 // MAYO algorithm 5:
-pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
+pub fn compact_key_gen(keygen_seed: Vec<u8>) -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     // Pick random seed (same length as salt_bytes)
     let mut sk_seed = [0u8; SK_SEED_BYTES];
 
@@ -118,13 +103,13 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
     cpk[..PK_SEED_BYTES].copy_from_slice(&pk_seed);
     cpk[PK_SEED_BYTES..].copy_from_slice(&encoded_p3);
 
-    return (cpk.to_vec(), csk.to_vec());
+    return (cpk, csk);
 }
 
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
-pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
-    let sk_seed: &Vec<u8> = csk;
+pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
+    let sk_seed = csk;
 
     // Derive pk_seed and Oil space from sk_seed
     let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
@@ -190,12 +175,12 @@ pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
     expanded_sk[P1_BYTES..P1_BYTES+L_BYTES].copy_from_slice(&encoded_l);
     expanded_sk[P1_BYTES+L_BYTES..].copy_from_slice(&o_bytes);
 
-    return expanded_sk.to_vec();
+    return expanded_sk;
 }
 
 // Mayo algorithm 7
 // Expands a public key from its compact representation
-pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
+pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
     let pk_seed_slice = &cpk[0..PK_SEED_BYTES];
     let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
         .try_into()
@@ -214,17 +199,17 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
     expanded_pk[..P1_BYTES + P2_BYTES].copy_from_slice(&aes_bytes);
     expanded_pk[P1_BYTES + P2_BYTES..].copy_from_slice(&cpk_bytes);
 
-    return expanded_pk.to_vec();
+    return expanded_pk;
 }
 
 // MAYO algorithm 8
 // Signs a message using an expanded secret key
-pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
+pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG_BYTES] {
 
     let mut x = [0u8; K * O]; // Initialize x to zero
     let mut v = [[0u8; V]; K]; // Initialize v to zero
 
-    let mut expanded_sk = expand_sk(&compact_secret_key);
+    let expanded_sk = expand_sk(compact_secret_key);
 
     // Decode expanded secret key
     let p1_bytestring = &expanded_sk[..P1_BYTES];
@@ -315,38 +300,36 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
         // Build K matrices of size M x O
         for i in 0..K {
-            let v_i_transpose = transpose_v_array(v[i]);
-
             for j in 0..M {
-                let res = matrix_mul_v_l(v_i_transpose, l[j]);
-                m_matrices[i][j] = res.clone(); // Set the j-th row of m_i (unpack (o x 1) to row vector of size o)
+                let res = matrix_mul_v_l(v[i], l[j]);
+                m_matrices[i][j] = res; // Set the j-th row of m_i (unpack (o x 1) to row vector of size o)
             }
         }
 
         for i in 0..K {
             for j in (i..K).rev() {
-                let v_i_transpose = transpose_v_array(v[i]);
+                //let v_i_transpose = transpose_v_array(v[i]);
                 let mut u = [0u8; M];
 
                 if i == j {
                     for a in 0..M {
-                        let trans_mult = matrix_mul_v_p1(v_i_transpose, p1[a]);
+                        let trans_mult = matrix_mul_v_p1(v[i], p1[a]);
 
                         // Size (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) gives size 1 x 1.
                         u[a] = p1_matrix_v_mul(trans_mult, v[i]);
                     }
                 } else {
                     for a in 0..M {
-                        let trans_mult = matrix_mul_v_p1(v_i_transpose, p1[a]);
+                        let trans_mult = matrix_mul_v_p1(v[i], p1[a]);
                         let left_term = p1_matrix_v_mul(trans_mult, v[j]);
 
-                        let v_j_transpose = transpose_v_array(v[j]);
-                        let trans_mult = matrix_mul_v_p1(v_j_transpose, p1[a]);
+                        let trans_mult = matrix_mul_v_p1(v[j], p1[a]);
                         let right_term = p1_matrix_v_mul(trans_mult, v[i]);
 
                         u[a] = add(left_term, right_term);
                     }
                 }
+
 
                 // y = y - u * z^ell - Instead of subtracting with shifted u,
                 // we just sub with shifted y for easier loop structre since
@@ -376,7 +359,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
 
         let y = reduce_mod_f(y);
-        println!("Y: {:?}", bytes_to_hex_string(&y.to_vec(), false));
         let a = reduce_a_mod_f(a);
         
         // Try to solve the linear system Ax = y
@@ -410,16 +392,14 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     sig_con_salt[..SIG_BYTES-SALT_BYTES].copy_from_slice(&signature_encoded);
     sig_con_salt[SIG_BYTES-SALT_BYTES..].copy_from_slice(&salt);
 
-    return sig_con_salt.to_vec();
+    return sig_con_salt;
 }
 
 
 
 // MAYO algorithm 9
 // Verifies the signature of a message using an expanded public key
-pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bool {
-
-
+pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>) -> bool {
     // retrieves the public information from the expanded public key
     let p1_bytestring = &expanded_pk[0..P1_BYTES];
     let p2_bytestring = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
@@ -432,12 +412,14 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
     // decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
-    let s = decode_signature_bytestring_to_array(&signature[0..]);
+    let s = decode_signature_bytestring_to_array(signature);
+
 
     let mut s_matrix = [[0u8; N]; K];
     for i in 0..K {
         s_matrix[i].copy_from_slice(&s[i * N..(i + 1) * N]);
     }
+
 
     // Hash message and derive salt
     let mut m_digest = [0u8; DIGEST_BYTES];
@@ -462,9 +444,6 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     );
 
     let t = decode_t_bytestring_to_array( &t_output);
-
-    // Compute P*(s)
-    
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
@@ -527,7 +506,6 @@ fn create_big_p(p1: [[u8 ; V]; V], p2: [[u8 ; O]; V], p3: [[u8 ; O]; O]) -> [[u8
 }
 
 
-
 pub fn reduce_mod_f(mut polynomial: [u8 ; M + SHIFTS]) -> [u8 ; M] {
     // Perform the reduction of with f(z)
 
@@ -568,28 +546,29 @@ pub fn reduce_a_mod_f(mut a: [[u8 ; K*O]; M+SHIFTS]) -> [[u8 ; K*O]; M] {
 
 // MAYO algorithm 10
 // Expands a secret key from its compact representation and signs a message input
-pub fn api_sign(mut message: Vec<u8>, csk: Vec<u8>) -> Vec<u8> {
+pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
     //Expands the secret key
 
     //creates the signature based on expanded secret key and message
-    let mut signature = sign(&csk, &message);
+    let signature = sign(csk, message.clone());
 
     //concatenates the signature and the message
+    // Note the message length cannot be known at compile time
     let mut sign_con_mes = Vec::with_capacity(SIG_BYTES + message.len());
-    sign_con_mes.append(&mut signature);
-    sign_con_mes.append(&mut message);
+    sign_con_mes.append(&mut signature.to_vec());
+    sign_con_mes.append(&mut message.to_vec());
 
     return sign_con_mes;
 }
 
 // MAYO algorithm 11
 // Expands a public key from its compact representation and verifies a signature
-pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: Vec<u8>) -> (bool, Vec<u8>) {
+pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: [u8 ; CPK_BYTES]) -> (bool, Vec<u8>) {
     //Expands the public key
     let expanded_pk = expand_pk(pk);
 
     //Extracts the signature and the message from the input
-    let signature: Vec<u8> = sign_con_mes[0..SIG_BYTES].to_vec();
+    let signature = &sign_con_mes[0..SIG_BYTES];
     let mut message = sign_con_mes[SIG_BYTES..].to_vec();
 
     //Verifies the signature based on expanded public key and message

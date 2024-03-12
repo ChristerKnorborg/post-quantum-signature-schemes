@@ -65,72 +65,6 @@ pub fn div(x: u8, y: u8) -> u8 {
 
 
 
-pub fn matrix_add(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-
-    assert_eq!(a.len(), b.len(), "Matrices must have the same number of rows");
-    assert_eq!(a[0].len(), b[0].len(), "Matrices must have the same number of columns");
-
-    a.iter().zip(b.iter())
-        .map(|(row_a, row_b)| {
-            row_a.iter().zip(row_b.iter())
-                .map(|(&val_a, &val_b)| add(val_a, val_b))
-                .collect()
-        })
-        .collect()
-}
-
-// Matrix subtraction over GF(16)
-pub fn matrix_sub(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-
-    assert_eq!(a.len(), b.len(), "Matrices must have the same number of rows");
-    assert_eq!(a[0].len(), b[0].len(), "Matrices must have the same number of columns");
-
-    a.iter().zip(b.iter())
-        .map(|(row_a, row_b)| {
-            row_a.iter().zip(row_b.iter())
-                .map(|(&val_a, &val_b)| sub(val_a, val_b))
-                .collect()
-        })
-        .collect()
-}
-
-// Matrix subtraction over GF(16)
-pub fn vector_sub(a: &Vec<u8>, b: &Vec<u8>) -> Vec<u8> {
-
-    //assert_eq!(a.len(), b.len(), "Vectors must have the same length");
-
-    return a.iter().zip(b.iter())
-        .map(|(&val_a, &val_b)| sub(val_a, val_b))
-        .collect()
-}
-
-
-// Matrix multiplication over GF(16) (also works for matrix-vector multiplication)
-pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-
-    assert_eq!(a[0].len(), b.len(), "Number of columns in A must equal number of rows in B");
-
-    let rows_a: usize = a.len();
-    let cols_a = a[0].len();
-    let cols_b = b[0].len();
-
-    let mut result = vec![vec![0; cols_b]; rows_a];
-
-    for i in 0..rows_a {
-        for j in 0..cols_b {
-            for k in 0..cols_a {
-                // Take the dot product of the i-th row of A and the j-th column of B
-                result[i][j] = add(result[i][j], mul(a[i][k], b[k][j])); 
-
-            }
-        }
-    }
-    return result
-}
-
-
-
-
 pub fn matrix_add_array(a: [[u8; O]; N-O], b: [[u8; O]; N-O]) -> [[u8; O]; N-O] {
 
     let mut result = [[0; O]; N - O]; // Initialize the result array
@@ -198,14 +132,14 @@ pub fn matrix_mul_o_p1(a: [[u8; N-O]; N-O], b: [[u8; O]; N-O]) -> [[u8 ; O]; N-O
     return result
 }
 
-pub fn matrix_mul_v_l(a: [[u8; V]; 1], b: [[u8; O]; V]) -> [u8 ; O] {
+pub fn matrix_mul_v_l(a: [u8; V], b: [[u8; O]; V]) -> [u8 ; O] {
 
     let mut result = [0; O];
 
     for j in 0..V {
         for k in 0..O {
             // Take the dot product of the i-th row of A and the j-th column of B
-            result[k] = add(result[k], mul(a[0][j], b[j][k])); 
+            result[k] = add(result[k], mul(a[j], b[j][k])); 
 
         }
     }
@@ -237,14 +171,14 @@ pub fn array_mul_s_p(s: [u8; N], p: [u8; N]) -> u8 {
     return result
 }
 
-pub fn matrix_mul_v_p1(a: [[u8; V]; 1], b: [[u8; V]; V]) -> [[u8 ; V]; 1] {
+pub fn matrix_mul_v_p1(v: [u8; V], p1: [[u8; V]; V]) -> [u8 ; V] {
 
-    let mut result = [[0; V]; 1];
+    let mut result = [0; V];
 
     for j in 0..V {
         for k in 0..V {
             // Take the dot product of the i-th row of A and the j-th column of B
-            result[0][j] = add(result[0][j], mul(a[0][k], b[k][j])); 
+            result[j] = add(result[j], mul(v[k], p1[k][j])); 
 
         }
     }
@@ -322,13 +256,13 @@ pub fn o_matrix_x_idx_mul(matrix: [[u8; O]; V], array: &[u8]) -> [u8 ; V] {
 
 
 
-pub fn p1_matrix_v_mul(matrix: [[u8; V]; 1], array: [u8 ; V]) -> u8 {
+pub fn p1_matrix_v_mul(p1: [u8; V], v: [u8 ; V]) -> u8 {
     let mut result = 0; // rows_matrix x 1 vector
 
 
     for i in 0..V {
         // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
-        result = add(result, mul(matrix[0][i], array[i])); 
+        result = add(result, mul(p1[i], v[i])); 
     }
 
     return result;
@@ -340,6 +274,64 @@ pub fn matrix_neg(a: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
         .map(|row| row.iter().map(|&val| neg(val)).collect())
         .collect()
 }
+
+
+// Helper function to transpose a matrix (as described in the MAYO paper)
+pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    let rows = matrix.len();
+    let cols = matrix[0].len();
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = vec![vec![0u8; rows]; cols];
+
+    for i in 0..rows {
+        for j in 0..cols {
+            transposed[j][i] = matrix[i][j]; // Swap elements
+        }
+    }
+    return transposed;
+}
+
+// Helper function to transpose a matrix (as described in the MAYO paper)
+pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
+    let rows = vector.len();
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = vec![vec![0u8; rows]; 1];
+
+    for i in 0..rows {
+        transposed[0][i] = vector[i]; // Swap elements
+    }
+    return transposed;
+}
+
+pub fn transpose_o_matrix_array(matrix: [[u8 ; O]; N-O]) -> [[u8 ; N-O]; O]{
+    let rows = N-O;
+    let cols = O;
+
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = [[0u8; N-O]; O];
+
+    for i in 0..rows {
+        for j in 0..cols {
+            transposed[j][i] = matrix[i][j]; // Swap elements
+        }
+    }
+    return transposed;
+}
+
+pub fn transpose_p1_matrix_array(matrix: [[u8 ; V]; V]) -> [[u8 ; V]; V]{
+    // Create a new transposed matrix with the dimensions swapped
+    let mut transposed = [[0u8; V]; V];
+
+    for i in 0..V {
+        for j in 0..V {
+            transposed[j][i] = matrix[i][j]; // Swap elements
+        }
+    }
+    return transposed;
+}
+
 
 
 
@@ -420,174 +412,4 @@ mod tests {
     }
 
 
-    #[test]
-    fn test_matrix_add() {
-
-        let a = vec![vec![0, 1, 5],
-                                   vec![3, 4, 6]];
-
-        let b = vec![vec![3, 4, 5],
-                                   vec![0, 1, 7]];
-
-        let result = matrix_add(&a, &b);
-
-        // Notice (x^2 + 1) + (x^2 + 1) = 0. (5 + 5 = 0)
-        // And (x^2 + x + 1) + (x^2 + x) = 1. (6 + 7 = 1)
-        let expected = vec![vec![3, 5, 0], 
-                                          vec![3, 5, 1]]; 
-        
-        assert_eq!(result, expected, "Matrix addition is not correct");
-    }
-
-
-    #[test]
-    // GF(16) subtraction is the same as addition
-    fn test_matrix_sub() {
-
-        let a = vec![vec![0, 1, 5],
-                                   vec![3, 4, 6]];
-
-        let b = vec![vec![3, 4, 5],
-                                   vec![0, 1, 7]];
-
-        let result = matrix_sub(&a, &b);
-
-        // Notice (x^2 + 1) + (x^2 + 1) = 0. (5 + 5 = 0)
-        // And (x^2 + x + 1) + (x^2 + x) = 1. (6 + 7 = 1)
-        let expected = vec![vec![3, 5, 0], 
-                                          vec![3, 5, 1]]; 
-        
-        assert_eq!(result, expected, "Matrix addition is not correct");
-    }
-
-
-    #[test]
-    fn test_matrix_neg() {
-
-        let a = vec![vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
-                                   vec![9, 10, 11, 12, 13, 14, 15,]];
-
-        let expected = a.clone(); // Negation in GF(16) should be the element itself
-
-        let result = matrix_neg(&a);
-        
-        assert_eq!(result, expected, "Matrix negation is not correct");
-    }
-
-    
-    #[test]
-    fn test_matrix_mul_simple() {
-
-        let a = vec![vec![2],
-                                   vec![8]];
-
-        let b = vec![vec![3, 1]];
-
-        let result = matrix_mul(&a, &b);
-
-        let expected = vec![vec![6, 2],
-                                          vec![11, 8]]; 
-        
-        assert_eq!(result, expected, "Matrix multiplication is not correct");
-    }
-
-
-    #[test]
-    fn test_matrix_mul() {
-
-        let a = vec![vec![2, 2, 2, 2, 2, 2, 2, 2],
-                                   vec![4, 4, 5, 5, 5, 6, 6, 8]];
-
-        let b = vec![vec![0, 1],
-                                   vec![2, 3],
-                                   vec![4, 5],
-                                   vec![6, 7],
-                                   vec![8, 9],
-                                   vec![10, 11],
-                                   vec![12, 13],
-                                   vec![14, 15]];
-
-        let result = matrix_mul(&a, &b);
-
-        let expected = vec![vec![0, 0],
-                                          vec![2, 15]]; 
-        
-        assert_eq!(result, expected, "Matrix multiplication is not correct");
-    }
-
-
-    #[test]
-    fn test_matrix_mul_with_vector_wrapped_as_matrix() {
-
-        // Row vector of size 1x2
-        let a = vec![vec![0, 2]];
-
-        // Matrix of size 2x2
-        let b = vec![vec![0, 1],
-                                   vec![2, 3],];
-
-        let result = matrix_mul(&a, &b);
-
-        // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
-        let expected = vec![vec![4, 6]]; 
-        
-        assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
-    }
-
-
-    #[test]
-    fn test_vector_matrix_mul() {
-
-        let vec = vec![0, 2]; // 1x2 vector
-
-        let matrix = vec![vec![0, 1], // 2x2 matrix
-                                        vec![2, 3],];
-
-        let result = vector_matrix_mul(&vec, &matrix);
-
-
-        let cols_expected = 2; // Expected dimensions 1x2 vector
-
-
-        assert_eq!(result.len(), cols_expected, "Result vector has wrong number of cols");
-
-
-        // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
-        let expected = vec![4, 6]; 
-        
-        assert_eq!(result, expected, "Vector-matrix multiplication is not correct");
-    }
-
-
-    #[test]
-    fn test_matrix_vector_mul() {
-
-        let matrix = vec![vec![0, 1],
-                                   vec![2, 3],];
-
-        let vec = vec![0, 2];
-
-        let result = matrix_vector_mul(&matrix, &vec);
-
-
-        let cols_expected = vec.len(); // Matrix has 2 columns
-
-
-        assert_eq!(result.len(), cols_expected, "Result vector has wrong number of columns");
-
-        // 0*0 + 1*2 = 2, 2*0 + 3*2 = 6 (still works with GF(16 for these small examples).)
-        let expected = vec![2, 6]; 
-        
-        assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
-    }
-
-    
-
 }
-
-
-
-
-
-
-

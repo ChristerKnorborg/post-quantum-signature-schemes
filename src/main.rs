@@ -7,7 +7,6 @@ use utils::write_to_file_byte;
 use utils::write_to_file_int;
 
 use crate::{
-    bitsliced_functionality::{decode_bit_sliced_matrices, encode_bit_sliced_matrices},
     constants::M,
     finite_field::{add, mul},
     utils::bytes_to_hex_string,

@@ -9,7 +9,7 @@ use crate::constants::{COMPARE_FILE_NAME, SIG_BYTES, VERSION};
 use crate::utils::{bytes_to_hex_string, compare_hex_files, hex_string_to_bytes};
 use crate::mayo_functionality::{self as mf, api_sign, api_sign_open, compact_key_gen};
 use crate::crypto_primitives::{safe_randombytes_init, safe_randomBytes};
-pub fn read_kat() -> () {
+/* pub fn read_kat() -> () {
     let mut file = File::open(COMPARE_FILE_NAME).unwrap();
 
     let mut contents = String::new(); 
@@ -88,19 +88,10 @@ pub fn read_kat() -> () {
             sm_bytes = hex_string_to_bytes(res); 
         }
     }
-}
-
-
-
-
+} */
 
 
 pub fn write_kat_file() {
-
-    
-
-    
-
     let mut seeds = vec![vec![0u8; 48]; 100];
     let mut messages = vec![Vec::new(); 100];
     let mut entropy_input: Vec<u8> = (0..=47).collect();
@@ -126,7 +117,7 @@ pub fn write_kat_file() {
     // Create all seeds and messages
     for count in 0..100 {
         //fprintf(fp_req, "count = %d\n", i);
-        let mut seed: Vec<u8> = vec![0u8 ; 48];
+        let mut seed = vec![0u8 ; 48];
         safe_randomBytes(&mut seed, nbytes);
         seeds[count] = seed;
 
@@ -161,8 +152,8 @@ pub fn write_kat_file() {
 
     let seed_hex = bytes_to_hex_string(&seeds[count], false);
     let msg_hex = bytes_to_hex_string(&messages[count], false);
-    let cpk_hex = bytes_to_hex_string(&cpk, false);
-    let csk_hex = bytes_to_hex_string(&csk, false);
+    let cpk_hex = bytes_to_hex_string(&cpk.to_vec(), false);
+    let csk_hex = bytes_to_hex_string(&csk.to_vec(), false);
     let sm_hex = bytes_to_hex_string(&signature, false);
     
 
@@ -180,7 +171,7 @@ pub fn write_kat_file() {
     writeln!(file, "").unwrap(); 
 
     assert!(ver_cor);
-    break;
+    
 }
 
 
