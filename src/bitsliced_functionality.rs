@@ -175,6 +175,22 @@ pub fn decode_r_bytestring_to_array(bytestring: &[u8]) -> [u8; K*O] {
     return x;
 }
 
+pub fn decode_signature_bytestring_to_array(bytestring: &[u8]) -> [u8; K*N] {
+    // Calculate the number of full bytes and if there's an extra nibble
+    let mut x = [0u8 ; K*N];
+
+    let mut idx = 0;
+    // Iterate over all bytes with two nibbles in each
+    for &byte in bytestring.iter().take(K*N/2) {
+        x[idx] = byte & 0x0F; // Put the first nibble (4 least significant bits) into the first byte
+        idx += 1;
+        x[idx] = byte >> 4; // Put the second nibble (4 most significant bits) into the second byte (4 most significant bits)
+        idx += 1;
+    }
+
+    return x;
+}
+
 
 
 
@@ -406,7 +422,7 @@ pub fn decode_bit_sliced_matrices(
 }
 
 
-pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; V]; V]; M]  {
+pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8]) -> [[[u8; V]; V]; M]  {
 
     let sub_byte_end = M / 2;
     let mut curr_byte_idx = 0;
@@ -415,7 +431,7 @@ pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool
 
     for i in 0.. V {
         for j in 0.. V {
-            if i <= j || !is_triangular {
+            if i <= j  {
                 let slice_end = curr_byte_idx + sub_byte_end;
                 let encoded_bits = &bytestring[curr_byte_idx..slice_end];
                 let indices_vec = decode_bit_sliced_vector(encoded_bits.to_vec());
@@ -432,30 +448,51 @@ pub fn decode_p1_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool
 
 
 // Remember p2 is not triangular
-pub fn decode_p2_bit_sliced_matrices_array(bytestring: &[u8],is_triangular: bool,) -> [[[u8; O]; V]; M]  {
-        
-    
-        let sub_byte_end = M / 2;
-        let mut curr_byte_idx = 0;
-    
-        let mut a = [[[0u8; O]; V]; M]; // Initialize the matrices array
-    
-        for i in 0..V {
-            for j in 0..O {
-                if i <= j || !is_triangular {
-                    let slice_end = curr_byte_idx + sub_byte_end;
-                    let encoded_bits = &bytestring[curr_byte_idx..slice_end];
-                    let indices_vec = decode_bit_sliced_vector(encoded_bits.to_vec());
-    
-                    for (mat_index, &value) in indices_vec.iter().enumerate() {
-                        a[mat_index][i][j] = value;
-                    }
-                    curr_byte_idx = slice_end;
+pub fn decode_p2_bit_sliced_matrices_array(bytestring: &[u8]) -> [[[u8; O]; V]; M]  {
+    let sub_byte_end = M / 2;
+    let mut curr_byte_idx = 0;
+
+    let mut a = [[[0u8; O]; V]; M]; // Initialize the matrices array
+
+    for i in 0..V {
+        for j in 0..O {
+            let slice_end = curr_byte_idx + sub_byte_end;
+            let encoded_bits = &bytestring[curr_byte_idx..slice_end];
+            let indices_vec = decode_bit_sliced_vector(encoded_bits.to_vec());
+
+            for (mat_index, &value) in indices_vec.iter().enumerate() {
+                a[mat_index][i][j] = value;
+            }
+            curr_byte_idx = slice_end;
+        }
+    }
+    a
+}
+
+pub fn decode_p3_bit_sliced_matrices_array(bytestring: &[u8]) -> [[[u8; O]; O]; M]  {
+
+    let sub_byte_end = M / 2;
+    let mut curr_byte_idx = 0;
+
+    let mut a = [[[0u8; O]; O]; M]; // Initialize the matrices array
+
+    for i in 0.. O {
+        for j in 0.. O {
+            if i <= j { 
+                let slice_end = curr_byte_idx + sub_byte_end;
+                let encoded_bits = &bytestring[curr_byte_idx..slice_end];
+                let indices_vec = decode_bit_sliced_vector(encoded_bits.to_vec());
+
+                for (mat_index, &value) in indices_vec.iter().enumerate() {
+                    a[mat_index][i][j] = value;
                 }
+                curr_byte_idx = slice_end;
             }
         }
-        a
     }
+    a
+}
+
 
 
 

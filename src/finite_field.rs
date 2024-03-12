@@ -129,6 +129,8 @@ pub fn matrix_mul(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 }
 
 
+
+
 pub fn matrix_add_array(a: [[u8; O]; N-O], b: [[u8; O]; N-O]) -> [[u8; O]; N-O] {
 
     let mut result = [[0; O]; N - O]; // Initialize the result array
@@ -206,6 +208,31 @@ pub fn matrix_mul_v_l(a: [[u8; V]; 1], b: [[u8; O]; V]) -> [u8 ; O] {
             result[k] = add(result[k], mul(a[0][j], b[j][k])); 
 
         }
+    }
+    return result
+}
+
+pub fn matrix_mul_s_trans_big_p(s: [u8; N], big_p: [[u8; N]; N]) -> [u8 ; N] {
+
+    let mut result = [0; N];
+
+    for j in 0..N {
+        for k in 0..N {
+            // Take the dot product of the i-th row of A and the j-th column of B
+            result[k] = add(result[k], mul(s[j], big_p[j][k])); 
+
+        }
+    }
+    return result
+}
+
+pub fn array_mul_s_p(s: [u8; N], p: [u8; N]) -> u8 {
+
+    let mut result = 0;
+
+    for i in 0..N {
+            // Take the dot product of the i-th row of A and the j-th column of B
+            result = add(result, mul(s[i], p[i])); 
     }
     return result
 }

@@ -79,8 +79,6 @@ pub fn sample_solution(mut a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Res
 
     let mut x = r.clone();
 
-
-
     let ar = a_mul_r(a, r);
 
 
@@ -104,8 +102,12 @@ pub fn sample_solution(mut a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Res
 
 
     // Split the matrix into A and y
-    let a_ech: Vec<Vec<u8>> = a.iter().map(|row| row[0..row.len() - 1].to_vec()).collect();
-    let mut y_ech: Vec<u8> = a.iter().map(|row| *row.last().unwrap()).collect();
+    let mut a_ech: [[u8; K*O]; M] = [[0; K*O]; M];
+    let mut y_ech: [u8; M] = [0; M];
+    for (i, row) in a.iter().enumerate() {
+        a_ech[i].copy_from_slice(&row[..K*O]);
+        y_ech[i] = row[K*O];
+    }
 
     if a_ech[rows - 1].iter().all(|&i| i == 0) {
         return Err("The matrix A does not have full rank. No solution is found");
@@ -113,23 +115,22 @@ pub fn sample_solution(mut a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Res
 
     // Back-substitution
     for r in (0..rows).rev() {
-        // Let c be the index of first non-zero element of A[r,:]
-        // Calc x_c = x_c + y[r]
+        // Let c be the index of first non-zero element of A[r, :]
         let c = a_ech[r].iter().position(|&i| i != 0).unwrap();
         x[c] = add(x[c], y_ech[r]);
 
-        // Calc temp_mult = y[r] * A[:,c]
-        let temp_mult: Vec<u8> = a_ech.iter().map(|row| mul(y_ech[r], row[c])).collect();
+        // Prepare for updating y_ech
+        let mut temp_mult: [u8; M] = [0; M]; // Initialize an array with zeros
 
-        // Calc y = y - y[r] * A[:,c]
-        y_ech = y_ech
-            .iter()
-            .zip(temp_mult.iter())
-            .map(|(y_idx, temp_mult_idx)| sub(*y_idx, *temp_mult_idx))
-            .collect();
+        for (i, row) in a_ech.iter().enumerate() {
+            temp_mult[i] = mul(y_ech[r], row[c]);
+        }
+
+        for i in 0..M {
+            y_ech[i] = sub(y_ech[i], temp_mult[i]);
+        }
     }
-
-    return Ok(x)
+    Ok(x)
 }
 
 

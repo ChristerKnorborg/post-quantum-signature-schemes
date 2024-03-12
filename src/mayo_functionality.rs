@@ -1,10 +1,10 @@
 use std::vec;
 
 use crate::bitsliced_functionality::{
-    decode_bit_sliced_matrices, decode_bytestring_to_vector, decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, decode_r_bytestring_to_array, decode_t_bytestring_to_array, decode_v_bytestring_to_array, encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array, encode_signature_to_bytestring
+    decode_bit_sliced_matrices, decode_bytestring_to_vector, decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, decode_p3_bit_sliced_matrices_array, decode_r_bytestring_to_array, decode_signature_bytestring_to_array, decode_t_bytestring_to_array, decode_v_bytestring_to_array, encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array, encode_signature_to_bytestring
 };
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
-use crate::finite_field::{add,  matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_mul_v_l, matrix_mul_v_p1, matrix_v_add_array, matrix_vector_mul, mul, p1_matrix_v_mul, sub, o_matrix_x_idx_mul};
+use crate::finite_field::{add, array_mul_s_p, matrix_add_array, matrix_mul, matrix_mul_array_p2, matrix_mul_o_p1, matrix_mul_s_trans_big_p, matrix_mul_v_l, matrix_mul_v_p1, matrix_v_add_array, matrix_vector_mul, mul, o_matrix_x_idx_mul, p1_matrix_v_mul, sub};
 use crate::sample::sample_solution;
 use crate::utils::{bytes_to_hex_string, transpose_matrix, transpose_o_matrix_array, transpose_p1_matrix_array, transpose_v_array, transpose_vector};
 
@@ -81,11 +81,11 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
     let p2_bytes = &p[P1_BYTES..];
 
     // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes, true);
+    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes);
 
 
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes, false);
+    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes);
 
 
     // Allocate space for P_{i}^(3). Size is o × o
@@ -111,15 +111,12 @@ pub fn compact_key_gen(mut keygen_seed: Vec<u8>) -> (Vec<u8>,Vec<u8>) {
 
     let encoded_p3: [u8 ; P3_BYTES] = encode_p3_bit_sliced_matrices_array(p3, true);
 
-
     // Public and secret keys
-    let mut cpk: [u8; PK_SEED_BYTES + P3_BYTES] = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3
+    let mut cpk = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3
     let csk: [u8 ; CSK_BYTES] = sk_seed;
 
     cpk[..PK_SEED_BYTES].copy_from_slice(&pk_seed);
-
     cpk[PK_SEED_BYTES..].copy_from_slice(&encoded_p3);
-
 
     return (cpk.to_vec(), csk.to_vec());
 }
@@ -161,10 +158,10 @@ pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
     let p2_bytes = &p[P1_BYTES..];
 
     // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes, true);
+    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes);
 
     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes, false);
+    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes);
 
 
     // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
@@ -236,8 +233,8 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     // Assign matrices with decoded information
     let o = decode_o_bytestring_to_matrix_array(o_bytestring);
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytestring, true);
-    let l = decode_p2_bit_sliced_matrices_array(l_bytestring, false);
+    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytestring);
+    let l = decode_p2_bit_sliced_matrices_array(l_bytestring);
 
     // Hash message and derive salt
     let mut m_digest = [0u8; DIGEST_BYTES];
@@ -383,7 +380,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         // Try to solve the linear system Ax = y
         x = match sample_solution(a, y, r) {
             Ok(x) => x, // If Ok
-            Err(e) => {
+            Err(_) => {
                 continue; // If Err (no solution found), continue to the next iteration of the loop
             }
         };
@@ -397,19 +394,12 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     for i in 0..K {
         let x_idx = &x[i * O..(i + 1) * O];
         let ox = o_matrix_x_idx_mul(o, x_idx);
-        let v_i = v[i];
-        let mut vi_plus_ox: [u8 ; V] = [0u8 ; V];
-
         for j in 0..V {
-            vi_plus_ox[j] = add(ox[j], v_i[j]);
+            v[i][j] = add(ox[j], v[i][j]);
         }
 
-        // OPTIMIZE THIS!
-        let mut temp = [0u8; N];
-        temp[..V].copy_from_slice(&vi_plus_ox);
-        temp[V..].copy_from_slice(&x_idx);
-
-        signature[i * N..(i + 1) * N].copy_from_slice(&temp);
+        signature[i * N..(i + 1) * N - O].copy_from_slice(&v[i]);
+        signature[i*N + V..(i + 1) * N].copy_from_slice(&x_idx);
     }
 
     let mut sig_con_salt = [0u8 ; SIG_BYTES];
@@ -421,32 +411,34 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     return sig_con_salt.to_vec();
 }
 
+
+
 // MAYO algorithm 9
 // Verifies the signature of a message using an expanded public key
 pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bool {
 
 
     // retrieves the public information from the expanded public key
-    let p1_bytestring = expanded_pk[0..P1_BYTES].to_vec();
-    let p2_bytestring = expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES].to_vec();
-    let p3_bytestring = expanded_pk[P1_BYTES + P2_BYTES..].to_vec();
+    let p1_bytestring = &expanded_pk[0..P1_BYTES];
+    let p2_bytestring = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
+    let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
     // decodes the public information into matrices
-    let p1 = decode_bit_sliced_matrices(V, V, p1_bytestring, true);
-    let p2 = decode_bit_sliced_matrices(V, O, p2_bytestring, false);
-    let p3 = decode_bit_sliced_matrices(O, O, p3_bytestring, true);
+    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytestring);
+    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytestring);
+    let p3 = decode_p3_bit_sliced_matrices_array( p3_bytestring);
 
     // decode signature and derive salt
-    let salt = signature[SIG_BYTES - SALT_BYTES..SIG_BYTES].to_vec();
-    let s = decode_bytestring_to_vector(K * N, signature);
+    let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
+    let s = decode_signature_bytestring_to_array(&signature[0..]);
 
-    let mut s_matrix = vec![vec![0u8; N]; K];
+    let mut s_matrix = [[0u8; N]; K];
     for i in 0..K {
-        s_matrix[i] = s[i * N..(i + 1) * N].to_vec();
+        s_matrix[i].copy_from_slice(&s[i * N..(i + 1) * N]);
     }
 
     // Hash message and derive salt
-    let mut m_digest: Vec<u8> = vec![0u8; DIGEST_BYTES];
+    let mut m_digest = [0u8; DIGEST_BYTES];
     safe_shake256(
         &mut m_digest,
         DIGEST_BYTES as u64,
@@ -454,47 +446,47 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         message.len() as u64,
     );
 
-    let mut t_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES);
-    t_shake_input.extend(&m_digest); // Extend to prevent emptying original
-    t_shake_input.extend(&salt); // Extend to prevent emptying original
-    let t_shake_output_length = if M % 2 == 0 { M / 2 } else { M / 2 + 1 }; // Ceil (M * log_2(q) / 8)
+    let mut t_shake_input =[ 0u8 ; DIGEST_BYTES + SALT_BYTES];
+    t_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest); // Extend to prevent emptying original
+    t_shake_input[DIGEST_BYTES..].copy_from_slice(salt); // Extend to prevent emptying original
 
-    let mut t_output: Vec<u8> = vec![0u8; t_shake_output_length];
+
+    let mut t_output = [0u8; M/2]; // Ceil (M * log_2(q) / 8)
     safe_shake256(
         &mut t_output,
-        t_shake_output_length as u64,
+        (M/2) as u64,
         &t_shake_input,
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
 
-    let t = decode_bytestring_to_vector(M, t_output);
+    let t = decode_t_bytestring_to_array( &t_output);
 
     // Compute P*(s)
     
-    let mut y = vec![0u8; M + SHIFTS];
+    let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
-    // Construct the M matrices of size N x N s.t. (P^1_a P^2_a)
-    // for every matrix a ∈ [M]                    (0     P^3_a)
-    let big_p = create_large_matrices(p1, p2, p3);
-
     for i in 0..K {
-        let s_i_trans = transpose_vector(&s_matrix[i]);
 
         for j in (i..K).rev() {
             let mut u = vec![0u8; M];
-            let s_j_trans = transpose_vector(&s_matrix[j]);
 
             for a in 0..M {
-                let s_i_trans_big_p = matrix_mul(&s_i_trans, &big_p[a]);
+
+                // Construct the M matrices of size N x N s.t. (P^1_a P^2_a)
+                // for every matrix a ∈ [M]                    (0     P^3_a)
+                let big_p = create_big_p(p1[a], p2[a], p3[a]);
+
+                
+                let s_i_trans_big_p = matrix_mul_s_trans_big_p(s_matrix[i], big_p);
 
                 if i == j {
-                    u[a] = matrix_vector_mul(&s_i_trans_big_p, &s_matrix[i])[0];
+                    u[a] = array_mul_s_p(s_i_trans_big_p, s_matrix[i]);
                 } else {
-                    let left_term = matrix_vector_mul(&s_i_trans_big_p, &s_matrix[j])[0];
+                    let left_term = array_mul_s_p(s_i_trans_big_p, s_matrix[j]);
 
-                    let s_j_trans_big_p = matrix_mul(&s_j_trans, &big_p[a]);
-                    let right_term = matrix_vector_mul(&s_j_trans_big_p, &s_matrix[i])[0];
+                    let s_j_trans_big_p = matrix_mul_s_trans_big_p(s_matrix[j], big_p);
+                    let right_term = array_mul_s_p(s_j_trans_big_p, s_matrix[i]);
 
                     u[a] = add(left_term, right_term);
                 }
@@ -508,43 +500,27 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         }
     }
 
-    y = reduce_mod_f_vec(y);
+    let y = reduce_mod_f(y);
 
     // Accept signature if y = t
     return y == t;
-}
+} 
 
 // Construct the matrix (P_1 P_2)
 //                      (0   P_3)
-fn create_large_matrices(
-    mut p1: Vec<Vec<Vec<u8>>>,
-    mut p2: Vec<Vec<Vec<u8>>>,
-    mut p3: Vec<Vec<Vec<u8>>>,
-) -> Vec<Vec<Vec<u8>>> {
-    let mut result: Vec<Vec<Vec<u8>>> = Vec::with_capacity(M);
+fn create_big_p(p1: [[u8 ; V]; V], p2: [[u8 ; O]; V], p3: [[u8 ; O]; O]) -> [[u8 ; N]; N] {
+    let mut result = [[0u8 ; N]; N];
 
-    for mat in 0..M {
-        let mut rows = Vec::with_capacity(N);
+    let zero_rows = [[0u8; V]; O]; // O rows of zeroes of len N-O.
 
-        let mut zero_rows = vec![vec![0u8; V]; O]; // O rows of zeroes of len N-O.
-
-        for i in 0..(N - O) {
-            let new_vec = Vec::with_capacity(N);
-            rows.push(new_vec);
-            rows[i].append(&mut p1[mat][i]);
-            rows[i].append(&mut p2[mat][i]);
-        }
-
-        for i in (N - O)..N {
-            let new_vec = Vec::with_capacity(N);
-            rows.push(new_vec);
-            rows[i].append(&mut zero_rows[i - (N - O)]);
-            rows[i].append(&mut p3[mat][i - (N - O)]);
-        }
-
-        result.push(rows);
+    for i in 0..V {
+        result[i][..V].copy_from_slice(&p1[i]);
+        result[i][V..].copy_from_slice(&p2[i]);
     }
-
+    for i in V..N {
+        result[i][..V].copy_from_slice(&zero_rows[i - V]);
+        result[i][V..].copy_from_slice(&p3[i - V]);
+    }
     return result;
 }
 
@@ -640,78 +616,79 @@ pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: Vec<u8>) -> (bool, Vec<u8>) {
     return (result, message);
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::utils::print_matrix;
+// #[cfg(test)]
+// mod tests {
+//     use crate::utils::print_matrix;
 
-    use super::*;
-    use rand::Rng;
+//     use super::*;
+//     use rand::Rng;
 
-    #[test]
-    fn test_create_large_matrices() {
-        let mut rng = rand::thread_rng();
+//    #[test]
+//     fn test_create_large_matrices() {
+//         let mut rng = rand::thread_rng();
 
-        let mut p1: Vec<Vec<Vec<u8>>> = vec![vec![vec![1u8; N - O]; N - O]; M];
-        let mut p2: Vec<Vec<Vec<u8>>> = vec![vec![vec![2u8; O]; N - O]; M];
-        let mut p3: Vec<Vec<Vec<u8>>> = vec![vec![vec![3u8; O]; O]; M];
-        // Generate a random matrix of size (rows, cols)
+//         let mut p1: Vec<Vec<Vec<u8>>> = vec![vec![vec![1u8; N - O]; N - O]; M];
+//         let mut p2: Vec<Vec<Vec<u8>>> = vec![vec![vec![2u8; O]; N - O]; M];
+//         let mut p3: Vec<Vec<Vec<u8>>> = vec![vec![vec![3u8; O]; O]; M];
+//         // Generate a random matrix of size (rows, cols)
 
-        for m in 0..M {
-            for i in 0..N - O {
-                for j in 0..N - O {
-                    p1[m][i][j] = rng.gen_range(00..=15);
+//         for m in 0..M {
+//             for i in 0..N - O {
+//                 for j in 0..N - O {
+//                     p1[m][i][j] = rng.gen_range(00..=15);
 
-                    if j < O {
-                        p2[m][i][j] = rng.gen_range(00..=15);
-                    }
+//                     if j < O {
+//                         p2[m][i][j] = rng.gen_range(00..=15);
+//                     }
 
-                    if i < O && j < O {
-                        p3[m][i][j] = rng.gen_range(00..=15);
-                    }
-                }
-            }
-        }
+//                     if i < O && j < O {
+//                         p3[m][i][j] = rng.gen_range(00..=15);
+//                     }
+//                 }
+//             }
+//         }
 
-        let big_matrices = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
+//         let big_matrices = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
 
-        for m in 0..M {
-            println!("NEW matrix");
-            print_matrix(big_matrices[m].clone());
-        }
+//         for m in 0..M {
+//             println!("NEW matrix");
+//             print_matrix(big_matrices[m].clone());
+//         }
 
-        let mut succeded: bool = true;
+//         let mut succeded: bool = true;
 
-        for m in 0..M {
-            for i in 0..N {
-                for j in 0..N {
-                    if (i < N - O && j < N - O) {
-                        if (big_matrices[m][i][j] != p1[m][i][j]) {
-                            succeded = false;
-                        }
-                    }
-                    if (i < N - O && j < O) {
-                        if (big_matrices[m][i][j + (N - O)] != p2[m][i][j]) {
-                            succeded = false;
-                        }
-                    }
+//         for m in 0..M {
+//             for i in 0..N {
+//                 for j in 0..N {
+//                     if (i < N - O && j < N - O) {
+//                         if (big_matrices[m][i][j] != p1[m][i][j]) {
+//                             succeded = false;
+//                         }
+//                     }
+//                     if (i < N - O && j < O) {
+//                         if (big_matrices[m][i][j + (N - O)] != p2[m][i][j]) {
+//                             succeded = false;
+//                         }
+//                     }
 
-                    // Should be zero
-                    if (i < O && j < O) {
-                        if (big_matrices[m][i + (N - O)][j] != 0) {
-                            succeded = false;
-                        }
-                    }
+//                     // Should be zero
+//                     if (i < O && j < O) {
+//                         if (big_matrices[m][i + (N - O)][j] != 0) {
+//                             succeded = false;
+//                         }
+//                     }
 
-                    if (i < O && j < O) {
-                        if (big_matrices[m][i + (N - O)][j + (N - O)] != p3[m][i][j]) {
-                            succeded = false;
-                        }
-                    }
-                }
-            }
-        }
+//                     if (i < O && j < O) {
+//                         if (big_matrices[m][i + (N - O)][j + (N - O)] != p3[m][i][j]) {
+//                             succeded = false;
+//                         }
+//                     }
+//                 }
+//             }
+//         }
 
-        assert_eq!(succeded, true);
-        println!("Big Matrix test result: {:?}", succeded);
-    }
-}
+//         assert_eq!(succeded, true);
+//         println!("Big Matrix test result: {:?}", succeded);
+//     }
+// }
+
