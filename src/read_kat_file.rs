@@ -180,6 +180,7 @@ pub fn write_kat_file() {
     writeln!(file, "").unwrap(); 
 
     assert!(ver_cor);
+    break;
 }
 
 

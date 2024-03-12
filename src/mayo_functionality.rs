@@ -374,7 +374,9 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
             }
         }
 
+
         let y = reduce_mod_f(y);
+        println!("Y: {:?}", bytes_to_hex_string(&y.to_vec(), false));
         let a = reduce_a_mod_f(a);
         
         // Try to solve the linear system Ax = y
@@ -426,7 +428,7 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     // decodes the public information into matrices
     let p1 = decode_p1_bit_sliced_matrices_array(p1_bytestring);
     let p2 = decode_p2_bit_sliced_matrices_array(p2_bytestring);
-    let p3 = decode_p3_bit_sliced_matrices_array( p3_bytestring);
+    let p3 = decode_p3_bit_sliced_matrices_array(p3_bytestring);
 
     // decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
@@ -525,20 +527,6 @@ fn create_big_p(p1: [[u8 ; V]; V], p2: [[u8 ; O]; V], p3: [[u8 ; O]; O]) -> [[u8
 }
 
 
-pub fn reduce_mod_f_vec(mut polynomial: Vec<u8>) -> Vec<u8> {
-    // Perform the reduction of with f(z)
-    for i in (M..polynomial.len()).rev() {
-        for (shift, coef) in F_Z {
-            let mul_res = mul(polynomial[i], coef);
-            polynomial[i - M + shift] = sub(polynomial[i - M + shift], mul_res);
-        }
-        polynomial[i] = 0; // set original term to 0 After distributing coefficient
-    }
-    // Truncate to first m entries (every other entry is zero after reduction)
-    polynomial.truncate(M);
-
-    return polynomial;
-}
 
 pub fn reduce_mod_f(mut polynomial: [u8 ; M + SHIFTS]) -> [u8 ; M] {
     // Perform the reduction of with f(z)
