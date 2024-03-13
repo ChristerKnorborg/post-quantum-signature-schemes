@@ -11,5 +11,5 @@ bench_mayo5 = "bench --no-default-features --features mayo5 --bench my_benchmark
 
 
 [build]
-# Increase stack size to 8MB. Applies to all builds
-rustflags = ["-C", "link-args=/STACK:8388608"]
+# Increase stack size to 16MB. Applies to all builds
+rustflags = ["-C", "link-args=/STACK:16777216"]

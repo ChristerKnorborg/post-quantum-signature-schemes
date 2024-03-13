@@ -65,72 +65,38 @@ pub fn div(x: u8, y: u8) -> u8 {
 
 
 
-pub fn matrix_add_array(a: [[u8; O]; N-O], b: [[u8; O]; N-O]) -> [[u8; O]; N-O] {
-
-    let mut result = [[0; O]; N - O]; // Initialize the result array
-
-    for i in 0..(N - O) {
-        for j in 0..O {
-            result[i][j] = add(a[i][j], b[i][j]); // Perform addition for corresponding elements
-        }
-    }
-    result
-}
-
-pub fn matrix_v_add_array(a: [[u8; V]; V], b: [[u8; V]; V]) -> [[u8; V]; V] {
-
-    let mut result = [[0; V]; V]; // Initialize the result array
-
-    for i in 0..V {
-        for j in 0..V {
-            result[i][j] = add(a[i][j], b[i][j]); // Perform addition for corresponding elements
-        }
-    }
-    result
-}
-
-pub fn matrix_mul_array_p2(a: [[u8; N-O]; O], b: [[u8; O]; N-O]) -> [[u8 ; O]; O] {
-
-
-    let rows_a = O;
-    let cols_a = N-O;
-    let cols_b = O;
-
-    let mut result = [[0; O]; O];
-
-    for i in 0..rows_a {
-        for j in 0..cols_b {
-            for k in 0..cols_a {
-                // Take the dot product of the i-th row of A and the j-th column of B
-                result[i][j] = add(result[i][j], mul(a[i][k], b[k][j])); 
-
+#[macro_export]
+macro_rules! matrix_add {
+    ($a:expr, $b:expr, $rows:expr, $cols:expr) => {{
+        for i in 0..$rows {
+            for j in 0..$cols {
+                $a[i][j] = add($a[i][j], $b[i][j]); // Perform addition directly on matrix a
             }
         }
-    }
-    return result
+        $a // Return the modified matrix a as the result
+    }};
 }
 
 
-pub fn matrix_mul_o_p1(a: [[u8; N-O]; N-O], b: [[u8; O]; N-O]) -> [[u8 ; O]; N-O] {
 
 
-    let rows_a = N-O;
-    let cols_a = N-O;
-    let cols_b = O;
+#[macro_export]
+macro_rules! matrix_mul {
+    ($a:expr, $rows_a:expr, $cols_a:expr, $b:expr, $cols_b:expr) => {{
+        let mut result = [[0u8; $cols_b]; $rows_a];
 
-    let mut result = [[0; O]; N-O];
-
-    for i in 0..rows_a {
-        for j in 0..cols_b {
-            for k in 0..cols_a {
-                // Take the dot product of the i-th row of A and the j-th column of B
-                result[i][j] = add(result[i][j], mul(a[i][k], b[k][j])); 
-
+        for i in 0..$rows_a {
+            for j in 0..$cols_b {
+                for k in 0..$cols_a {
+                    // Take the dot product of the i-th row of A and the j-th column of B
+                    result[i][j] = add(result[i][j], mul($a[i][k], $b[k][j]));
+                }
             }
         }
-    }
-    return result
+        result
+    }};
 }
+
 
 pub fn matrix_mul_v_l(a: [u8; V], b: [[u8; O]; V]) -> [u8 ; O] {
 
@@ -160,17 +126,6 @@ pub fn matrix_mul_s_trans_big_p(s: [u8; N], big_p: [[u8; N]; N]) -> [u8 ; N] {
     return result
 }
 
-pub fn array_mul_s_p(s: [u8; N], p: [u8; N]) -> u8 {
-
-    let mut result = 0;
-
-    for i in 0..N {
-            // Take the dot product of the i-th row of A and the j-th column of B
-            result = add(result, mul(s[i], p[i])); 
-    }
-    return result
-}
-
 pub fn matrix_mul_v_p1(v: [u8; V], p1: [[u8; V]; V]) -> [u8 ; V] {
 
     let mut result = [0; V];
@@ -184,6 +139,18 @@ pub fn matrix_mul_v_p1(v: [u8; V], p1: [[u8; V]; V]) -> [u8 ; V] {
     }
     return result
 }
+
+pub fn array_mul_s_p(s: [u8; N], p: [u8; N]) -> u8 {
+
+    let mut result = 0;
+
+    for i in 0..N {
+            // Take the dot product of the i-th row of A and the j-th column of B
+            result = add(result, mul(s[i], p[i])); 
+    }
+    return result
+}
+
 
 
 // Vector-matrix multiplication over GF(16).
@@ -268,69 +235,25 @@ pub fn p1_matrix_v_mul(p1: [u8; V], v: [u8 ; V]) -> u8 {
     return result;
 }
 
-// Matrix negation over GF(16)
-pub fn matrix_neg(a: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    a.iter()
-        .map(|row| row.iter().map(|&val| neg(val)).collect())
-        .collect()
-}
 
 
-// Helper function to transpose a matrix (as described in the MAYO paper)
-pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    let rows = matrix.len();
-    let cols = matrix[0].len();
 
-    // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = vec![vec![0u8; rows]; cols];
+#[macro_export]
+macro_rules! transpose_matrix_array {
+    ($matrix:expr, $rows:expr, $cols:expr) => {{
+        // Initialize the transposed matrix with zeroes. The dimensions are swapped.
+        let mut transposed = [[0u8; $rows]; $cols];
 
-    for i in 0..rows {
-        for j in 0..cols {
-            transposed[j][i] = matrix[i][j]; // Swap elements
+        for i in 0..$rows {
+            for j in 0..$cols {
+                transposed[j][i] = $matrix[i][j]; // Swap elements
+            }
         }
-    }
-    return transposed;
+        transposed
+    }};
 }
 
-// Helper function to transpose a matrix (as described in the MAYO paper)
-pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
-    let rows = vector.len();
 
-    // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = vec![vec![0u8; rows]; 1];
-
-    for i in 0..rows {
-        transposed[0][i] = vector[i]; // Swap elements
-    }
-    return transposed;
-}
-
-pub fn transpose_o_matrix_array(matrix: [[u8 ; O]; N-O]) -> [[u8 ; N-O]; O]{
-    let rows = N-O;
-    let cols = O;
-
-    // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = [[0u8; N-O]; O];
-
-    for i in 0..rows {
-        for j in 0..cols {
-            transposed[j][i] = matrix[i][j]; // Swap elements
-        }
-    }
-    return transposed;
-}
-
-pub fn transpose_p1_matrix_array(matrix: [[u8 ; V]; V]) -> [[u8 ; V]; V]{
-    // Create a new transposed matrix with the dimensions swapped
-    let mut transposed = [[0u8; V]; V];
-
-    for i in 0..V {
-        for j in 0..V {
-            transposed[j][i] = matrix[i][j]; // Swap elements
-        }
-    }
-    return transposed;
-}
 
 
 

@@ -1,29 +1,29 @@
 use std::vec;
 
-use crate::bitsliced_functionality::{
-    encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array
-};
+
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
-use crate::{decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array};
-use crate::finite_field::{add, array_mul_s_p, matrix_add_array, matrix_mul_array_p2, matrix_mul_o_p1, transpose_o_matrix_array, transpose_p1_matrix_array, matrix_mul_s_trans_big_p, matrix_mul_v_l, matrix_mul_v_p1, matrix_v_add_array, mul, o_matrix_x_idx_mul, p1_matrix_v_mul, sub};
+use crate::{
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array,
+    matrix_add, matrix_mul, transpose_matrix_array, encode_bit_sliced_matrices, encode_bit_sliced_array
+};
+use crate::finite_field::{add, array_mul_s_p, matrix_mul_s_trans_big_p, matrix_mul_v_l, matrix_mul_v_p1, mul, o_matrix_x_idx_mul, p1_matrix_v_mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::bytes_to_hex_string;
+
 
 use crate::constants::{
-    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
+    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES,
+    SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 
-pub fn upper_array_p3(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
-    let n = O;
+pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 
     // Iterate over everything above the diagonal
-    for i in 0..n {
-        for j in (i + 1)..n {
+    for i in 0..O {
+        for j in (i + 1)..O {
             matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
             matrix[j][i] = 0;
         }
     }
-
     return matrix;
 }
 
@@ -68,29 +68,28 @@ pub fn compact_key_gen(keygen_seed: Vec<u8>) -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYT
 
     
     let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);    // m p1 matrices are of size (n−o) × (n−o)
-    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let mut p3 = [[[0u8; O]; O]; M];                              // Allocate space for P_{i}^(3). Size is o × o
+    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
+    let mut p3 = [[[0u8; O]; O]; M];                                    // Allocate space for P_{i}^(3). Size is o × o
 
 
-    // Compute P3_i as (−O^T * P1_i * O ) − (−O^T * P2_i )
+    // Compute P3_i as (−O^T * P1_i * O ) − (−O^T * P2_i)
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
     for i in 0..M {
         // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
-        let transposed_o = transpose_o_matrix_array(o);
+        let transposed_o = transpose_matrix_array!(o, V, O);
 
-        let p1_i = &p1[i];
-        let p2_i = &p2[i];
 
         // P3 = O^t * (P1*O + P2) 
         // Compute: P1*O + P2
-        let p1_times_o = matrix_mul_o_p1(*p1_i, o);
-        let mult_add_p2 = matrix_add_array(p1_times_o, *p2_i);
+        let mut temp = matrix_mul!(p1[i], V, V, o, O); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
+        temp = matrix_add!(temp, p2[i], V, O);
 
 
-        p3[i] = upper_array_p3(matrix_mul_array_p2(transposed_o, mult_add_p2)); // Upper triangular part of the result
+        // Upper triangular part of the result
+        p3[i] = upper(matrix_mul!(transposed_o, O, V, temp, O)); //  o × (n−o) * (n−o) × o = o × o
     }
 
-    let encoded_p3: [u8 ; P3_BYTES] = encode_p3_bit_sliced_matrices_array(p3, true);
+    let encoded_p3: [u8 ; P3_BYTES] = encode_bit_sliced_matrices!(p3, O, O, M, true, P3_BYTES); // m p3 matrices are of size o × o
 
     // Public and secret keys
     let mut cpk = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3
@@ -140,24 +139,24 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
 
     let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);  // m p1 matrices are of size (n−o) × (n−o)
-    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);   // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let mut l = [[[0u8; O]; V]; M];                            // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
+    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);  // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
+    let mut l = [[[0u8; O]; V]; M];                                  // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
     
 
     // Compute L matrices
     for i in 0..M {
-        let p1_i = &p1[i];
-        let p2_i = &p2[i];
 
-        let transposed_p1_i = transpose_p1_matrix_array(*p1_i);
-        let added_p1 = matrix_v_add_array(*p1_i, transposed_p1_i);
+        // P1^T + P1
+        let mut added_p1 = transpose_matrix_array!(p1[i], V, V);
+        added_p1 = matrix_add!(added_p1, p1[i], V, V); 
 
-        let left_term = matrix_mul_o_p1(added_p1, o);
+        let mut left_term = matrix_mul!(added_p1, V, V, o, O);
+        let left_term = matrix_add!(left_term, p2[i], V, O);
 
-        l[i] = matrix_add_array(left_term, *p2_i);
+        l[i] = left_term;
     }
 
-    let encoded_l = encode_l_bit_sliced_matrices_array(l, false);
+    let encoded_l = encode_bit_sliced_matrices!(l, V, O, M, false, L_BYTES); // m l matrices are of size (n−o) × o
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key

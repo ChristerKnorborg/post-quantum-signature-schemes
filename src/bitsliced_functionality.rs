@@ -1,17 +1,3 @@
-use std::vec;
-
-
-use crate::{
-    constants::{L_BYTES, M, O, P3_BYTES, V},
-
-};
-
-
-
-
- 
-
-
 
 #[macro_export]
 macro_rules! encode_to_bytestring_array {
@@ -30,7 +16,6 @@ macro_rules! encode_to_bytestring_array {
         bytestring
     }};
 }
-
 
 
 
@@ -77,10 +62,6 @@ macro_rules! decode_bytestring_matrix_array {
         result
     }};
 }
-
-
-
-
 
 
 
@@ -141,135 +122,68 @@ macro_rules! decode_bit_sliced_matrices {
     }};
 }
 
+#[macro_export]
+macro_rules! encode_bit_sliced_array {
+    ($v:expr, $OUT_LEN:expr) => {{
+        let mut bytestring = [0u8; $OUT_LEN / 2]; // Bytestring of length M/2 of all 0s
 
+        for i in 0..($OUT_LEN / 8) {
+            let mut b0: u8 = 0x0;
+            let mut b1: u8 = 0x0;
+            let mut b2: u8 = 0x0;
+            let mut b3: u8 = 0x0;
 
-// Mayo Algorithm 4: Encodes a vector v ∈ F_{16}^{m} into a bitsliced representation
-pub fn encode_bit_sliced_vector(v: Vec<u8>) -> Vec<u8> {
-    let m = v.len();
-    let mut bytestring = vec![0u8; m / 2]; // Bytestring of length m/2 of all 0s
+            for j in (0..8).rev() {
+                // Encode 8 elements of v into 4 bytes
+                let a0 = $v[i * 8 + j] & 0x1; // Least significant bit
+                let a1 = ($v[i * 8 + j] & 0x2) >> 1; // Second least significant bit
+                let a2 = ($v[i * 8 + j] & 0x4) >> 2; // Third least significant bit
+                let a3 = ($v[i * 8 + j] & 0x8) >> 3; // Most significant bit (in our GF(16) representation)
 
-    for i in 0..(m / 8) {
-        let mut b0: u8 = 0x0;
-        let mut b1: u8 = 0x0;
-        let mut b2: u8 = 0x0;
-        let mut b3: u8 = 0x0;
-
-        for j in (0..8).rev() {
-            //Encode 8 elements of v into 4 bytes
-            let a0 = v[i * 8 + j] & 0x1; // Least significant bit
-            let a1 = (v[i * 8 + j] & 0x2) >> 1; // Second least significant bit
-            let a2 = (v[i * 8 + j] & 0x4) >> 2; // Third least significant bit
-            let a3 = (v[i * 8 + j] & 0x8) >> 3; // Most significant bit (in our GF(16) representation)
-
-            b0 = (b0 << 1) | a0; // b0 = b0 * 2 + a0
-            b1 = (b1 << 1) | a1; // b1 = b1 * 2 + a1
-            b2 = (b2 << 1) | a2; // b2 = b2 * 2 + a2
-            b3 = (b3 << 1) | a3; // b3 = b3 * 2 + a3
+                b0 = (b0 << 1) | a0; // b0 = b0 * 2 + a0
+                b1 = (b1 << 1) | a1; // b1 = b1 * 2 + a1
+                b2 = (b2 << 1) | a2; // b2 = b2 * 2 + a2
+                b3 = (b3 << 1) | a3; // b3 = b3 * 2 + a3
+            }
+            bytestring[i] = b0;
+            bytestring[$OUT_LEN / 8 + i] = b1;
+            bytestring[$OUT_LEN / 4 + i] = b2;
+            bytestring[3 * $OUT_LEN / 8 + i] = b3;
         }
-        bytestring[i] = b0;
-        bytestring[m / 8 + i] = b1;
-        bytestring[m / 4 + i] = b2;
-        bytestring[3 * m / 8 + i] = b3;
-    }
-    return bytestring;
+        bytestring
+    }};
 }
 
 
+#[macro_export]
+macro_rules! encode_bit_sliced_matrices {
+    ($a:expr, $rows:expr, $cols:expr, $M:expr, $is_triangular:expr, $OUT_BYTES:expr) => {{
+        let mut bytestring = [0u8; $OUT_BYTES];
+        
+        // Initialize variables for indexing and iteration
+        let mut byte_index = 0;
 
+        for i in 0..$rows {
+            for j in 0..$cols {
+                if i <= j || !$is_triangular {
+                    let mut indices_arr = [0u8; $M];
+                    
+                    // Populate indices_arr with elements from the matrices
+                    for (idx, mat) in $a.iter().enumerate() {
+                        indices_arr[idx] = mat[i][j];
+                    }
 
+                    // Use the provided encode function/macro on indices_arr
+                    let encoded_bits: [u8; $M / 2] = encode_bit_sliced_array!(indices_arr, $M);
 
-pub fn encode_bit_sliced_array(v: [u8 ; M]) -> [u8 ; M/2]{
-    let mut bytestring = [0u8; M / 2]; // Bytestring of length m/2 of all 0s
-
-    for i in 0..(M / 8) {
-        let mut b0: u8 = 0x0;
-        let mut b1: u8 = 0x0;
-        let mut b2: u8 = 0x0;
-        let mut b3: u8 = 0x0;
-
-        for j in (0..8).rev() {
-            //Encode 8 elements of v into 4 bytes
-            let a0 = v[i * 8 + j] & 0x1; // Least significant bit
-            let a1 = (v[i * 8 + j] & 0x2) >> 1; // Second least significant bit
-            let a2 = (v[i * 8 + j] & 0x4) >> 2; // Third least significant bit
-            let a3 = (v[i * 8 + j] & 0x8) >> 3; // Most significant bit (in our GF(16) representation)
-
-            b0 = (b0 << 1) | a0; // b0 = b0 * 2 + a0
-            b1 = (b1 << 1) | a1; // b1 = b1 * 2 + a1
-            b2 = (b2 << 1) | a2; // b2 = b2 * 2 + a2
-            b3 = (b3 << 1) | a3; // b3 = b3 * 2 + a3
-        }
-        bytestring[i] = b0;
-        bytestring[M / 8 + i] = b1;
-        bytestring[M / 4 + i] = b2;
-        bytestring[3 * M / 8 + i] = b3;
-    }
-    return bytestring;
-}
-
-pub fn encode_l_bit_sliced_matrices_array(a: [[[u8; O]; V]; M],is_triangular: bool,) -> [u8 ; L_BYTES] {
-    let mut bytestring = [0u8 ; L_BYTES];
-
-    // Encode bits from the matrices in the following order:
-    // A0[0, 0], A1[0, 0], . . . , Am−1[0, 0]
-    // Ai[0, 1] entries up to the Ai[0, c − 1]
-    // Ai[r − 1, c − 1]
-    let mut byte_index = 0;
-
-    for i in 0..V {
-        for j in 0..O {
-            if i <= j || is_triangular == false {
-                let mut indices_arr = [0u8 ; M];
-
-                let mut idx = 0;
-                for mat in &a {
-                    // concatenate the bitsliced representation of the triangular matrix
-                    indices_arr[idx] = mat[i][j];
-                    idx += 1;
+                    // Copy the encoded bits into the bytestring
+                    let slice_range = byte_index * $M / 2..(byte_index + 1) * $M / 2;
+                    bytestring[slice_range].copy_from_slice(&encoded_bits);
+                    byte_index += 1;
                 }
-
-                let encoded_bits = encode_bit_sliced_array(indices_arr);
-
-                bytestring[byte_index*M/2..(byte_index+1)*M/2].copy_from_slice(&encoded_bits);
-                byte_index += 1;
             }
         }
-    }
-
-    return bytestring;
+        bytestring
+    }};
 }
-
-
-pub fn encode_p3_bit_sliced_matrices_array(a: [[[u8; O]; O]; M],is_triangular: bool,) -> [u8 ; P3_BYTES] {
-    let mut bytestring = [0u8 ; P3_BYTES];
-
-    // Encode bits from the matrices in the following order:
-    // A0[0, 0], A1[0, 0], . . . , Am−1[0, 0]
-    // Ai[0, 1] entries up to the Ai[0, c − 1]
-    // Ai[r − 1, c − 1]
-    let mut byte_index = 0;
-
-    for i in 0..O {
-        for j in 0..O {
-            if i <= j || is_triangular == false {
-                let mut indices_arr = [0u8 ; M];
-
-                let mut idx = 0;
-                for mat in &a {
-                    // concatenate the bitsliced representation of the triangular matrix
-                    indices_arr[idx] = mat[i][j];
-                    idx += 1;
-                }
-
-                let encoded_bits = encode_bit_sliced_array(indices_arr);
-
-                bytestring[byte_index*M/2..(byte_index+1)*M/2].copy_from_slice(&encoded_bits);
-                byte_index += 1;
-            }
-        }
-    }
-
-    return bytestring;
-}
-
 
