@@ -9,3 +9,7 @@ bench_mayo2 = "bench --no-default-features --features mayo2 --bench my_benchmark
 bench_mayo3 = "bench --no-default-features --features mayo3 --bench my_benchmark -- --verbose"
 bench_mayo5 = "bench --no-default-features --features mayo5 --bench my_benchmark -- --verbose"
 
+
+[build]
+# Increase stack size to 8MB. Applies to all builds
+rustflags = ["-C", "link-args=/STACK:8388608"]

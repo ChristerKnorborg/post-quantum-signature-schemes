@@ -11,6 +11,7 @@ use crate::{
     finite_field::{add, mul},
     utils::bytes_to_hex_string,
 };
+
 use lib::bitsliced_functionality;
 use lib::constants;
 use lib::crypto_primitives;

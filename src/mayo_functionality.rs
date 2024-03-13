@@ -1,12 +1,13 @@
 use std::vec;
 
 use crate::bitsliced_functionality::{
-    decode_o_bytestring_to_matrix_array, decode_p1_bit_sliced_matrices_array, decode_p2_bit_sliced_matrices_array, decode_p3_bit_sliced_matrices_array, decode_r_bytestring_to_array, decode_signature_bytestring_to_array, decode_t_bytestring_to_array, decode_v_bytestring_to_array, encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array, encode_signature_to_bytestring
+    encode_l_bit_sliced_matrices_array, encode_p3_bit_sliced_matrices_array
 };
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_randomBytes, safe_shake256};
+use crate::{decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array};
 use crate::finite_field::{add, array_mul_s_p, matrix_add_array, matrix_mul_array_p2, matrix_mul_o_p1, transpose_o_matrix_array, transpose_p1_matrix_array, matrix_mul_s_trans_big_p, matrix_mul_v_l, matrix_mul_v_p1, matrix_v_add_array, mul, o_matrix_x_idx_mul, p1_matrix_v_mul, sub};
 use crate::sample::sample_solution;
-use crate::utils::{bytes_to_hex_string};
+use crate::utils::bytes_to_hex_string;
 
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
@@ -52,7 +53,7 @@ pub fn compact_key_gen(keygen_seed: Vec<u8>) -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYT
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_o_bytestring_to_matrix_array(o_bytes);
+    let o = decode_bytestring_matrix_array!(o_bytes, V, O);
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
     let mut p = [0u8; P1_BYTES + P2_BYTES];
@@ -65,18 +66,13 @@ pub fn compact_key_gen(keygen_seed: Vec<u8>) -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYT
     let p1_bytes = &p[0..P1_BYTES];
     let p2_bytes = &p[P1_BYTES..];
 
-    // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes);
+    
+    let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);    // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
+    let mut p3 = [[[0u8; O]; O]; M];                              // Allocate space for P_{i}^(3). Size is o × o
 
 
-    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes);
-
-
-    // Allocate space for P_{i}^(3). Size is o × o
-    let mut p3 = [[[0u8; O]; O]; M];
-
-    // Compute P_{i}^(3) as (−O^{T} * P^{(1)}_i * O ) − (−O^{T} * P^{(2)}_i )
+    // Compute P3_i as (−O^T * P1_i * O ) − (−O^T * P2_i )
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
     for i in 0..M {
         // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
@@ -128,7 +124,7 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_o_bytestring_to_matrix_array(o_bytes);
+    let o = decode_bytestring_matrix_array!(o_bytes, V, O);
 
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
@@ -142,15 +138,11 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     let p1_bytes = &p[0..P1_BYTES];
     let p2_bytes = &p[P1_BYTES..];
 
-    // m p1 matrices are of size (n−o) × (n−o)
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytes);
 
-    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytes);
-
-
-    // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
-    let mut l = [[[0u8; O]; V]; M];
+    let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);  // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);   // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
+    let mut l = [[[0u8; O]; V]; M];                            // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
+    
 
     // Compute L matrices
     for i in 0..M {
@@ -217,9 +209,9 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let o_bytestring = &expanded_sk[P1_BYTES + L_BYTES..];
 
     // Assign matrices with decoded information
-    let o = decode_o_bytestring_to_matrix_array(o_bytestring);
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytestring);
-    let l = decode_p2_bit_sliced_matrices_array(l_bytestring);
+    let o = decode_bytestring_matrix_array!(o_bytestring, V, O);
+    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
+    let l = decode_bit_sliced_matrices!(l_bytestring, V, O, M, false);
 
     // Hash message and derive salt
     let mut m_digest = [0u8; DIGEST_BYTES];
@@ -259,7 +251,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
 
-    let t = decode_t_bytestring_to_array( &t_output);
+    let t = decode_bytestring_to_array!(&t_output, M);
     
 
     // Attempt to find a preimage for t
@@ -284,12 +276,12 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         // Derive v_i
         for i in 0..K {
             let v_bytestring_slice = &v_bytestring[i * V_BYTES..(i + 1) * V_BYTES];
-            v[i] = decode_v_bytestring_to_array(v_bytestring_slice)
+            v[i] = decode_bytestring_to_array!(v_bytestring_slice, V)
         }
 
         // Derive r (Notice r is redefined and have nothing to do with previous r)
         let v_bytestring_remainder = &v_bytestring[K * V_BYTES..];
-        let r = decode_r_bytestring_to_array(v_bytestring_remainder); // Remainding part of v_bytestring.
+        let r = decode_bytestring_to_array!(v_bytestring_remainder, K*O); // Remainding part of v_bytestring.
 
         // Build the linear system Ax = y
         let mut a = [[0u8; K * O]; M + SHIFTS];
@@ -387,7 +379,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     }
 
     let mut sig_con_salt = [0u8 ; SIG_BYTES];
-    let signature_encoded = encode_signature_to_bytestring(signature);
+    let signature_encoded = encode_to_bytestring_array!(signature, K*N, SIG_BYTES-SALT_BYTES);
 
     sig_con_salt[..SIG_BYTES-SALT_BYTES].copy_from_slice(&signature_encoded);
     sig_con_salt[SIG_BYTES-SALT_BYTES..].copy_from_slice(&salt);
@@ -406,13 +398,14 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
     // decodes the public information into matrices
-    let p1 = decode_p1_bit_sliced_matrices_array(p1_bytestring);
-    let p2 = decode_p2_bit_sliced_matrices_array(p2_bytestring);
-    let p3 = decode_p3_bit_sliced_matrices_array(p3_bytestring);
+    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
+    let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
+    let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
 
     // decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
-    let s = decode_signature_bytestring_to_array(signature);
+    let s_bytes = &signature[0..SIG_BYTES - SALT_BYTES];
+    let s = decode_bytestring_to_array!(s_bytes, K*N);
 
 
     let mut s_matrix = [[0u8; N]; K];
@@ -443,7 +436,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
         (DIGEST_BYTES + SALT_BYTES) as u64,
     );
 
-    let t = decode_t_bytestring_to_array( &t_output);
+    let t = decode_bytestring_to_array!(t_output, M);
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 

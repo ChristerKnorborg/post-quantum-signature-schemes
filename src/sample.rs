@@ -73,7 +73,7 @@ pub fn sample_rand() -> [u8; K*O] {
 
 // MAYO Algorithm 2: Sample Solution
 // Function to solve the equation Ax = y in GF(16) using gaussian elimination.
-pub fn sample_solution(mut a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<[u8; K*O], &'static str> {
+pub fn sample_solution(a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<[u8; K*O], &'static str> {
     let rows = M;
 
     let mut x = r.clone();
