@@ -1,4 +1,4 @@
-use crate::genKAT::bindings;
+use crate::genkat::bindings;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
 use sha3::digest::{ExtendableOutput, Update, XofReader};

@@ -34,7 +34,7 @@ mod mayo1_features {
     pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
-    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_1.txt";
+    pub const COMPARE_FILE_NAME: &str = "./src/genkat/Results MAYO/PQCsignKAT_24_MAYO_1.txt";
 }
 
 #[cfg(feature = "mayo2")]
@@ -70,7 +70,7 @@ mod mayo2_features {
     pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
-    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_24_MAYO_2.txt";
+    pub const COMPARE_FILE_NAME: &str = "./src/genkat/Results MAYO/PQCsignKAT_24_MAYO_2.txt";
 }
 
 #[cfg(feature = "mayo3")]
@@ -106,7 +106,7 @@ mod mayo3_features {
     pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
-    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_32_MAYO_3.txt";
+    pub const COMPARE_FILE_NAME: &str = "./src/genkat/Results MAYO/PQCsignKAT_32_MAYO_3.txt";
 }
 
 #[cfg(feature = "mayo5")]
@@ -142,7 +142,7 @@ mod mayo5_features {
     pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
 
     // File to compare the KAT results with
-    pub const COMPARE_FILE_NAME: &str = "./src/genKAT/Results MAYO/PQCsignKAT_40_MAYO_5.txt";
+    pub const COMPARE_FILE_NAME: &str = "./src/genkat/Results MAYO/PQCsignKAT_40_MAYO_5.txt";
 }
 
 
