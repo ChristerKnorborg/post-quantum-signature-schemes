@@ -2,9 +2,7 @@ use std::fs::File;
 use std::io::{Write, Result};
 use std::io::{self, Read};
 use std::path::Path;
-
-use crate::constants::{N, V, O};
-use crate::crypto_primitives::{safe_randomBytes, safe_randombytes_init};
+use crate::crypto_primitives:: safe_random_bytes_init;
 
 
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
@@ -27,7 +25,7 @@ pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
 pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
 
-    safe_randombytes_init(
+    safe_random_bytes_init(
         &mut entropy_input,
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
@@ -127,9 +125,6 @@ pub fn compare_hex_files<P: AsRef<Path>>(file1_path: P, file2_path: P) -> io::Re
 mod tests {
 
     use super::*;
-    use crate::mayo_functionality as mf;
-    use crate::utils as ut;
-    use std::vec;
 
     #[test]
     fn test_hex_to_bytes_and_back() {

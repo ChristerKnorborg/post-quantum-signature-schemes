@@ -5,7 +5,7 @@ use gnuplot::{Caption, Color, Figure};
 
 use lib::constants::VERSION;
 use lib::crypto_primitives::{
-    safe_aes_128_ctr, safe_randomBytes, safe_randombytes_init, safe_shake256,
+    safe_aes_128_ctr, safe_random_bytes, safe_random_bytes_init, safe_shake256,
 };
 use lib::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
 
@@ -23,17 +23,17 @@ fn criterion_benchmark(c: &mut Criterion) {
     let nbytes: u64 = entropy_input.len() as u64;
 
     // Init the randombytes like NIST correctly
-    safe_randombytes_init(&mut entropy_input, &personalization_string, 256);
-    safe_randomBytes(&mut entropy_input, nbytes);
+    safe_random_bytes_init(&mut entropy_input, &personalization_string, 256);
+    safe_random_bytes(&mut entropy_input, nbytes);
 
-    safe_randombytes_init(&mut seed_bytes, &personalization_string, 256);
+    safe_random_bytes_init(&mut seed_bytes, &personalization_string, 256);
 
 
     c.bench_function("KeyGen", |bencher| {
         bencher.iter_batched(
             || seed_bytes.clone(),
-            |input| {
-                compact_key_gen(input)
+            |_| {
+                compact_key_gen()
             },
             BatchSize::LargeInput,
         );
@@ -41,7 +41,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("ExpandSK", |bencher| {
         bencher.iter_batched(
-            || compact_key_gen(seed_bytes.clone()),
+            || compact_key_gen(),
             |(_, csk)| {
                 expand_sk(csk)
             },
@@ -51,7 +51,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("ExpandPK", |bencher| {
         bencher.iter_batched(
-            || compact_key_gen(seed_bytes.clone()),
+            || compact_key_gen(),
             |(cpk, _)| {
                 expand_pk(cpk)
             },
@@ -62,9 +62,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("ExpandSK + Sign", |bencher| {
         bencher.iter_batched(
             || {
-                let (_, csk) = compact_key_gen(seed_bytes.clone());
+                let (_, csk) = compact_key_gen();
                 let mut message = [0u8; 32];
-                safe_randomBytes(&mut message, 32);
+                safe_random_bytes(&mut message, 32);
                 let message_vec = message.to_vec();
 
                 (message_vec, csk)
@@ -79,9 +79,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("ExpandPK + Verify", |bencher| {
         bencher.iter_batched(
             || {
-                let (cpk, csk) = compact_key_gen(seed_bytes.clone());      
+                let (cpk, csk) = compact_key_gen();      
                 let mut message = [0u8; 32];
-                safe_randomBytes(&mut message, 32);
+                safe_random_bytes(&mut message, 32);
                 let message_vec = message.to_vec();
 
                 let signature = api_sign(message_vec, csk);

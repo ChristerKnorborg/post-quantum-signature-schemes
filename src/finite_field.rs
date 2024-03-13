@@ -2,21 +2,23 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use crate::constants::{K, M, N, O, V};
 
 
 // Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
-// Hence, -a = a in binary fields (GF(2^n)).  
+// Hence, -a = a in binary fields (GF(2^n)).
+#[inline]  
 pub fn neg(x: u8) -> u8 {
     return x; // Negation in GF(2^n) has no effect as a + a = 0.
 }
 
 // GF(16) addition is equivalent to XOR because we do bitwise addition modulo 2 (no carry)
+#[inline]
 pub fn add(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
 
 // GF(16) subtraction is equivalent to XOR because we do bitwise subtraction modulo 2 (no carry)
+#[inline]
 pub fn sub(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
@@ -98,143 +100,53 @@ macro_rules! matrix_mul {
 }
 
 
-pub fn matrix_mul_v_l(a: [u8; V], b: [[u8; O]; V]) -> [u8 ; O] {
+#[macro_export]
+macro_rules! vector_matrix_mul {
+    ($a:expr, $b:expr, $vec_len:expr, $mat_cols:expr) => {{
+        let mut result = [0u8; $mat_cols];
 
-    let mut result = [0; O];
-
-    for j in 0..V {
-        for k in 0..O {
-            // Take the dot product of the i-th row of A and the j-th column of B
-            result[k] = add(result[k], mul(a[j], b[j][k])); 
-
+        for j in 0..$vec_len {
+            for k in 0..$mat_cols {
+                // Take the dot product of the i-th row of A and the j-th column of B
+                result[k] = add(result[k], mul($a[j], $b[j][k]));
+            }
         }
-    }
-    return result
+
+        result
+    }};
 }
 
-pub fn matrix_mul_s_trans_big_p(s: [u8; N], big_p: [[u8; N]; N]) -> [u8 ; N] {
 
-    let mut result = [0; N];
+#[macro_export]
+macro_rules! vector_transposed_matrix_mul {
+    ($a:expr, $b:expr, $B_ROWS:expr, $B_COLS:expr) => {{
 
-    for j in 0..N {
-        for k in 0..N {
-            // Take the dot product of the i-th row of A and the j-th column of B
-            result[k] = add(result[k], mul(s[j], big_p[j][k])); 
+        let mut result = [0u8; $B_COLS];
 
+        for j in 0..$B_COLS {
+            for k in 0..$B_ROWS {
+                result[j] = add(result[j], mul($a[k], $b[k][j]));
+            }
         }
-    }
-    return result
+        result
+    }};
 }
 
-pub fn matrix_mul_v_p1(v: [u8; V], p1: [[u8; V]; V]) -> [u8 ; V] {
 
-    let mut result = [0; V];
 
-    for j in 0..V {
-        for k in 0..V {
-            // Take the dot product of the i-th row of A and the j-th column of B
-            result[j] = add(result[j], mul(v[k], p1[k][j])); 
 
+#[macro_export]
+macro_rules! vector_mul {
+    ($a:expr, $b:expr, $LEN:expr) => {{
+
+        let mut result = 0u8;
+
+        for i in 0..$LEN {
+            result = add(result, mul($a[i], $b[i]));
         }
-    }
-    return result
+        result
+    }};
 }
-
-pub fn array_mul_s_p(s: [u8; N], p: [u8; N]) -> u8 {
-
-    let mut result = 0;
-
-    for i in 0..N {
-            // Take the dot product of the i-th row of A and the j-th column of B
-            result = add(result, mul(s[i], p[i])); 
-    }
-    return result
-}
-
-
-
-// Vector-matrix multiplication over GF(16).
-// Returns a vector of size equal to the number of columns in the matrix.
-pub fn vector_matrix_mul(vec: &Vec<u8>, matrix: &Vec<Vec<u8>>) -> Vec<u8> {
-    
-    assert_eq!(vec.len(), matrix.len(), "Length of vector must equal number of rows in matrix");
-
-    let rows_matrix = matrix.len();
-    let cols_matrix = matrix[0].len();
-
-    let mut result = vec![0; cols_matrix]; // 1 x cols_matrix vector
-
-    for j in 0..cols_matrix {
-        for i in 0..rows_matrix {
-            // Multiply each element of the vector by the corresponding element in the matrix column and sum the results
-            result[j] = add(result[j], mul(vec[i], matrix[i][j])); 
-        }
-    }
-    return result;
-}
-
-
-// Matrix-vector multiplication over GF(16)
-// Returns a vector of size equal to the number of rows in the matrix.
-pub fn matrix_vector_mul(matrix: &Vec<Vec<u8>>, vec: &Vec<u8>) -> Vec<u8> {
-    assert_eq!(matrix[0].len(), vec.len(), "Number of columns in matrix must equal length of vector");
-
-    let rows_matrix = matrix.len();
-    let cols_matrix = matrix[0].len();
-
-    let mut result = vec![0; rows_matrix]; // rows_matrix x 1 vector
-
-    for i in 0..rows_matrix {
-        for k in 0..cols_matrix {
-            // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
-            result[i] = add(result[i], mul(matrix[i][k], vec[k])); 
-        }
-    }
-
-    return result;
-}
-
-pub fn a_mul_r(matrix: [[u8; K*O]; M], array: [u8 ; K*O]) -> [u8 ; M] {
-    let mut result = [0; M]; // rows_matrix x 1 vector
-
-
-    for i in 0..M {
-        for j in 0..K*O {
-            // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
-            result[i] = add(result[i], mul(matrix[i][j], array[j])); 
-        }
-    }
-    return result;
-}
-
-
-pub fn o_matrix_x_idx_mul(matrix: [[u8; O]; V], array: &[u8]) -> [u8 ; V] {
-    let mut result = [0u8 ; V]; // V x 1 vector
-
-    for i in 0..V {
-        for j in 0..O {
-            // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
-            result[i] = add(result[i], mul(matrix[i][j], array[j])); 
-        }
-    }
-
-    return result;
-}
-
-
-
-pub fn p1_matrix_v_mul(p1: [u8; V], v: [u8 ; V]) -> u8 {
-    let mut result = 0; // rows_matrix x 1 vector
-
-
-    for i in 0..V {
-        // Multiply each element of the i-th row of the matrix by the corresponding element in the vector and sum the results
-        result = add(result, mul(p1[i], v[i])); 
-    }
-
-    return result;
-}
-
 
 
 
@@ -255,7 +167,33 @@ macro_rules! transpose_matrix_array {
 
 
 
+#[macro_export]
+macro_rules! matrix_vec_mul {
+    ($matrix:expr, $array:expr, $MAT_ROWS:expr, $MAT_COLS:expr) => {{
+        let mut result = [0u8; $MAT_ROWS]; // Initialize result vector with zeros
 
+        for i in 0..$MAT_ROWS {
+            for j in 0..$MAT_COLS {
+                result[i] = add(result[i], mul($matrix[i][j], $array[j]));
+            }
+        }
+
+        result
+    }};
+}
+
+
+
+
+#[macro_export]
+macro_rules! vec_add {
+    ($a:expr, $b:expr, $LEN:expr) => {{
+        for i in 0..$LEN {
+            $a[i] = add($a[i], $b[i]);
+        }
+        $a
+    }};
+}
 
 
 

@@ -1,8 +1,8 @@
 use crate::genKAT::bindings;
-use aes::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
+use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
 use sha3::digest::{ExtendableOutput, Update, XofReader};
-use sha3::{Digest, Shake256};
+use sha3::Shake256;
 
 // Function to hash a bytestring with SHAKE256 to a specified output length
 pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
@@ -17,7 +17,7 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
     return output;
 }
 
-pub fn safe_randombytes_init(
+pub fn safe_random_bytes_init(
     entropy_input: &mut [u8],
     personalization_string: &[u8],
     security_strength: i32,
@@ -33,7 +33,7 @@ pub fn safe_randombytes_init(
     }
 }
 
-pub fn safe_randomBytes(random_arrays: &mut [u8], nbytes: u64) {
+pub fn safe_random_bytes(random_arrays: &mut [u8], nbytes: u64) {
     // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
     // the C function adheres to the expected contract, and any other invariants you uphold.
     unsafe {
