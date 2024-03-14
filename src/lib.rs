@@ -3,7 +3,7 @@ pub mod constants;
 pub mod crypto_primitives;
 pub mod finite_field;
 pub mod mayo_functionality;
-pub mod read_kat_file;
+pub mod write_and_compare_kat_file;
 pub mod sample;
 pub mod utils;
 pub mod genkat {
