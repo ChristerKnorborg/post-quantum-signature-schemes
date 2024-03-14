@@ -53,7 +53,9 @@ pub fn write_and_compare_kat_file() {
 
     for count in 0..100 { 
 
-    println!("count = {}", count);
+    // Print progress
+    print!("\rProcessing interation {} / 100", count+1);
+    io::stdout().flush().unwrap(); 
 
     let cur_seed = &mut seeds[count];
     safe_random_bytes_init(cur_seed, &mut personalization_string, 256);
@@ -156,6 +158,7 @@ pub fn compare_files<P: AsRef<Path>>(file1_path: P, file2_path: P) -> bool{
         }
     }
 
+    println!(""); // Newline for readability
     if is_different {
         println!("^^^^^^ INCORRECT VALUES PRODUCED!. CHECK DIFFERENCES ABOVE ^^^^^^");
         return false;

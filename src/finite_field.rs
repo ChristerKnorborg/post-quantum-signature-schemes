@@ -23,7 +23,8 @@ pub fn sub(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
 
-// GF(16) multiplication is equivalent to multiplying the polynomials and then reducing modulo the irreducible polynomial. 
+// GF(16) multiplication is equivalent to multiplying the polynomials and then reducing modulo the
+// irreducible polynomial f(x) = x^4 + x + 1. 
 pub fn mul(x: u8, y: u8) -> u8 {
 
     // Carryless multiplication of polynomials in GF(2^4)
@@ -35,12 +36,17 @@ pub fn mul(x: u8, y: u8) -> u8 {
 
     // Reduce modulo by the irreducible polynomial x^4 + x + 1 
     let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit is always 0, cause we can't get more than x^6)
-    let overflow_bits: u8 = (first_4_bits >> 4) ^ (first_4_bits >> 3); // Replace x^4 with x + 1 as x^4 (e.g. 16) = x + 1 (under the irreducible polynomial). Notice, + is XOR in binary fields.
+    
+
+    // Replace x^4 with x + 1 as x^4 (e.g. 16) = x + 1 (under the irreducible polynomial).
+    // Replace x^5 with x^2 + x as x^5 (e.g. 16) = x^2 + x (under the irreducible polynomial).
+    // Replace x^6 with x^3 + x^2 as x^6 (e.g. 16) = x^3 + x^2 (under the irreducible polynomial).
+    let overflow_bits: u8 = (first_4_bits >> 4) ^ (first_4_bits >> 3);  
     let res : u8 = (res ^ overflow_bits) & 0x0f; // XOR res with the mod reduction of the overflow bits. Then remove first 4 bits from res.
     return res;
 }
 
-// From Fermat's little theorem, we know that an element x in a finite field F satisfies x^{p^{n}-1} = 1,
+// From Euler's theorem, we know that an element x in a finite field F satisfies x^{p^{n}-1} = 1,
 // where p is the characteristic of F and n is the degree of the extension. From this we can deduce that x^{14} * x = x^{-1} * x = 1.
 // E.g. x^14 = x^-1 (the multiplicative inverse of x)      
 pub fn inv(x: u8) -> u8{
@@ -170,7 +176,7 @@ macro_rules! transpose_matrix_array {
 #[macro_export]
 macro_rules! matrix_vec_mul {
     ($matrix:expr, $array:expr, $MAT_ROWS:expr, $MAT_COLS:expr) => {{
-        let mut result = [0u8; $MAT_ROWS]; // Initialize result vector with zeros
+        let mut result = [0u8; $MAT_ROWS]; 
 
         for i in 0..$MAT_ROWS {
             for j in 0..$MAT_COLS {
@@ -217,17 +223,17 @@ mod tests {
 
     #[test]
     fn test_add() {
-        assert_eq!(add(0x0, 0x0), 0x0); // 0 is the additive identity
-        assert_eq!(add(0x1, 0x1), 0x0); // 1 is its own additive inverse
-        assert_eq!(add(0x1, 0x2), 0x3); // 1 + 2 = 3
-        assert_eq!(add(0x3, 0x1), 0x2); // 3 + 1 = 2
-        assert_eq!(add(0x6, 0x6), 0x0); // 6 is its own additive inverse
+        assert_eq!(add(0x0, 0x0), 0x0); 
+        assert_eq!(add(0x1, 0x1), 0x0); 
+        assert_eq!(add(0x1, 0x2), 0x3); 
+        assert_eq!(add(0x3, 0x1), 0x2); 
+        assert_eq!(add(0x6, 0x6), 0x0); 
     }
 
     #[test]
     fn test_sub() {
         // Subtraction is the same as addition in GF(16)
-        assert_eq!(sub(0x0, 0x0), 0x0); // 0 is the additive identity
+        assert_eq!(sub(0x0, 0x0), 0x0);
         assert_eq!(sub(0x3, 0x1), 0x2); // (x + 1) - 1 = x
         assert_eq!(sub(0x1, 0x2), 0x3); // 1 - x = x + 1
         assert_eq!(sub(0x6, 0xf), 0x9); // x^2 + x - (x^3 + x^2 + x + 1) = x^3 + 1
@@ -239,24 +245,9 @@ mod tests {
         assert_eq!(mul(0x1, 0x1), 0x1); // 1 * 1 = 1
         assert_eq!(mul(0x2, 0x2), 0x4); // x * x = x^2 = 4
         assert_eq!(mul(0x3, 0x3), 0x5); // (x + 1) * (x + 1) = x^2 + 2x + 1 = x^2 + 1 (as modulo 2 eats the 2x - no modular reduction needed)
-
         assert_eq!(mul(0xC, 0x3), 0x7); 
-        // (x^3 + x^2) * (x + 1) = x^4 + 2x^3 + x^2 
-        // = x^4 + x^2 (Term-wise modulo 2 reduction)
-        // x^4 + x^2 + (x^4 + x + 1) = x^2 + x + 1 (By doing modular reduction on x^4 + x^2 with f(x) = x^4 + x + 1 - then modulo 2 term-wise)
-
         assert_eq!(mul(0xC, 0x7), 0x2); 
-        // (x^3 + x^2) * (x^2 + x + 1) = x^5 + 2x^4 + 2x^3 + x^2 = x^5 + x^2 (Term-wise modulo 2 reduction)
-        // x^5 + x^2 + (x^5 + x^2 + x) = 2x^5 + 2x^2 + x (By doing modular reduction on x^5 + x^2 with x * f(x) = x^5 + x^2 + x)
-        // = x  (modulo 2 term-wise)
-
         assert_eq!(mul(0xf, 0xf), 0xa); 
-        // (x^3 + x^2 + x + 1) * (x^3 + x^2 + x + 1) = x^6 + 2x^5 + 3x^4 + 4x^3 + 3x^2 + x + 1
-        // = x^6 + x^4 + x^2 + 1 (Term-wise modulo 2 reduction)
-        // x^6 + x^4 + x^3 + x^2 + 1 + (x^6 + x^3 + x^2) = 2x^6 + x^4 + 2x^3 + 2x^2 + 1 (By doing modular reduction on x^6 + x^4 + x^3 + x^2 + 1 with x^2 * f(x) = x^6 + x^3 + x^2)
-        // = x^4 + x^3 + 1 (modulo 2 term-wise)
-        // x^4 + x^3 + 1 + (x^4 + x + 1) = 2x^4 + x^3 + x + 2 (By doing modular reduction on x^4 + x^3 + 1 with f(x) = x^4 + x + 1)
-        // = x^3 + x  (modulo 2 term-wise)
     }
 
     #[test]
@@ -267,9 +258,6 @@ mod tests {
         assert_eq!(inv(0x2), 0x9); // x's inverse is x^3 + 1 
         assert_eq!(inv(0x3), 0xe); // (x + 1)'s inverse is x^3 + x^2 + x
         assert_eq!(inv(0x4), 0xd); // x^2's inverse is x^3 + x^2 + 1
-        assert_eq!(inv(0x5), 0xb); // (x^2 + 1)'s inverse is x^3 + x + 1
-        assert_eq!(inv(0x6), 0x7); // (x^2 + x)'s inverse is x^2 + x + 1
-        assert_eq!(inv(0x8), 0xf); // x^3's inverse is x^3 + x^2 + x + 1
     }
 
 

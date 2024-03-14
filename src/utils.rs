@@ -58,7 +58,7 @@ pub fn write_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
 }
 
 
-// Convert a hex string to a byte vector by parsing each pair of hex digits
+// Convert a hex string to a byte vector of nibbles by parsing each pair of hex digits
 // into a u8 and collecting them into a single Vec<u8>.
 pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
     let uneven: bool = hex_str.len() % 2 != 0;
@@ -86,7 +86,7 @@ pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
     return res;
 }
 
-// Convert a byte vector to a hex string by formatting each byte as a pair of
+// Convert a byte vector of nibbles to a hex string by formatting each byte as a pair of
 // hex digits and concatenating them into a single String.
 pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
     let mut hex_str = String::new();

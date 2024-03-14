@@ -3,7 +3,7 @@ use std::os::raw as ccty;
 extern "C" {
     pub fn randombytes_init_nist(
         entropy_input: *const ccty::c_uchar, // Pointer to const u8 for C compatibility
-        personalization_string: *const ccty::c_uchar, // Same here, ensure it's a pointer
+        personalization_string: *const ccty::c_uchar, 
         security_strength: ccty::c_int,
     );
 }
@@ -11,7 +11,7 @@ extern "C" {
 extern "C" {
     pub fn randombytes_init(
         entropy_input: *mut ccty::c_uchar, // Use pointer to mutable u8 for slices
-        personalization_string: *const ccty::c_uchar, // Pointer to const u8
+        personalization_string: *const ccty::c_uchar, 
         security_strength: ccty::c_int,
     );
 }

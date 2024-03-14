@@ -7,7 +7,7 @@ mod mayo1_features {
     pub const O: usize = 8;
     pub const K: usize = 9;
     pub const Q: usize = 16;
-    pub const V: usize = 58;
+    pub const V: usize = 58; // N - O (Vinegar variables)
     pub const M_BYTES: usize = 32;
     pub const O_BYTES: usize = 232;
     pub const V_BYTES: usize = 29;
@@ -46,7 +46,7 @@ mod mayo2_features {
     pub const O: usize = 18;
     pub const K: usize = 4;
     pub const Q: usize = 16;
-    pub const V: usize = 60;
+    pub const V: usize = 60;  // N - O (Vinegar variables)
     pub const M_BYTES: usize = 32;
     pub const O_BYTES: usize = 540;
     pub const V_BYTES: usize = 30;
@@ -82,7 +82,7 @@ mod mayo3_features {
     pub const O: usize = 10;
     pub const K: usize = 11;
     pub const Q: usize = 16;
-    pub const V: usize = 89;
+    pub const V: usize = 89;  // N - O (Vinegar variables)
     pub const M_BYTES: usize = 48;
     pub const O_BYTES: usize = 445;
     pub const V_BYTES: usize = 45;
@@ -118,7 +118,7 @@ mod mayo5_features {
     pub const O: usize = 12;
     pub const K: usize = 12;
     pub const Q: usize = 16;
-    pub const V: usize = 121;
+    pub const V: usize = 121;  // N - O (Vinegar variables)
     pub const M_BYTES: usize = 64;
     pub const O_BYTES: usize = 726;
     pub const V_BYTES: usize = 61;

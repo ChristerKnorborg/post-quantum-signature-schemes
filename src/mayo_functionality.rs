@@ -4,39 +4,27 @@ use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
 
 use crate::constants::{
-    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES, PK_SEED_BYTES, R_BYTES, SALT_BYTES,
-    SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
+    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
+    PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
-
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices,
-    encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
+    encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
+    transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
 
 
 
-pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
-
-    // Iterate over everything above the diagonal
-    for i in 0..O {
-        for j in (i + 1)..O {
-            matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
-            matrix[j][i] = 0;
-        }
-    }
-    return matrix;
-}
 
 // MAYO algorithm 5:
 pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
-    // Pick random seed (same length as salt_bytes)
+    
+    // Pick random seed_sk at random (using NIST randomness source)
     let mut sk_seed = [0u8; SK_SEED_BYTES];
-
-    // // Derive pk_seed and Oil space from sk_seed
     safe_random_bytes(&mut sk_seed, SK_SEED_BYTES as u64);
 
-    // Derive pk_seed and Oil space from sk_seed
+    // Derive pk_seed and Oil space O from sk_seed
     let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
         &mut s,
@@ -56,7 +44,7 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
     let o = decode_bytestring_matrix_array!(o_bytes, V, O);
 
-    //Derive P1_i and P2_i from pk_seed
+    // Derive P1_i and P2_i from pk_seed
     let mut p = [0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
         &mut p,
@@ -101,6 +89,10 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
 
     return (cpk, csk);
 }
+
+
+
+
 
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
@@ -170,6 +162,11 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
     return expanded_sk;
 }
+
+
+
+
+
 
 // Mayo algorithm 7
 // Expands a public key from its compact representation
@@ -309,9 +306,8 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
         for i in 0..K {
             for j in (i..K).rev() {
-                //let v_i_transpose = transpose_v_array(v[i]);
-                let mut u = [0u8; M];
 
+                let mut u = [0u8; M];
                 if i == j {
                     for a in 0..M {
 
@@ -332,8 +328,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
                 }
 
                 // y = y - u * z^ell - Instead of subtracting with shifted u,
-                // we just sub with shifted y for easier loop structre since
-                // XOR (sub) and shift are both linear operations.
+                // we just sub (XOR) with shifted y for easier loop structre
                 for d in 0..M {
                     y[d + ell] ^= u[d];
                 }
@@ -400,21 +395,23 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
 
 
+
+
 // MAYO algorithm 9
-// Verifies the signature of a message using an expanded public key
+// Verifi the signature of a message using the expanded public key
 pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>) -> bool {
 
-    // retrieves the public information from the expanded public key
+    // Retrieve the public information from the expanded public key
     let p1_bytestring = &expanded_pk[0..P1_BYTES];
     let p2_bytestring = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
     let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
-    // decodes the public information into matrices
+    // Decode the public information into matrices
     let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
     let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
     let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
 
-    // decode signature and derive salt
+    // Decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
     let s_bytes = &signature[0..SIG_BYTES - SALT_BYTES];
     let s = decode_bytestring_to_array!(s_bytes, K*N);
@@ -426,7 +423,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     }
 
 
-    // Hash message and derive salt
+    // Hash message 
     let mut m_digest = [0u8; DIGEST_BYTES];
     safe_shake256(
         &mut m_digest,
@@ -435,6 +432,8 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
         message.len() as u64,
     );
 
+
+    // Derive t
     let mut t_shake_input =[ 0u8 ; DIGEST_BYTES + SALT_BYTES];
     t_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest); 
     t_shake_input[DIGEST_BYTES..].copy_from_slice(salt); 
@@ -460,8 +459,8 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
             let mut u = [0u8; M];
             for a in 0..M {
 
-                // Construct m matrices of size N x N s.t. (P^1_a P^2_a)
-                // for every matrix a ∈ [m]                (0     P^3_a)
+                // Construct matrice P*_i of size N x N s.t. (P^1_a P^2_a)
+                // for every matrix a ∈ [m]                  (0     P^3_a)
                 let big_p = create_big_p(p1[a], p2[a], p3[a]);
 
 
@@ -480,10 +479,11 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
                 }
             }
 
+            // y = y - u * z^ell - Instead of subtracting with shifted u,
+            // sub (XOR) with shifted y.
             for d in 0..M {
                 y[d + ell] ^= u[d];
             }
-
             ell = ell + 1;
         }
     }
@@ -493,6 +493,74 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     // Accept signature if y = t
     return y == t;
 } 
+
+
+
+
+
+
+// MAYO algorithm 10
+// Expand a secret key from its compact representation and sign a message
+pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
+
+    // Create signature based on expanded secret key and message
+    let signature = sign(csk, message.clone());
+
+    // Concatenate signature and message
+    // Note the message length cannot be known at compile time (Hence vec is used instead of array)
+    let mut sign_con_mes = Vec::with_capacity(SIG_BYTES + message.len());
+    sign_con_mes.append(&mut signature.to_vec());
+    sign_con_mes.append(&mut message.to_vec());
+
+    return sign_con_mes;
+}
+
+
+
+
+
+
+// MAYO algorithm 11
+// Expand a public key from its compact representation and verify a signature
+pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: [u8 ; CPK_BYTES]) -> (bool, Vec<u8>) {
+    
+    // Expand public key
+    let expanded_pk = expand_pk(pk);
+
+    // Extract signature and message from input
+    let signature = &sign_con_mes[0..SIG_BYTES];
+    let mut message = sign_con_mes[SIG_BYTES..].to_vec();
+
+    // Verify the signature based on expanded public key and message
+    let result = verify(expanded_pk, signature, &message);
+
+    if result == false {
+        message = vec![0u8]; // If the signature is invalid, the message is set to zero
+    }
+    return (result, message);
+}
+
+
+
+
+
+// Method to apply the upper function to a matrix (as described in the MAYO paper)
+pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
+
+    // Iterate over everything above the diagonal
+    for i in 0..O {
+        for j in (i + 1)..O {
+            matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
+            matrix[j][i] = 0;
+        }
+    }
+    return matrix;
+}
+
+
+
+
+
 
 // Construct the matrix (P_1 P_2)
 //                      (0   P_3)
@@ -513,8 +581,10 @@ fn create_big_p(p1: [[u8 ; V]; V], p2: [[u8 ; O]; V], p3: [[u8 ; O]; O]) -> [[u8
 }
 
 
+
+
+// Perform reduction of a polynomial with f(z)
 pub fn reduce_mod_f(mut polynomial: [u8 ; M + SHIFTS]) -> [u8 ; M] {
-    // Perform the reduction of with f(z)
 
     for i in (M..polynomial.len()).rev() {
         for (shift, coef) in F_Z {
@@ -526,12 +596,15 @@ pub fn reduce_mod_f(mut polynomial: [u8 ; M + SHIFTS]) -> [u8 ; M] {
     }
 
     let mut reduced_polynomial = [0u8 ; M];
-    reduced_polynomial.copy_from_slice(&polynomial[..M]);
+    reduced_polynomial.copy_from_slice(&polynomial[..M]); // Truncate the polynomial to M terms (all other entries are zero after reduction)
     
-
     return reduced_polynomial;
 }
 
+
+
+
+// Perform reduction of a matrix's cols with f(z)
 pub fn reduce_a_mod_f(mut a: [[u8 ; K*O]; M+SHIFTS]) -> [[u8 ; K*O]; M] {
     
     for col in 0..K * O {
@@ -541,130 +614,15 @@ pub fn reduce_a_mod_f(mut a: [[u8 ; K*O]; M+SHIFTS]) -> [[u8 ; K*O]; M] {
                 
                 a[row - M + shift][col] ^= mul_res; // Same as add
             }
-            a[row][col] = 0;
+            a[row][col] = 0; // set original term to 0 After distributing coefficient
         }
     }
 
     let mut reduced_a = [[0u8; K*O]; M];
     for i in 0..M {
-        reduced_a[i].copy_from_slice(&a[i][..]);
+        reduced_a[i].copy_from_slice(&a[i][..]);  // Truncate the polynomial to M terms (all other rows are zero after reduction)
     }
 
     return reduced_a
 }
-
-// MAYO algorithm 10
-// Expands a secret key from its compact representation and signs a message input
-pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
-    //Expands the secret key
-
-    //creates the signature based on expanded secret key and message
-    let signature = sign(csk, message.clone());
-
-    //concatenates the signature and the message
-    // Note the message length cannot be known at compile time
-    let mut sign_con_mes = Vec::with_capacity(SIG_BYTES + message.len());
-    sign_con_mes.append(&mut signature.to_vec());
-    sign_con_mes.append(&mut message.to_vec());
-
-    return sign_con_mes;
-}
-
-// MAYO algorithm 11
-// Expands a public key from its compact representation and verifies a signature
-pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: [u8 ; CPK_BYTES]) -> (bool, Vec<u8>) {
-    //Expands the public key
-    let expanded_pk = expand_pk(pk);
-
-    //Extracts the signature and the message from the input
-    let signature = &sign_con_mes[0..SIG_BYTES];
-    let mut message = sign_con_mes[SIG_BYTES..].to_vec();
-
-    //Verifies the signature based on expanded public key and message
-    let result = verify(expanded_pk, signature, &message);
-
-    //returns result and message
-    if result == false {
-        //dummy / false message if the signature is not valid
-        message = vec![0u8];
-    }
-
-    return (result, message);
-}
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::utils::print_matrix;
-
-//     use super::*;
-//     use rand::Rng;
-
-//    #[test]
-//     fn test_create_large_matrices() {
-//         let mut rng = rand::thread_rng();
-
-//         let mut p1: Vec<Vec<Vec<u8>>> = vec![vec![vec![1u8; N - O]; N - O]; M];
-//         let mut p2: Vec<Vec<Vec<u8>>> = vec![vec![vec![2u8; O]; N - O]; M];
-//         let mut p3: Vec<Vec<Vec<u8>>> = vec![vec![vec![3u8; O]; O]; M];
-//         // Generate a random matrix of size (rows, cols)
-
-//         for m in 0..M {
-//             for i in 0..N - O {
-//                 for j in 0..N - O {
-//                     p1[m][i][j] = rng.gen_range(00..=15);
-
-//                     if j < O {
-//                         p2[m][i][j] = rng.gen_range(00..=15);
-//                     }
-
-//                     if i < O && j < O {
-//                         p3[m][i][j] = rng.gen_range(00..=15);
-//                     }
-//                 }
-//             }
-//         }
-
-//         let big_matrices = create_large_matrices(p1.clone(), p2.clone(), p3.clone());
-
-//         for m in 0..M {
-//             println!("NEW matrix");
-//             print_matrix(big_matrices[m].clone());
-//         }
-
-//         let mut succeded: bool = true;
-
-//         for m in 0..M {
-//             for i in 0..N {
-//                 for j in 0..N {
-//                     if (i < N - O && j < N - O) {
-//                         if (big_matrices[m][i][j] != p1[m][i][j]) {
-//                             succeded = false;
-//                         }
-//                     }
-//                     if (i < N - O && j < O) {
-//                         if (big_matrices[m][i][j + (N - O)] != p2[m][i][j]) {
-//                             succeded = false;
-//                         }
-//                     }
-
-//                     // Should be zero
-//                     if (i < O && j < O) {
-//                         if (big_matrices[m][i + (N - O)][j] != 0) {
-//                             succeded = false;
-//                         }
-//                     }
-
-//                     if (i < O && j < O) {
-//                         if (big_matrices[m][i + (N - O)][j + (N - O)] != p3[m][i][j]) {
-//                             succeded = false;
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-
-//         assert_eq!(succeded, true);
-//         println!("Big Matrix test result: {:?}", succeded);
-//     }
-// }
 
