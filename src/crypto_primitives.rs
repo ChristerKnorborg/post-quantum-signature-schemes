@@ -1,29 +1,21 @@
-use crate::genKAT::bindings;
-use aes::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
+use crate::genkat::bindings;
+use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
 use sha3::digest::{ExtendableOutput, Update, XofReader};
-use sha3::{Digest, Shake256};
+use sha3::Shake256;
 
-// Function to hash a bytestring with SHAKE256 to a specified output length
-pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
-    let mut hasher = Shake256::default();
 
-    hasher.update(&bytestring);
 
-    let mut output = vec![0; output_length]; // Allocate space for the output
-    let mut reader = hasher.finalize_xof(); // Get the reader for the output
-    reader.read(&mut output); // Read the output into the allocated space
 
-    return output;
-}
+/* RANDOMNESS AND AES CALLS PROVIDED BY NIST
+   - ALSO USED BY MAYO AUTHERS 
+*/
 
 pub fn safe_randombytes_init(
     entropy_input: &mut [u8],
     personalization_string: &[u8],
     security_strength: i32,
 ) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
     unsafe {
         bindings::randombytes_init(
             entropy_input.as_mut_ptr(),
@@ -33,9 +25,7 @@ pub fn safe_randombytes_init(
     }
 }
 
-pub fn safe_randomBytes(random_arrays: &mut [u8], nbytes: u64) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
+pub fn safe_randombytes(random_arrays: &mut [u8], nbytes: u64) {
     unsafe {
         bindings::randombytes(random_arrays.as_mut_ptr(), nbytes);
     }
@@ -47,8 +37,6 @@ pub fn safe_aes_128_ctr(
     input: &[u8],
     input_byte_len: u64,
 ) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
     unsafe {
         bindings::AES_128_CTR(
             output.as_mut_ptr(),
@@ -60,8 +48,6 @@ pub fn safe_aes_128_ctr(
 }
 
 pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
-    // Safety: Describe why this is safe, e.g., because the pointers are valid for the lengths given,
-    // the C function adheres to the expected contract, and any other invariants you uphold.
     unsafe {
         bindings::shake256(
             output.as_mut_ptr(),
@@ -71,6 +57,14 @@ pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], inpu
         );
     }
 }
+
+
+
+
+
+
+
+
 
 pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Vec<u8> {
     type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>; // Define the type of the cipher (AES-128-CTR in little-endian mode)
@@ -100,6 +94,19 @@ pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Ve
 }
 
 
+
+// Function to hash a bytestring with SHAKE256 to a specified output length
+pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
+    let mut hasher = Shake256::default();
+
+    hasher.update(&bytestring);
+
+    let mut output = vec![0; output_length]; // Allocate space for the output
+    let mut reader = hasher.finalize_xof(); // Get the reader for the output
+    reader.read(&mut output); // Read the output into the allocated space
+
+    return output;
+}
 
 
 

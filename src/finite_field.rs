@@ -19,7 +19,8 @@ pub fn sub(x: u8, y: u8) -> u8 {
     return x ^ y;
 }
 
-// GF(16) multiplication is equivalent to multiplying the polynomials and then reducing modulo the irreducible polynomial. 
+// GF(16) multiplication is equivalent to multiplying the polynomials and then reducing modulo the 
+// irreducible polynomial f(x) = x^4 + x + 1.
 pub fn mul(x: u8, y: u8) -> u8 {
 
     // Carryless multiplication of polynomials in GF(2^4)
@@ -30,19 +31,20 @@ pub fn mul(x: u8, y: u8) -> u8 {
     res ^= (x & 8)*y; // Multiply by x^3
 
     // Reduce modulo by the irreducible polynomial x^4 + x + 1 
-    let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit is always 0, cause we can't get more than x^6)
-    let overflow_bits: u8 = (first_4_bits >> 4) ^ (first_4_bits >> 3); // Replace x^4 with x + 1 as x^4 (e.g. 16) = x + 1 (under the irreducible polynomial). Notice, + is XOR in binary fields.
+    let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit (x^7) is always 0, cause we can't get more than x^6)
+
+    // Replace x^4 with x + 1 as x^4 = x + 1 (under the irreducible polynomial).
+    // Replace x^5 with x^2 + x as x^5 = x^2 + x (under the irreducible polynomial).
+    // Replace x^6 with x^3 + x^2 as x^6 = x^3 + x^2 (under the irreducible polynomial).
+    let overflow_bits: u8 = (first_4_bits >> 4) ^ (first_4_bits >> 3); 
     let res : u8 = (res ^ overflow_bits) & 0x0f; // XOR res with the mod reduction of the overflow bits. Then remove first 4 bits from res.
     return res;
 }
 
-// From Fermat's little theorem, we know that an element x in a finite field F satisfies x^{p^{n}-1} = 1,
-// where p is the characteristic of F and n is the degree of the extension. From this we can deduce that x^{14} * x = x^{-1} * x = 1.
+// From Euler's theorem, we know that an element x in a finite field F satisfies x^{p^{d}-1} = 1,
+// where p is the characteristic of F and d is the degree of the extension. From this we can deduce that x^{14} * x = x^{-1} * x = 1.
 // E.g. x^14 = x^-1 (the multiplicative inverse of x)      
 pub fn inv(x: u8) -> u8{
-
-    // u8 table[16] = {0, 1, 9, 14, 13, 11, 7, 6, 15, 2, 12, 5,
-    // 10, 4, 3, 8}; return table[a & 15];
 
     // Calculate multiplicative inverse of x by exponentiation by squaring (x^14 = x^-1) 
     let x2: u8 = mul(x, x);
@@ -62,7 +64,7 @@ pub fn div(x: u8, y: u8) -> u8 {
 
 
 
-
+// Matrix addition over GF(16)
 pub fn matrix_add(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 
     assert_eq!(a.len(), b.len(), "Matrices must have the same number of rows");
@@ -92,10 +94,10 @@ pub fn matrix_sub(a: &Vec<Vec<u8>>, b: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
         .collect()
 }
 
-// Matrix subtraction over GF(16)
+// Vector subtraction over GF(16)
 pub fn vector_sub(a: &Vec<u8>, b: &Vec<u8>) -> Vec<u8> {
 
-    //assert_eq!(a.len(), b.len(), "Vectors must have the same length");
+    assert_eq!(a.len(), b.len(), "Vectors must have the same length");
 
     return a.iter().zip(b.iter())
         .map(|(&val_a, &val_b)| sub(val_a, val_b))
@@ -219,25 +221,11 @@ mod tests {
         assert_eq!(mul(0x0, 0x0), 0x0); // 0 * 0 = 0
         assert_eq!(mul(0x1, 0x1), 0x1); // 1 * 1 = 1
         assert_eq!(mul(0x2, 0x2), 0x4); // x * x = x^2 = 4
-        assert_eq!(mul(0x3, 0x3), 0x5); // (x + 1) * (x + 1) = x^2 + 2x + 1 = x^2 + 1 (as modulo 2 eats the 2x - no modular reduction needed)
-
+        assert_eq!(mul(0x3, 0x3), 0x5);
         assert_eq!(mul(0xC, 0x3), 0x7); 
-        // (x^3 + x^2) * (x + 1) = x^4 + 2x^3 + x^2 
-        // = x^4 + x^2 (Term-wise modulo 2 reduction)
-        // x^4 + x^2 + (x^4 + x + 1) = x^2 + x + 1 (By doing modular reduction on x^4 + x^2 with f(x) = x^4 + x + 1 - then modulo 2 term-wise)
-
         assert_eq!(mul(0xC, 0x7), 0x2); 
-        // (x^3 + x^2) * (x^2 + x + 1) = x^5 + 2x^4 + 2x^3 + x^2 = x^5 + x^2 (Term-wise modulo 2 reduction)
-        // x^5 + x^2 + (x^5 + x^2 + x) = 2x^5 + 2x^2 + x (By doing modular reduction on x^5 + x^2 with x * f(x) = x^5 + x^2 + x)
-        // = x  (modulo 2 term-wise)
-
         assert_eq!(mul(0xf, 0xf), 0xa); 
-        // (x^3 + x^2 + x + 1) * (x^3 + x^2 + x + 1) = x^6 + 2x^5 + 3x^4 + 4x^3 + 3x^2 + x + 1
-        // = x^6 + x^4 + x^2 + 1 (Term-wise modulo 2 reduction)
-        // x^6 + x^4 + x^3 + x^2 + 1 + (x^6 + x^3 + x^2) = 2x^6 + x^4 + 2x^3 + 2x^2 + 1 (By doing modular reduction on x^6 + x^4 + x^3 + x^2 + 1 with x^2 * f(x) = x^6 + x^3 + x^2)
-        // = x^4 + x^3 + 1 (modulo 2 term-wise)
-        // x^4 + x^3 + 1 + (x^4 + x + 1) = 2x^4 + x^3 + x + 2 (By doing modular reduction on x^4 + x^3 + 1 with f(x) = x^4 + x + 1)
-        // = x^3 + x  (modulo 2 term-wise)
+
     }
 
     #[test]
@@ -275,7 +263,6 @@ mod tests {
 
 
     #[test]
-    // GF(16) subtraction is the same as addition
     fn test_matrix_sub() {
 
         let a = vec![vec![0, 1, 5],
@@ -302,9 +289,7 @@ mod tests {
                                    vec![9, 10, 11, 12, 13, 14, 15,]];
 
         let expected = a.clone(); // Negation in GF(16) should be the element itself
-
         let result = matrix_neg(&a);
-        
         assert_eq!(result, expected, "Matrix negation is not correct");
     }
 
@@ -318,7 +303,6 @@ mod tests {
         let b = vec![vec![3, 1]];
 
         let result = matrix_mul(&a, &b);
-
         let expected = vec![vec![6, 2],
                                           vec![11, 8]]; 
         
@@ -370,46 +354,16 @@ mod tests {
 
 
     #[test]
-    fn test_vector_matrix_mul() {
-
-        let vec = vec![0, 2]; // 1x2 vector
-
-        let matrix = vec![vec![0, 1], // 2x2 matrix
-                                        vec![2, 3],];
-
-        let result = vector_matrix_mul(&vec, &matrix);
-
-
-        let cols_expected = 2; // Expected dimensions 1x2 vector
-
-
-        assert_eq!(result.len(), cols_expected, "Result vector has wrong number of cols");
-
-
-        // 0*0 + 2*2 = 4, 0*1 + 2*3 = 6 (still works with GF(16 for these small examples).)
-        let expected = vec![4, 6]; 
-        
-        assert_eq!(result, expected, "Vector-matrix multiplication is not correct");
-    }
-
-
-    #[test]
     fn test_matrix_vector_mul() {
 
         let matrix = vec![vec![0, 1],
                                    vec![2, 3],];
 
         let vec = vec![0, 2];
-
         let result = matrix_vector_mul(&matrix, &vec);
 
-
         let cols_expected = vec.len(); // Matrix has 2 columns
-
-
         assert_eq!(result.len(), cols_expected, "Result vector has wrong number of columns");
-
-        // 0*0 + 1*2 = 2, 2*0 + 3*2 = 6 (still works with GF(16 for these small examples).)
         let expected = vec![2, 6]; 
         
         assert_eq!(result, expected, "Matrix-vector multiplication is not correct");
