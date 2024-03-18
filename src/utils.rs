@@ -33,11 +33,33 @@ pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
 
 }
 
+pub fn write_u32_array_to_file_int(filename: &str, data: &[u32]) -> Result<()> {
+    let mut file = File::create(filename)?;
+
+    for value in data.iter() {
+        write!(file, "{}", value)?;
+    }
+
+    Ok(())
+}
+
+
+pub fn write_u32_array_to_file_byte(filename: &str, data: &[u32]) -> Result<()> {
+    let mut file = File::create(filename)?;
+
+    // print data len
+    println!("data len: {}", data.len());
+
+    for (i, value) in data.iter().enumerate() {
+        write!(file, "{:08X}", value)?;
+    }
+
+    Ok(())
+}
 
 
 
-
-pub fn write_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
+pub fn write_u8_array_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
     
     for byte in data.iter() {
@@ -47,7 +69,7 @@ pub fn write_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
-pub fn write_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
+pub fn write_u8_array_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
 
     for byte in data.iter() {

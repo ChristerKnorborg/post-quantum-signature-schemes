@@ -1,4 +1,5 @@
 pub mod bitsliced_functionality;
+pub mod bitsliced_arithmetic;
 pub mod constants;
 pub mod crypto_primitives;
 pub mod finite_field;
