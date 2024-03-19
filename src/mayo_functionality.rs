@@ -317,7 +317,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         let r = decode_bytestring_to_vector(K * O, v_bytestring_remainder); // Remainding part of v_bytestring.
 
         // Build the linear system Ax = y
-
         let shifts: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
         let mut a: Vec<Vec<u8>> = vec![vec![0u8; K * O]; M + shifts];
         let mut y = Vec::with_capacity(M + shifts);
@@ -337,21 +336,25 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
         }
 
         for i in 0..K {
+            let v_i_transpose = transpose_vector(&v[i]);
+            let mut trans_mult_v =  vec![vec![vec![0u8 ; N-O]; 1]; M];
+
+            for a in 0..M {
+                trans_mult_v[a] = matrix_mul(&v_i_transpose, &p1[a]);
+            }
+
             for j in (i..K).rev() {
-                let v_i_transpose = transpose_vector(&v[i]);
                 let mut u = vec![0x0 as u8; M];
 
                 if i == j {
                     for a in 0..M {
-                        let trans_mult = matrix_mul(&v_i_transpose, &p1[a]);
 
                         // Size (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) gives size 1 x 1.
-                        u[a] = matrix_vector_mul(&trans_mult, &v[i])[0];
+                        u[a] = matrix_vector_mul(&trans_mult_v[a], &v[i])[0];
                     }
                 } else {
                     for a in 0..M {
-                        let trans_mult = matrix_mul(&v_i_transpose, &p1[a]);
-                        let left_term = matrix_vector_mul(&trans_mult, &v[j])[0];
+                        let left_term = matrix_vector_mul(&trans_mult_v[a], &v[j])[0];
 
                         let v_j_transpose = transpose_vector(&v[j]);
                         let trans_mult = matrix_mul(&v_j_transpose, &p1[a]);
@@ -484,17 +487,21 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
     for i in 0..K {
         let s_i_trans = transpose_vector(&s_matrix[i]);
 
+        let mut s_trans_p_mult =  vec![vec![vec![0u8 ; N]; 1]; M];
+
+        for a in 0..M {
+            s_trans_p_mult[a] = matrix_mul(&s_i_trans, &big_p[a]);
+        }
+
         for j in (i..K).rev() {
             let mut u = vec![0u8; M];
             let s_j_trans = transpose_vector(&s_matrix[j]);
 
             for a in 0..M {
-                let s_i_trans_big_p = matrix_mul(&s_i_trans, &big_p[a]);
-
                 if i == j {
-                    u[a] = matrix_vector_mul(&s_i_trans_big_p, &s_matrix[i])[0];
+                    u[a] = matrix_vector_mul(&s_trans_p_mult[a], &s_matrix[i])[0];
                 } else {
-                    let left_term = matrix_vector_mul(&s_i_trans_big_p, &s_matrix[j])[0];
+                    let left_term = matrix_vector_mul(&s_trans_p_mult[a], &s_matrix[j])[0];
 
                     let s_j_trans_big_p = matrix_mul(&s_j_trans, &big_p[a]);
                     let right_term = matrix_vector_mul(&s_j_trans_big_p, &s_matrix[i])[0];
