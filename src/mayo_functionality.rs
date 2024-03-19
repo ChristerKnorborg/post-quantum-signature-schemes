@@ -198,6 +198,8 @@ pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
 
 // MAYO algorithm 8
 // Signs a message using an expanded secret key
+// MAYO algorithm 8
+// Signs a message using an expanded secret key
 pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG_BYTES] {
 
     let mut x = [0u8; K*O]; // Initialize x to zero
@@ -305,20 +307,23 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         }
 
         for i in 0..K {
+
+            let mut trans_mult_v = [[0u8 ; V]; M];
+            for a in 0..M {
+                trans_mult_v[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
+            }
+
             for j in (i..K).rev() {
 
                 let mut u = [0u8; M];
                 if i == j {
                     for a in 0..M {
 
-                        let trans_mult = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                        u[a] = vector_mul!(trans_mult, v[i], V);  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
+                        u[a] = vector_mul!(trans_mult_v[a], v[i], V);  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
                     }
                 } else {
                     for a in 0..M {
-
-                        let trans_mult = vector_transposed_matrix_mul!(v[i], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                        let left_term = vector_mul!(trans_mult, v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
+                        let left_term = vector_mul!(trans_mult_v[a], v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
 
                         let trans_mult = vector_transposed_matrix_mul!(v[j], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
                         let right_term = vector_mul!(trans_mult, v[i], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
@@ -453,26 +458,30 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
+    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
+    // for every matrix a ∈ [m]                   (0     P^3_a)
+    let big_p = create_big_p_matrices(p1, p2, p3);
+
     for i in 0..K {
+
+        let mut mul_res_arr = [[0u8 ; N]; M];
+        for a in 0..M {
+            mul_res_arr[a] = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
+        }
+
         for j in (i..K).rev() {
 
             let mut u = [0u8; M];
             for a in 0..M {
 
-                // Construct matrice P*_i of size N x N s.t. (P^1_a P^2_a)
-                // for every matrix a ∈ [m]                  (0     P^3_a)
-                let big_p = create_big_p(p1[a], p2[a], p3[a]);
-
-
-                let mul_res = vector_transposed_matrix_mul!(s_matrix[i], big_p, N, N); // (1 x n) * (n x n) = 1 x n
 
                 if i == j {
-                    u[a] = vector_mul!(mul_res, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
+                    u[a] = vector_mul!(mul_res_arr[a], s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
                 } else {
-                    let left_term = vector_mul!(mul_res, s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
+                    let left_term = vector_mul!(mul_res_arr[a], s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
 
-                    let mul_res2 = vector_transposed_matrix_mul!(s_matrix[j], big_p, N, N); // (1 x n) * (n x n) = 1 x n
+                    let mul_res2 = vector_transposed_matrix_mul!(s_matrix[j], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
                     let right_term = vector_mul!(mul_res2, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
                     u[a] = add(left_term, right_term);
@@ -564,18 +573,17 @@ pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 
 // Construct the matrix (P_1 P_2)
 //                      (0   P_3)
-fn create_big_p(p1: [[u8 ; V]; V], p2: [[u8 ; O]; V], p3: [[u8 ; O]; O]) -> [[u8 ; N]; N] {
-    let mut result = [[0u8 ; N]; N];
+fn create_big_p_matrices(p1: [[[u8 ; V]; V]; M], p2: [[[u8 ; O]; V]; M], p3: [[[u8 ; O]; O]; M]) -> [[[u8 ; N]; N]; M] {
+    let mut result = [[[0u8 ; N]; N]; M];
 
-    let zero_rows = [[0u8; V]; O]; // O rows of zeroes of len N-O.
-
-    for i in 0..V {
-        result[i][..V].copy_from_slice(&p1[i]);
-        result[i][V..].copy_from_slice(&p2[i]);
-    }
-    for i in V..N {
-        result[i][..V].copy_from_slice(&zero_rows[i - V]);
-        result[i][V..].copy_from_slice(&p3[i - V]);
+    for mat in 0..M {
+        for i in 0..V {
+            result[mat][i][..V].copy_from_slice(&p1[mat][i]);
+            result[mat][i][V..].copy_from_slice(&p2[mat][i]);
+        }
+        for i in V..N {
+            result[mat][i][V..].copy_from_slice(&p3[mat][i - V]);
+        }
     }
     return result;
 }

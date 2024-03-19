@@ -4,10 +4,13 @@ mayo2 = "run --no-default-features --features mayo2 --release"
 mayo3 = "run --no-default-features --features mayo3 --release"
 mayo5 = "run --no-default-features --features mayo5 --release"
 
-bench_mayo1 = "bench --no-default-features --features mayo1 --bench my_benchmark -- --verbose"
-bench_mayo2 = "bench --no-default-features --features mayo2 --bench my_benchmark -- --verbose"
-bench_mayo3 = "bench --no-default-features --features mayo3 --bench my_benchmark -- --verbose"
-bench_mayo5 = "bench --no-default-features --features mayo5 --bench my_benchmark -- --verbose"
+bench_mayo1 = "bench --no-default-features --features mayo1 --bench benchmark -- --verbose"
+bench_mayo2 = "bench --no-default-features --features mayo2 --bench benchmark -- --verbose"
+bench_mayo3 = "bench --no-default-features --features mayo3 --bench benchmark -- --verbose"
+bench_mayo5 = "bench --no-default-features --features mayo5 --bench benchmark -- --verbose"
 
 [target.'cfg(target_os = "windows")']
 rustflags = ["-C", "link-args=/STACK:16777216"]
+
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-arg=-Wl,-stack_size,0x1000000"]
