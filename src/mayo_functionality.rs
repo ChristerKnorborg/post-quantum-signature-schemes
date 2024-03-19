@@ -338,7 +338,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 if i == j {
                     for a in 0..M {
 
-                        u[a] = matrix_vector_mul(&trans_mult, &v[i])[0];
+                        u[a] = matrix_vector_mul(&trans_mult_v[a], &v[i])[0];
                     }
                 } else {
                     for a in 0..M {
