@@ -128,14 +128,29 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
         PK_SEED_BYTES as u64,
     );
     let p1_bytes = &p[0..P1_BYTES];
+    let p2_bytes = &p[P1_BYTES..];
 
+
+    let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);  // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);  // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
     let mut l = [[[0u8; O]; V]; M];                                  // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
     
-    
 
-    // Compute L matrices BITSLICED
-    let encoded_l = p1_p1_transposed_added_times_o(&p1_bytes, o); // m matrices of size (n−o) × o
+    // Compute L matrices
+    for i in 0..M {
 
+        // P1^T + P1
+        let mut added_p1 = transpose_matrix_array!(p1[i], V, V);
+        added_p1 = matrix_add!(added_p1, p1[i], V, V); 
+
+        // (P1 + P^T) i )*O + P2
+        let mut temp = matrix_mul!(added_p1, V, V, o, O);
+        let temp = matrix_add!(temp, p2[i], V, O);
+
+        l[i] = temp;
+    }
+
+    let encoded_l = encode_bit_sliced_matrices!(l, V, O, M, false, L_BYTES); // m matrices of size (n−o) × o
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
@@ -290,20 +305,23 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         }
 
         for i in 0..K {
+
+            let mut trans_mult_v = [[0u8 ; V]; M];
+            for a in 0..M {
+                trans_mult_v[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
+            }
+
             for j in (i..K).rev() {
 
                 let mut u = [0u8; M];
                 if i == j {
                     for a in 0..M {
 
-                        let trans_mult = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                        u[a] = vector_mul!(trans_mult, v[i], V);  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
+                        u[a] = vector_mul!(trans_mult_v[a], v[i], V);  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
                     }
                 } else {
                     for a in 0..M {
-
-                        let trans_mult = vector_transposed_matrix_mul!(v[i], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                        let left_term = vector_mul!(trans_mult, v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
+                        let left_term = vector_mul!(trans_mult_v[a], v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
 
                         let trans_mult = vector_transposed_matrix_mul!(v[j], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
                         let right_term = vector_mul!(trans_mult, v[i], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
@@ -438,18 +456,17 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
+    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
+    // for every matrix a ∈ [m]                   (0     P^3_a)
+    let big_p = create_big_p_matrices(p1, p2, p3);
+
     for i in 0..K {
         for j in (i..K).rev() {
 
             let mut u = [0u8; M];
             for a in 0..M {
 
-                // Construct matrice P*_i of size N x N s.t. (P^1_a P^2_a)
-                // for every matrix a ∈ [m]                  (0     P^3_a)
-                let big_p = create_big_p(p1[a], p2[a], p3[a]);
-
-
-                let mul_res = vector_transposed_matrix_mul!(s_matrix[i], big_p, N, N); // (1 x n) * (n x n) = 1 x n
+                let mul_res = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
 
                 if i == j {
                     u[a] = vector_mul!(mul_res, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
@@ -457,7 +474,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
                 } else {
                     let left_term = vector_mul!(mul_res, s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
 
-                    let mul_res2 = vector_transposed_matrix_mul!(s_matrix[j], big_p, N, N); // (1 x n) * (n x n) = 1 x n
+                    let mul_res2 = vector_transposed_matrix_mul!(s_matrix[j], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
                     let right_term = vector_mul!(mul_res2, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
                     u[a] = add(left_term, right_term);
@@ -547,20 +564,19 @@ pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 
 
 
-// Construct the matrix (P_1 P_2)
-//                      (0   P_3)
-fn create_big_p(p1: [[u8 ; V]; V], p2: [[u8 ; O]; V], p3: [[u8 ; O]; O]) -> [[u8 ; N]; N] {
-    let mut result = [[0u8 ; N]; N];
+// Construct the m matrices of (P_1 P_2)
+//                             (0   P_3)
+fn create_big_p_matrices(p1: [[[u8 ; V]; V]; M], p2: [[[u8 ; O]; V]; M], p3: [[[u8 ; O]; O]; M]) -> [[[u8 ; N]; N]; M] {
+    let mut result = [[[0u8 ; N]; N]; M];
 
-    let zero_rows = [[0u8; V]; O]; // O rows of zeroes of len N-O.
-
-    for i in 0..V {
-        result[i][..V].copy_from_slice(&p1[i]);
-        result[i][V..].copy_from_slice(&p2[i]);
-    }
-    for i in V..N {
-        result[i][..V].copy_from_slice(&zero_rows[i - V]);
-        result[i][V..].copy_from_slice(&p3[i - V]);
+    for mat in 0..M {
+        for i in 0..V {
+            result[mat][i][..V].copy_from_slice(&p1[mat][i]);
+            result[mat][i][V..].copy_from_slice(&p2[mat][i]);
+        }
+        for i in V..N {
+            result[mat][i][V..].copy_from_slice(&p3[mat][i - V]);
+        }
     }
     return result;
 }
