@@ -1,9 +1,6 @@
 use std::vec;
 
-use crate::{
-    constants::{K, N},
-    utils::bytes_to_hex_string,
-};
+
 
 // Function to encode a vector of field elements in GF(16) into a bytestring.
 // Two nibbles previously represented in individual bytes are now represented in a single byte.
@@ -23,6 +20,9 @@ pub fn encode_vector_to_bytestring(x: Vec<u8>) -> Vec<u8> {
     }
     return bytestring;
 }
+
+
+
 
 // Function to decode a bytestring back into a vector of field elements in GF(16).
 // Two nibbles previously represented in a single byte encoding are now decoded to two individual bytes.
@@ -48,6 +48,8 @@ pub fn decode_bytestring_to_vector(n: usize, bytestring: Vec<u8>) -> Vec<u8> {
     return x;
 }
 
+
+
 // Function to encode a matrix into a bytestring,
 pub fn encode_matrix_to_bytestring(matrix: Vec<Vec<u8>>) -> Vec<u8> {
     // Flatten the matrix rows into a single vector.
@@ -57,6 +59,8 @@ pub fn encode_matrix_to_bytestring(matrix: Vec<Vec<u8>>) -> Vec<u8> {
     return encode_vector_to_bytestring(v);
 }
 
+
+
 // Function to decode a byte-string back into a matrix.
 pub fn decode_bytestring_to_matrix(rows: usize, cols: usize, bytestring: Vec<u8>) -> Vec<Vec<u8>> {
     // Decode the bytestring into a vector.
@@ -65,6 +69,12 @@ pub fn decode_bytestring_to_matrix(rows: usize, cols: usize, bytestring: Vec<u8>
     // Chunk the flat vector back into a matrix.
     v.chunks(cols).map(|chunk| chunk.to_vec()).collect()
 }
+
+
+
+
+
+
 
 // Mayo Algorithm 4: Encodes a vector v ∈ F_{16}^{m} into a bitsliced representation
 pub fn encode_bit_sliced_vector(v: Vec<u8>) -> Vec<u8> {
@@ -79,7 +89,7 @@ pub fn encode_bit_sliced_vector(v: Vec<u8>) -> Vec<u8> {
 
         for j in (0..8).rev() {
             //Encode 8 elements of v into 4 bytes
-            let a0 = v[i * 8 + j] & 0x1; // Least significant bit
+            let a0 = v[i * 8 + j] & 0x1; // Least significant bit 
             let a1 = (v[i * 8 + j] & 0x2) >> 1; // Second least significant bit
             let a2 = (v[i * 8 + j] & 0x4) >> 2; // Third least significant bit
             let a3 = (v[i * 8 + j] & 0x8) >> 3; // Most significant bit (in our GF(16) representation)
@@ -96,6 +106,10 @@ pub fn encode_bit_sliced_vector(v: Vec<u8>) -> Vec<u8> {
     }
     return bytestring;
 }
+
+
+
+
 
 // Mayo Algorithm 4 (inverse): Decodes a bitsliced representation of a vector v ∈ F_{16}^{m} into a vector
 pub fn decode_bit_sliced_vector(bytestring: Vec<u8>) -> Vec<u8> {
@@ -122,6 +136,10 @@ pub fn decode_bit_sliced_vector(bytestring: Vec<u8>) -> Vec<u8> {
     }
     return v;
 }
+
+
+
+
 
 // MAYO Algorithm 3: Encodes m matrices A_i of ∈ F_{16}^{r x c} into a bitsliced representation
 pub fn encode_bit_sliced_matrices(
@@ -157,6 +175,12 @@ pub fn encode_bit_sliced_matrices(
     return bytestring;
 }
 
+
+
+
+
+
+
 // MAYO Algorithm 3 (inverse): Decodes a bitsliced representation of m matrices denoted a.
 pub fn decode_bit_sliced_matrices(
     rows: usize,
@@ -186,7 +210,6 @@ pub fn decode_bit_sliced_matrices(
 
                 // Distribute the decoded elements back into the matrices
                 for (mat_index, &value) in indices_vec.iter().enumerate() {
-                    //println!("mat_index: {}", mat_index);
                     a[mat_index][i][j] = value;
                 }
                 // Update the byte index for the next set of bytes
@@ -196,6 +219,10 @@ pub fn decode_bit_sliced_matrices(
     }
     return a;
 }
+
+
+
+
 
 #[cfg(test)]
 mod tests {

@@ -3,7 +3,7 @@ use std::io::{Write, Result};
 use std::io::{self, Read};
 use std::path::Path;
 
-use crate::crypto_primitives::{safe_randomBytes, safe_randombytes_init};
+use crate::crypto_primitives::safe_randombytes_init;
 
 
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
@@ -24,18 +24,17 @@ pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
 
 // Method to set the random number generator seed for debugging and testing purposes
 pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
-    let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
+    let personalization_string: Vec<u8> = vec![0u8; 47]; // Seed always 47 bytes
 
     safe_randombytes_init(
         &mut entropy_input,
-        &personalization_string, // Even if empty, this is now a valid pointer
+        &personalization_string,
         256,
     );
-
 }
 
 
-// Helper function to transpose a matrix (as described in the MAYO paper)
+// Helper function to transpose a matrix 
 pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     let rows = matrix.len();
     let cols = matrix[0].len();
@@ -51,7 +50,7 @@ pub fn transpose_matrix(matrix: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     return transposed;
 }
 
-// Helper function to transpose a matrix (as described in the MAYO paper)
+// Helper function to transpose a matrix 
 pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
     let rows = vector.len();
 
@@ -65,16 +64,17 @@ pub fn transpose_vector(vector: &Vec<u8>) -> Vec<Vec<u8>> {
 }
 
 
+// Method to print a slice as int to a file
 pub fn write_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
     
     for byte in data.iter() {
         write!(file, "{:}", byte)?;
     }
-    
     Ok(())
 }
 
+// Method to print a slice as hex to a file
 pub fn write_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
 
@@ -86,13 +86,14 @@ pub fn write_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
 }
 
 
-// Convert a hex string to a byte vector by parsing each pair of hex digits
-// into a u8 and collecting them into a single Vec<u8>.
+// Convert a hex string to a nibble byte vector by parsing each pair of hex digits
+// into a u8 and collecting them into a single Vec<u8>. 
 pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
-    let uneven: bool = hex_str.len() % 2 != 0;
-
+    
+    
     // Iteration will be 1 less if uneven (due to integer division)
     let iterations = hex_str.len() / 2;
+    let uneven: bool = hex_str.len() % 2 != 0;
 
     let mut res: Vec<u8> = hex_str
         .as_bytes()
@@ -114,7 +115,7 @@ pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
     return res;
 }
 
-// Convert a byte vector to a hex string by formatting each byte as a pair of
+// Convert a byte vector of nibbles to a hex string by formatting each byte as a pair of
 // hex digits and concatenating them into a single String.
 pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
     let mut hex_str = String::new();
@@ -153,9 +154,6 @@ pub fn compare_hex_files<P: AsRef<Path>>(file1_path: P, file2_path: P) -> io::Re
 mod tests {
 
     use super::*;
-    use crate::mayo_functionality as mf;
-    use crate::utils as ut;
-    use std::vec;
 
     #[test]
     fn test_hex_to_bytes_and_back() {

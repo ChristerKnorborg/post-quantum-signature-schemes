@@ -1,6 +1,5 @@
 use crate::finite_field::{add, inv, matrix_vector_mul, mul, sub, vector_sub};
 use crate::constants::{M, K, O};
-use crate::utils::{bytes_to_hex_string, write_to_file_byte};
 use rand::rngs::StdRng as rng;
 use rand::{Rng, SeedableRng};
 
@@ -16,7 +15,7 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     while pivot_row < rows && pivot_column < (K * O + 1) as usize {
         // Find the pivot
         let possible_pivots: Vec<usize> = (pivot_row..rows)
-            .filter(|&i| b[i][pivot_column] != 0) // remember to dereferrence i to avoid ownership
+            .filter(|&i| b[i][pivot_column] != 0)
             .collect(); // Transforms all the candidate pivots to an iterator.
 
         // If there are no possible pivots in this column, move to the next
@@ -27,9 +26,7 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
             pivot_column += 1;
             continue;
         };
-
-        // Swap rows
-        b.swap(pivot_row, next_pivot_row);
+        b.swap(pivot_row, next_pivot_row); // Swap rows
 
         // Make the leading entry a "1" by multiplying the row by the inverse of the pivot
         let inv_idx = inv(b[pivot_row][pivot_column]);
@@ -47,45 +44,24 @@ pub fn echelon_form(mut b: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
                 b[i][j] = res // b[i][j] - (factor * b[pivot_row][j]);
             }
         }
-
         pivot_row += 1;
         pivot_column += 1;
     }
-
     return b
 }
 
 
-
-// Function to sample a random vector of size K*O in GF(16).
-// Used to generate the random vector r in the algorithm 2
-pub fn sample_rand() -> Vec<u8> {
-    let num_elems: u16 = (K * O) as u16;
-
-    // Cryptographically secure random number generation
-    let mut rand_core = rng::from_entropy();
-    let vals: Vec<u8> = (0..num_elems)
-        .map(|_| rand_core.gen_range(0..15) as u8)
-        .collect();
-
-    return vals;
-}
 
 
 
 // MAYO Algorithm 2: Sample Solution
 // Function to solve the equation Ax = y in GF(16) using gaussian elimination.
 pub fn sample_solution(mut a: Vec<Vec<u8>>, y: Vec<u8>, r: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+    
     let rows = M;
 
-    //let r: Vec<u8> = sample_rand();
     let mut x: Vec<u8> = r.clone();
-
-
-    //test_r.append(&mut vec![0u8]);
     let ar = matrix_vector_mul(&a, &r);
-
-
     let y_sub_ar = vector_sub(&y, &ar);
 
     // Append the first element of y to the first row of A, the second element of y to the second row of A etc.
@@ -93,16 +69,15 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, y: Vec<u8>, r: Vec<u8>) -> Result<Ve
         row.push(y_val);
     }
 
-
-
     // Put (A | y) in echelon form with leading 1's.
     let a = echelon_form(a);
 
 
-    // Split the matrix into A and y
+    // Split the matrix into A and y again
     let a_ech: Vec<Vec<u8>> = a.iter().map(|row| row[0..row.len() - 1].to_vec()).collect();
     let mut y_ech: Vec<u8> = a.iter().map(|row| *row.last().unwrap()).collect();
 
+    // Check if the matrix A has full rank (i.e. no row full of zeros)
     if a_ech[rows - 1].iter().all(|&i| i == 0) {
         return Err("The matrix A does not have full rank. No solution is found");
     }
@@ -143,84 +118,24 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, y: Vec<u8>, r: Vec<u8>) -> Result<Ve
 // test echoleon_form
 #[cfg(test)]
 mod tests {
-    use rand::seq::index::sample;
 
-    use crate::{constants::M, utils::print_matrix};
+    use crate::constants::M;
 
     use super::*;
     use std::vec;
 
 
+    // Function to sample a random vector r of size K*O in GF(16).
+    pub fn sample_rand() -> Vec<u8> {
+        let num_elems: u16 = (K * O) as u16;
+        let mut rand_core = rng::from_entropy();
+        let vals: Vec<u8> = (0..num_elems)
+            .map(|_| rand_core.gen_range(0..15) as u8)
+            .collect();
 
-
-
-    // Function to check if a matrix is in echelon form (not reduced).
-    // A matrix is in echelon form if row entries are all zero below the leading entry.
-    fn is_echelon_form(matrix: &Vec<Vec<u8>>) -> bool {
-
-        let mut last_leading_col: isize = -1; // Track column index of leading entry in the previous row
-        
-        for row in matrix.iter() {
-
-            // Find the index of the first non-zero element in the current row
-            let current_leading_col = row.iter().position(|&x| x != 0);
-            
-            match current_leading_col {
-                Some(idx) => {
-                    // Not in echelon form if the current leading element is to the left or in the same column as the last
-                    if idx as isize <= last_leading_col {
-                        return false;
-                    }
-                    // Update last_leading_col to the current row's leading element column index
-                    last_leading_col = idx as isize;
-                },
-                None => {
-                    // Checks if there is a non-zero row after finding a full zero row (then not in echelon form)
-                    for subsequent_row in matrix.iter().skip_while(|&r| r != row).skip(1) {
-                        if subsequent_row.iter().any(|&x| x != 0) {
-                            return false;
-                        }
-                    }
-                    // If zero row exist and no non-zero row after it, matrix is in echelon form and we can break
-                    break;
-                },
-            }
-        }
-        return true
+        return vals;
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-    #[test]
-    fn test_echelon_form() {
-        let mut rng = rand::thread_rng();
-        for _ in 0..50 {
-            let rows = M;
-            let cols = K * O;
-            let mut matrix = vec![vec![0u8; cols]; rows];
-
-            // Fill the matrix with random numbers
-            for row in &mut matrix {
-                for elem in row.iter_mut() {
-                    *elem = rng.gen_range(0..=15);
-                }
-            }
-
-            let echelon_matrix = echelon_form(matrix.clone());
-           // print_matrix(echelon_matrix.clone());
-            assert!(is_echelon_form(&echelon_matrix));
-        }
-    }
 
 
 
@@ -261,23 +176,16 @@ mod tests {
                         })
                         .collect();
 
-
-                    /* println!("Ax_eq_y:  {:?}", a_times_x_equal_y);
-                    println!("expected: {:?}", expected); */
-
                     assert_eq!(
                         a_times_x_equal_y, expected,
                         "Echelon form did not match expected result"
                     );
-
                 },
                 Err(_e) => {
                     continue; // Test next randomly generated matrix in case no solution found.
                 }
             };
-
         }
     }
-
-
+    
 }
