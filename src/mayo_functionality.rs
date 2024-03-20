@@ -22,7 +22,6 @@ struct ExpandedSecretKey {
 
 
 
-
 // MAYO algorithm 5:
 pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     
@@ -102,9 +101,11 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
 
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
-pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
+pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     let sk_seed = csk;
 
+
+    
     // Derive pk_seed and Oil space from sk_seed
     let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
@@ -125,36 +126,57 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     let o = decode_bytestring_matrix_array!(o_bytes, V, O);
 
 
-    //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
+    // Derive P1_i and P2_i from pk_seed
+    let mut p = [0u8; (P1_BYTES + P2_BYTES)];
     safe_aes_128_ctr(
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
         PK_SEED_BYTES as u64,
     );
-    let p1_bytes = &p[0..P1_BYTES];
-    let p2_bytes = &p[P1_BYTES..];
 
     
-    let mut l = [[[0u8; O]; V]; M]; // Allocate space for m L matrices of size (n−o) × o.
+    let (p1_bytes, p2_bytes) = p.split_at_mut(P1_BYTES);
+
+
+    // let p1_bytes = &p.clone()[0..P1_BYTES/4];
+    // let p2_bytes =  &mut p[P1_BYTES/4..];
     
-    // Compute L matrices BITSLICED
-    let encoded_l = p1_p1t_times_o_plus_p2(&p1_bytes, &o, &p2_bytes); // m matrices of size (n−o) × o
-    write_u32_array_to_file_byte("ENCODED L", &encoded_l);
+    // Let p2_test_bytes = p2_bytes.clone();
+
+
+    let mut p1_u32 = [0u32 ; P1_BYTES/4];
+    for (i, chunk) in p1_bytes.chunks(4).enumerate() {
+        let mut array = [0u8; 4];
+        array.copy_from_slice(chunk);
+        p1_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
+    }
+
+
+    let mut p2_u32 = [0u32 ; P2_BYTES/4];
+    for (i, chunk) in p2_bytes.chunks(4).enumerate() {
+        let mut array = [0u8; 4];
+        array.copy_from_slice(chunk);
+        p2_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
+    }
+    
+    // Compute L matrices BITSLICED and put them inside P_2
+    p1_p1t_times_o_plus_p2(&p1_u32, o,  &mut p2_u32); // m matrices of size (n−o) × o
+    write_u32_array_to_file_byte("ENCODED L", &p2_u32);
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
 
-    let mut encoded_l =  [0u8 ; L_BYTES];
+    let mut esk =  ExpandedSecretKey { p1: [0u32 ; P1_BYTES/4],
+        l:  [0u32 ; P2_BYTES/4],
+        o:  [0u8 ; O_BYTES]};
 
-    let mut expanded_sk = [0u8 ; ESK_BYTES - SK_SEED_BYTES];
+    
+    esk.p1.copy_from_slice(&p1_u32);
+    esk.l.copy_from_slice(&p2_u32);
+    esk.o.copy_from_slice(&o_bytes);
 
-    expanded_sk[..P1_BYTES].copy_from_slice(&p1_bytes);
-    expanded_sk[P1_BYTES..P1_BYTES+L_BYTES].copy_from_slice(&encoded_l);
-    expanded_sk[P1_BYTES+L_BYTES..].copy_from_slice(&o_bytes);
-
-    return expanded_sk;
+    return [0u8 ; ESK_BYTES-SK_SEED_BYTES]
 }
 
 
@@ -174,7 +196,7 @@ pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
 
 
     // Expand seed_pk and return
-    let mut aes_bytes = vec![0u8; P1_BYTES + P2_BYTES];
+    let mut aes_bytes = [0u8; (P1_BYTES + P2_BYTES)];
     safe_aes_128_ctr(
         &mut aes_bytes,
         (P1_BYTES + P2_BYTES) as u64,
@@ -455,18 +477,23 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let big_p = create_big_p_matrices(p1, p2, p3);
 
     for i in 0..K {
+
+        let mut mul_res_arr = [[0u8 ; N]; M];
+        for a in 0..M {
+            mul_res_arr[a] = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
+        }
+
         for j in (i..K).rev() {
 
             let mut u = [0u8; M];
             for a in 0..M {
 
-                let mul_res = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
 
                 if i == j {
-                    u[a] = vector_mul!(mul_res, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
+                    u[a] = vector_mul!(mul_res_arr[a], s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
                 } else {
-                    let left_term = vector_mul!(mul_res, s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
+                    let left_term = vector_mul!(mul_res_arr[a], s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
 
                     let mul_res2 = vector_transposed_matrix_mul!(s_matrix[j], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
                     let right_term = vector_mul!(mul_res2, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1

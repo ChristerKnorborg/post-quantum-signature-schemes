@@ -8,34 +8,14 @@ use crate::utils::{write_u32_array_to_file_byte, write_u32_array_to_file_int, wr
 
 
 
-pub fn p1_p1t_times_o_plus_p2(p1: &[u8], o: &[[u8 ; O] ; V], p2: &[u8]) -> [u32 ; L_BYTES/4] {
+pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
     
 
-    let mut p1_u32 = [0u32 ; P1_BYTES/4];
-    for (i, chunk) in p1.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p1_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-
-    let mut p2_u32 = [0u32 ; P2_BYTES/4];
-    for (i, chunk) in p2.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p2_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-
-    
-
-    // Size is slightly less than P1_BYTES/2 as there must be space for everything below the diagonals of the m p1 matrices.
-    // Divide by 8 since we transform to u32 (e.g. divede by 4).
-    // Also, we can represent 2 nibbles in a single byte with encoding (e.g. divide by 2).
+    // Divide by 8 as u32 (e.g. divede by 4) and 2 nibbles per byte (e.g. divide by 2).
     const ADDED_P1_SIZE: usize = V*V*M/8;
 
     let mut p1_p1t_added = [0u32 ; ADDED_P1_SIZE];
-    let u32s_per_idx = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
     
     let mut entries_used = 0;
     // Add P1 and P1 transposed
@@ -47,14 +27,14 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u8], o: &[[u8 ; O] ; V], p2: &[u8]) -> [u32 
             // Set remaining entries [i, j] to be [j, i]. As, all entries are 0 in the lower half of p1,
             // and all entries are 0 in the upper half of p1_transposed.
             if r != c {
-                let start = u32s_per_idx * (r * V + c);
-                for i in 0..(u32s_per_idx) {
-                    p1_p1t_added[start+i] = p1_u32[u32s_per_idx * entries_used + i];
+                let start = U32_PER_IDX * (r * V + c);
+                for i in 0..(U32_PER_IDX) {
+                    p1_p1t_added[start+i] = p1[U32_PER_IDX * entries_used + i];
                 }
 
-                let start = u32s_per_idx * (c * V + r);
-                for i in 0..(u32s_per_idx) {
-                    p1_p1t_added[start+i] = p1_u32[u32s_per_idx * entries_used + i];
+                let start = U32_PER_IDX * (c * V + r);
+                for i in 0..(U32_PER_IDX) {
+                    p1_p1t_added[start+i] = p1[U32_PER_IDX * entries_used + i];
                 }
             }
             entries_used += 1;
@@ -68,15 +48,14 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u8], o: &[[u8 ; O] ; V], p2: &[u8]) -> [u32 
     for r in 0..V {
         for c in 0..V {
             for k in 0..O { // Iterate over all nibbles in the current column of O
-                let p1_p1t_start_idx = u32s_per_idx * entries_used;
-                let p2_acc_start_idx = u32s_per_idx * (r * O + k);
+                let p1_p1t_start_idx = U32_PER_IDX * entries_used;
+                let p2_acc_start_idx = U32_PER_IDX * (r * O + k);
                 
-                mul_add_bitsliced_m_vec(&p1_p1t_added, p1_p1t_start_idx, o[c][k], &mut p2_u32, p2_acc_start_idx);
+                mul_add_bitsliced_m_vec(&p1_p1t_added, p1_p1t_start_idx, o[c][k], p2, p2_acc_start_idx);
             }
             entries_used += 1;
         }
     }    
-    return p2_u32
 }
 
 

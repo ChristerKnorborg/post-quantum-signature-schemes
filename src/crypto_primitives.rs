@@ -49,6 +49,7 @@ pub fn safe_aes_128_ctr(
     }
 }
 
+
 pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
     unsafe {
         bindings::shake256(
