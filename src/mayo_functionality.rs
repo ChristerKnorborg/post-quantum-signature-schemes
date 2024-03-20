@@ -120,7 +120,7 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
 
     //Derive P_{i}^(1) and P_{i}^(2) from pk_seed
-    let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
+    let mut p = [0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
@@ -180,7 +180,7 @@ pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
 
 
     // Expand seed_pk and return
-    let mut aes_bytes = vec![0u8; P1_BYTES + P2_BYTES];
+    let mut aes_bytes = [0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
         &mut aes_bytes,
         (P1_BYTES + P2_BYTES) as u64,
