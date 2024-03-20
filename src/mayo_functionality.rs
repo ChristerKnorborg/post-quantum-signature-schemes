@@ -155,7 +155,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
     
     // Compute L matrices BITSLICED and put them inside P_2
     p1_p1t_times_o_plus_p2(&p1_u32, o,  &mut p2_u32); // m matrices of size (n−o) × o
-    write_u32_array_to_file_byte("ENCODED L", &p2_u32);
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
