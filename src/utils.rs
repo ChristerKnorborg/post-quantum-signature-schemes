@@ -47,9 +47,6 @@ pub fn write_u32_array_to_file_int(filename: &str, data: &[u32]) -> Result<()> {
 pub fn write_u32_array_to_file_byte(filename: &str, data: &[u32]) -> Result<()> {
     let mut file = File::create(filename)?;
 
-    // print data len
-    println!("data len: {}", data.len());
-
     for (i, value) in data.iter().enumerate() {
         write!(file, "{:08X}", value)?;
     }

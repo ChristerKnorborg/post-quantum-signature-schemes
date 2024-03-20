@@ -101,7 +101,7 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
 
 // MAYO algorithm 6.
 // Expands a secret key from its compact representation
-pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  [u8 ; ESK_BYTES-SK_SEED_BYTES]{
+pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
     let sk_seed = csk;
 
 
@@ -138,13 +138,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     
     let (p1_bytes, p2_bytes) = p.split_at_mut(P1_BYTES);
 
-
-    // let p1_bytes = &p.clone()[0..P1_BYTES/4];
-    // let p2_bytes =  &mut p[P1_BYTES/4..];
-    
-    // Let p2_test_bytes = p2_bytes.clone();
-
-
     let mut p1_u32 = [0u32 ; P1_BYTES/4];
     for (i, chunk) in p1_bytes.chunks(4).enumerate() {
         let mut array = [0u8; 4];
@@ -171,12 +164,11 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  [u8 ; ESK_BYTES-SK_SEED_BYTES]{
         l:  [0u32 ; P2_BYTES/4],
         o:  [0u8 ; O_BYTES]};
 
-    
     esk.p1.copy_from_slice(&p1_u32);
     esk.l.copy_from_slice(&p2_u32);
     esk.o.copy_from_slice(&o_bytes);
 
-    return [0u8 ; ESK_BYTES-SK_SEED_BYTES]
+    return esk;
 }
 
 
@@ -220,12 +212,31 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let mut v = [[0u8; V]; K]; // Initialize v to zero
 
     // Unlike specifcation, sk_seed is NOT included ESK
-    let expanded_sk: [u8 ; ESK_BYTES-SK_SEED_BYTES] = expand_sk(compact_secret_key);
+    let expanded_sk: ExpandedSecretKey = expand_sk(compact_secret_key);
 
     // Decode expanded secret key
-    let p1_bytestring = &expanded_sk[..P1_BYTES];
-    let l_bytestring = &expanded_sk[P1_BYTES..L_BYTES + P1_BYTES];
-    let o_bytestring = &expanded_sk[P1_BYTES + L_BYTES..];
+    let p1_bytestring = &expanded_sk.p1;
+    let l_bytestring = &expanded_sk.l;
+    let o_bytestring = &expanded_sk.o;
+
+
+    
+
+    let mut p1_bytestring = [0u8 ; P1_BYTES];
+    for (i, &num) in expanded_sk.p1.iter().enumerate() {
+        let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
+        let start_index = i * 4;
+        p1_bytestring[start_index..start_index + 4].copy_from_slice(&byte_slice);
+    }
+
+
+    let mut l_bytestring = [0u8 ; L_BYTES];
+    for (i, &num) in expanded_sk.l.iter().enumerate() {
+        let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
+        let start_index = i * 4;
+        l_bytestring[start_index..start_index + 4].copy_from_slice(&byte_slice);
+    }
+
 
     // Assign matrices with decoded information
     let o = decode_bytestring_matrix_array!(o_bytestring, V, O);
