@@ -2,17 +2,23 @@ use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::p1_p1_transposed_added_times_o;
+use crate::bitsliced_arithmetic::p1_p1t_times_o_plus_p2;
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
+use crate::utils::write_u32_array_to_file_byte;
 use crate::{
     decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
     encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
     transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
+struct ExpandedSecretKey {
+    p1: [u32 ; P1_BYTES/4],
+    l:  [u32 ; P2_BYTES/4],
+    o:  [u8 ; O_BYTES]
+}
 
 
 
@@ -130,30 +136,18 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     let p1_bytes = &p[0..P1_BYTES];
     let p2_bytes = &p[P1_BYTES..];
 
-
-    let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);  // m p1 matrices are of size (n−o) × (n−o)
-    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);  // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let mut l = [[[0u8; O]; V]; M];                                  // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
     
-
-    // Compute L matrices
-    for i in 0..M {
-
-        // P1^T + P1
-        let mut added_p1 = transpose_matrix_array!(p1[i], V, V);
-        added_p1 = matrix_add!(added_p1, p1[i], V, V); 
-
-        // (P1 + P^T) i )*O + P2
-        let mut temp = matrix_mul!(added_p1, V, V, o, O);
-        let temp = matrix_add!(temp, p2[i], V, O);
-
-        l[i] = temp;
-    }
-
-    let encoded_l = encode_bit_sliced_matrices!(l, V, O, M, false, L_BYTES); // m matrices of size (n−o) × o
+    let mut l = [[[0u8; O]; V]; M]; // Allocate space for m L matrices of size (n−o) × o.
+    
+    // Compute L matrices BITSLICED
+    let encoded_l = p1_p1t_times_o_plus_p2(&p1_bytes, &o, &p2_bytes); // m matrices of size (n−o) × o
+    write_u32_array_to_file_byte("ENCODED L", &encoded_l);
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
+
+    let mut encoded_l =  [0u8 ; L_BYTES];
+
     let mut expanded_sk = [0u8 ; ESK_BYTES - SK_SEED_BYTES];
 
     expanded_sk[..P1_BYTES].copy_from_slice(&p1_bytes);
