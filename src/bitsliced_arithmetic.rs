@@ -4,6 +4,75 @@ use crate::utils::{write_u32_array_to_file_byte, write_u32_array_to_file_int, wr
 
 
 
+pub fn p1_times_o_add_p2 (p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]){
+
+
+    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+    
+    let mut entries_used = 0;
+    for r in 0..V {
+        for c in r..V { // c = r as p1 is triangular
+            for k in 0..O { // Iterate over all nibbles in the current column of O
+                let p1_start_idx = U32_PER_IDX * entries_used;
+                let p2_acc_start_idx = U32_PER_IDX * (r * O + k);
+                
+                mul_add_bitsliced_m_vec(&p1, p1_start_idx, o[c][k], p2, p2_acc_start_idx);
+            }
+            entries_used += 1;
+        }
+    }    
+}
+
+
+
+
+pub fn ot_times_p2(o: [[u8 ; O] ; V], p2: &[u32], p3: &mut [u32]){
+
+
+    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+
+    // Switched rows and cols to transpose O
+    for r in 0..O { 
+        for c in 0..V { // 
+            for k in 0..O { // Iterate over all nibbles in the current column of p2
+
+                let p2_start_idx = U32_PER_IDX * (c * O + k); 
+                let p3_acc_start_idx = U32_PER_IDX * (r * O + k);
+
+                mul_add_bitsliced_m_vec(&p2, p2_start_idx, o[c][r], p3, p3_acc_start_idx);
+            }
+        }
+    }
+}
+
+// Method to apply the upper function (as described in the MAYO paper) to the p3 matrices.  
+pub fn upper_p3(p3: &mut [u32], p3_upper: &mut [u32]){
+
+    
+
+    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+
+    let mut entries_used = 0;
+    // Iterate over everything above the diagonal
+    for r in 0..V {  
+        for c in r..O {
+
+
+            for curr_u32 in 0..U32_PER_IDX {
+                p3_upper[U32_PER_IDX * entries_used + curr_u32] = p3[U32_PER_IDX * (r * O + c) + curr_u32]
+            }
+            
+            if r != c {
+                // add entry i,j and j,i in the upper part of matrix
+                for curr_u32 in 0..U32_PER_IDX {
+                    p3_upper[U32_PER_IDX * entries_used + curr_u32] ^= p3[U32_PER_IDX * (c * O + r) + curr_u32];
+                }
+            }
+            entries_used += 1;
+        }
+    }
+
+}
 
 
 
@@ -57,6 +126,13 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
         }
     }    
 }
+
+
+fn add_bitsliced_m_vec(input: &[u32], output: &[u32]){
+    
+
+}
+
 
 
 fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
