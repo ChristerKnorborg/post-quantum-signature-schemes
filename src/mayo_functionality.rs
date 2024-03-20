@@ -14,7 +14,7 @@ use crate::{
     transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
-struct ExpandedSecretKey {
+pub struct ExpandedSecretKey {
     p1: [u32 ; P1_BYTES/4],
     l:  [u32 ; P2_BYTES/4],
     o:  [u8 ; O_BYTES]
