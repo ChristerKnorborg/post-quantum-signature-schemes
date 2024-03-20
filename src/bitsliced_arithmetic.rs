@@ -83,7 +83,7 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u8], o: &[[u8 ; O] ; V], p2: &[u8]) -> [u32 
 fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
 
 
-    const M_LEGS: usize = M/32;
+    const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial. E.g. 32 for M=128
 
     // Terms of the nibble x^3 + x^2 + x + 1. 
     // Create a mask for the nibble of 32 bits for each of the 4 degrees. E.g. 1001 becomes:
@@ -93,18 +93,18 @@ fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &
     let x2: u32 = (((nibble >> 2) & 1) != 0) as u32 * u32::MAX;
     let x3: u32 = (((nibble >> 3) & 1) != 0) as u32 * u32::MAX;
 
-    for i in 0..M_LEGS {
+    for i in 0..U32_PER_TERM {
 
         let input_idx0 = input_start + i;
-        let input_idx1 = input_start + M_LEGS + i;
-        let input_idx2 = input_start + 2 * M_LEGS + i;
-        let input_idx3 = input_start + 3 * M_LEGS + i;
+        let input_idx1 = input_start + U32_PER_TERM + i;
+        let input_idx2 = input_start + 2 * U32_PER_TERM + i;
+        let input_idx3 = input_start + 3 * U32_PER_TERM + i;
 
 
         let acc_idx0 = acc_start + i;
-        let acc_idx1 = acc_start + M_LEGS + i;
-        let acc_idx2 = acc_start + 2 * M_LEGS + i;
-        let acc_idx3 = acc_start + 3 * M_LEGS + i;
+        let acc_idx1 = acc_start + U32_PER_TERM + i;
+        let acc_idx2 = acc_start + 2 * U32_PER_TERM + i;
+        let acc_idx3 = acc_start + 3 * U32_PER_TERM + i;
 
 
         // Degree 0 term of the nibble (x^0)
@@ -134,6 +134,5 @@ fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &
         acc[acc_idx2] ^= x3 & b;
         acc[acc_idx3] ^= x3 & a;
     }
-
 }
 
