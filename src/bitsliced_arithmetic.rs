@@ -1,13 +1,14 @@
-use crate::constants::{L_BYTES, M, O, O_BYTES, P1_BYTES, P2_BYTES, V};
+use crate::constants::{K, L_BYTES, M, N, O, O_BYTES, P1_BYTES, P2_BYTES, V};
 use crate::utils::{write_u32_array_to_file_byte, write_u32_array_to_file_int, write_u8_array_to_file_byte, write_u8_array_to_file_int};
 
+
+
+const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
 
 
 
 pub fn p1_times_o_add_p2 (p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]){
 
-
-    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
     
     let mut entries_used = 0;
     for r in 0..V {
@@ -29,7 +30,7 @@ pub fn p1_times_o_add_p2 (p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]){
 pub fn ot_times_p2(o: [[u8 ; O] ; V], p2: &[u32], p3: &mut [u32]){
 
 
-    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+    
 
     // Switched rows and cols to transpose O
     for r in 0..O { 
@@ -50,7 +51,7 @@ pub fn upper_p3(p3: &mut [u32], p3_upper: &mut [u32]){
 
     
 
-    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+    
 
     let mut entries_used = 0;
     // Iterate over everything above the diagonal
@@ -71,7 +72,6 @@ pub fn upper_p3(p3: &mut [u32], p3_upper: &mut [u32]){
             entries_used += 1;
         }
     }
-
 }
 
 
@@ -84,7 +84,7 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
     const ADDED_P1_SIZE: usize = V*V*M/8;
 
     let mut p1_p1t_added = [0u32 ; ADDED_P1_SIZE];
-    const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+    
     
     let mut entries_used = 0;
     // Add P1 and P1 transposed
@@ -128,10 +128,147 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
 }
 
 
-fn add_bitsliced_m_vec(input: &[u32], output: &[u32]){
+
+
+
+
+
+pub fn st_times_big_p(s: [[u8; 66]; 9], big_p: &[u32], acc: &mut [u32]) {
+
+    let mut entries_used = 0;
+
+
+
+    for r in 0..N {
+        for c in r..N { // c = r as big p is upper triangular
+            for k in 0..K { // Iterate over all nibbles in the s vector
+
+                let big_p_start_idx = U32_PER_IDX * entries_used;
+                let acc_start_idx = U32_PER_IDX * (r * K + k);
+                
+                mul_add_bitsliced_m_vec(&big_p, big_p_start_idx, s[k][c], acc, acc_start_idx);
+            }
+            entries_used += 1;
+        }
+    }
+}
+
+
+pub fn st_times_big_p_times_s(big_p: &[u32], s: [[u8; 66]; 9], acc: &mut [u32]) {
+
+
+    // Mat rows outer most
+    // Mat cols middle most
+    // Bitsliced mat_cols inner most
     
 
+
+    for r in 0..K {
+        for c in 0..N { // c = r as big p is upper triangular
+            for k in 0..K { // Iterate over all nibbles in the s vector
+
+                let big_p_start_idx = U32_PER_IDX * (c * K + k);
+                let acc_start_idx = U32_PER_IDX * (r * K + k);
+                
+                mul_add_bitsliced_m_vec(&big_p, big_p_start_idx, s[r][c], acc, acc_start_idx);
+            }
+        }
+    }
 }
+
+
+
+
+// Method to apply the upper function (as described in the MAYO paper) to the.  
+pub fn upper_big_p(big_p: &[u32], big_p_upper: &mut [u32]){
+
+    
+    let mut entries_used = 0;
+    // Iterate over everything above the diagonal
+    for r in 0..K{  
+        for c in r..K {
+
+            for curr_u32 in 0..U32_PER_IDX {
+                big_p_upper[U32_PER_IDX * entries_used + curr_u32] = big_p[U32_PER_IDX * (r * K + c) + curr_u32]
+            }
+            
+            if r != c {
+                // add entry i,j and j,i in the upper part of matrix
+                for curr_u32 in 0..U32_PER_IDX {
+                    big_p_upper[U32_PER_IDX * entries_used + curr_u32] ^= big_p[U32_PER_IDX * (c * K + r) + curr_u32];
+                }
+            }
+            entries_used += 1;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+// Construct the m matrices of (P_1 P_2)
+//                             (0   P_3)
+pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u32]) {
+
+
+    const U32_PER_IDX: usize = M / 2 / 4;
+
+
+    // Entries exhausted in p1, p2, p3 and big_p respectively
+    let mut big_used = 0;
+    let mut p1_used = 0;
+    let mut p2_used = 0;
+    let mut p3_used = 0;
+
+
+    // Set the first V rows to be p1 concatenated with p2
+    for r in 0..V {
+
+        // Assign V columns of p1 to the first V columns of big_p in iteration 1
+        // Then V-1 columns of p1 to the next V-1 columns of big_p etc.
+        for _ in 0..((V-r) * U32_PER_IDX) {
+            big_p[big_used] = p1[p1_used];
+
+            p1_used += 1;
+            big_used += 1;
+        }
+
+        // Assign V columns of p2 to the second V columns of big_p
+        for _ in 0..(O * U32_PER_IDX) {
+            big_p[big_used] = p2[p2_used];
+
+            p2_used += 1;
+            big_used += 1;
+        }
+    }
+
+    // Set the last O rows to be p3
+    for r in 0..O {
+
+        // Assign O columns of p3 to the last O columns of big_p (Notice, the 0 values are ommited in upper bitsliced representation)
+        for _ in 0..((O-r) * U32_PER_IDX) {
+            big_p[big_used] = p3[p3_used];
+
+            p3_used += 1;
+            big_used += 1;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
 
 
 

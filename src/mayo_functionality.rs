@@ -2,7 +2,7 @@ use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::{ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, upper_p3};
+use crate::bitsliced_arithmetic::{create_big_p_bitsliced, ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, st_times_big_p, st_times_big_p_times_s, upper_big_p, upper_p3};
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
@@ -103,16 +103,12 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     upper_p3(&mut p3, &mut p3_upper); // OPTIMIZE THIS!
 
 
-
-
     let mut p3_u8 = [0u8 ; P3_BYTES];
     for (i, &num) in p3_upper.iter().enumerate() {
         let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
         let start_index = i * 4;
         p3_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
     }
-
-
 
 
     // Public and secret keys
@@ -462,14 +458,11 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>) -> bool {
 
     // Retrieve the public information from the expanded public key
-    let p1_bytestring = &expanded_pk[0..P1_BYTES];
-    let p2_bytestring = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
-    let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
+    let p1_bytes = &expanded_pk[0..P1_BYTES];
+    let p2_bytes = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
+    let p3_bytes = &expanded_pk[P1_BYTES + P2_BYTES..];
 
-    // Decode the public information into matrices
-    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
-    let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
+
 
     // Decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
@@ -513,45 +506,105 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
-    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
-    // for every matrix a ∈ [m]                   (0     P^3_a)
-    let big_p = create_big_p_matrices(p1, p2, p3);
-
-    for i in 0..K {
-
-        let mut mul_res_arr = [[0u8 ; N]; M];
-        for a in 0..M {
-            mul_res_arr[a] = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
-        }
-
-        for j in (i..K).rev() {
-
-            let mut u = [0u8; M];
-            for a in 0..M {
 
 
-                if i == j {
-                    u[a] = vector_mul!(mul_res_arr[a], s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
-                } else {
-                    let left_term = vector_mul!(mul_res_arr[a], s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
 
-                    let mul_res2 = vector_transposed_matrix_mul!(s_matrix[j], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
-                    let right_term = vector_mul!(mul_res2, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
+    
+    
 
-                    u[a] = add(left_term, right_term);
-                }
-            }
 
-            // y = y - u * z^ell - Instead of subtracting with shifted u,
-            // sub (XOR) with shifted y.
-            for d in 0..M {
-                y[d + ell] ^= u[d];
-            }
-            ell = ell + 1;
-        }
+
+
+    let mut p1_u32 = [0u32 ; P1_BYTES/4];
+    for (i, chunk) in p1_bytes.chunks(4).enumerate() {
+        let mut array = [0u8; 4];
+        array.copy_from_slice(chunk);
+        p1_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
     }
 
+    let mut p2_u32 = [0u32 ; P2_BYTES/4];
+    for (i, chunk) in p2_bytes.chunks(4).enumerate() {
+        let mut array = [0u8; 4];
+        array.copy_from_slice(chunk);
+        p2_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
+    }
+
+    let mut p3_u32 = [0u32 ; P3_BYTES/4];
+    for (i, chunk) in p3_bytes.chunks(4).enumerate() {
+        let mut array = [0u8; 4];
+        array.copy_from_slice(chunk);
+        p3_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
+    }
+
+
+
+    let mut big_p = [0u32 ; (P1_BYTES + P2_BYTES + P3_BYTES)/4];
+
+    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
+    // for every matrix a ∈ [m]                   (0     P^3_a)
+    create_big_p_bitsliced(&p1_u32, &p2_u32, &p3_u32, &mut big_p); // OPTIMIZE THIS!
+
+
+
+
+    // Compute s^t * P*
+    let mut s_p = [0u32; K*N*M/8];
+    st_times_big_p(s_matrix, &big_p, &mut s_p);
+
+
+    write_u32_array_to_file_byte("FIRST.txt", &s_p);
+
+
+    // Compute s^t * P* * s
+    let mut temp = [0u32; K*K*M/8];
+    st_times_big_p_times_s(&s_p, s_matrix, &mut temp);
+
+
+    write_u32_array_to_file_byte("SECOND.txt", &temp);
+
+
+    const SIZE: usize = (K * (K + 1) / 2); // Size of upper triangular part of matrix of size K x K
+    let mut upper_temp = [0u32; SIZE*M/8];
+    upper_big_p(&temp, &mut upper_temp); 
+
+
+    write_u32_array_to_file_byte("THIRD.txt", &upper_temp);
+
+
+    for i in 0..K {
+        for j in (i..K).rev() {
+
+
+
+            // // Calculate position of in upper triangular part of matrix
+            // let pos = i * K + j - (i * (i + 1) / 2);
+            // let encoded_u = upper_temp[pos];
+
+
+            // let mut u_u8: [u8; 64] = [0u8 ; M];
+            // let byte_slice = encoded_u.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
+            // u_u8[0..4].copy_from_slice(&byte_slice);
+
+
+
+
+
+            // let u = decode_bit_sliced_array!(encoded_u, M);
+
+
+
+
+
+            // // y = y - u * z^ell - Instead of subtracting with shifted u,
+            // // sub (XOR) with shifted y.
+            // for d in 0..M {
+            //     y[d + ell] ^= u[d];
+            // }
+            // ell = ell + 1;
+
+        }
+    }
     let y = reduce_mod_f(y);
 
     // Accept signature if y = t
@@ -626,22 +679,7 @@ pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 
 
 
-// Construct the m matrices of (P_1 P_2)
-//                             (0   P_3)
-fn create_big_p_matrices(p1: [[[u8 ; V]; V]; M], p2: [[[u8 ; O]; V]; M], p3: [[[u8 ; O]; O]; M]) -> [[[u8 ; N]; N]; M] {
-    let mut result = [[[0u8 ; N]; N]; M];
 
-    for mat in 0..M {
-        for i in 0..V {
-            result[mat][i][..V].copy_from_slice(&p1[mat][i]);
-            result[mat][i][V..].copy_from_slice(&p2[mat][i]);
-        }
-        for i in V..N {
-            result[mat][i][V..].copy_from_slice(&p3[mat][i - V]);
-        }
-    }
-    return result;
-}
 
 
 
