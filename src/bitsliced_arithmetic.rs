@@ -51,8 +51,6 @@ pub fn upper_p3(p3: &mut [u32], p3_upper: &mut [u32]){
 
     
 
-    
-
     let mut entries_used = 0;
     // Iterate over everything above the diagonal
     for r in 0..V {  
@@ -91,6 +89,77 @@ pub fn vt_times_l(v: [[u8 ; V]; K], l: &[u32], acc: &mut [u32])  {
     }  
 
 }
+
+
+
+pub fn vt_times_p1(v: [[u8 ; V]; K], p1: &[u32], acc: &mut [u32]){
+
+    let mut entries_used = 0;
+    // Iterat over all indexes of p1_p1t as it is NOT upper triangular.
+    for r in 0..V {
+        for c in r..V {
+            for k in 0..K { // Iterate over all nibbles in the current column of O
+                let p1_start_idx = U32_PER_IDX * entries_used;
+                let acc_start_idx = U32_PER_IDX * (r * K + k);
+                
+                mul_add_bitsliced_m_vec(&p1, p1_start_idx, v[k][c], acc, acc_start_idx);
+            }
+            entries_used += 1;
+        }
+    }  
+}
+
+
+
+pub fn vt_times_p1_times_v(v: [[u8 ; V]; K], vt_p1: &[u32], acc: &mut [u32]) {
+
+    for r in 0..K {
+        for c in 0..V {
+            for k in 0..K {
+
+                let vt_p1_start_idx = U32_PER_IDX * (c * K + k); //BITSLICED M COLS = K ?
+                let acc_start_idx = U32_PER_IDX * (r * K + k);
+
+                mul_add_bitsliced_m_vec(vt_p1, vt_p1_start_idx, v[r][c], acc, acc_start_idx)
+
+            }
+        }
+    }
+}
+
+
+
+
+// Method to apply the upper function (as described in the MAYO paper) to the p3 matrices.  
+pub fn upper_vpv(vpv: &[u32], vpv_upper: &mut [u32]){
+
+    let mut entries_used = 0;
+    // Iterate over everything above the diagonal
+    for r in 0..K {  
+        for c in r..K {
+
+            for curr_u32 in 0..U32_PER_IDX {
+                vpv_upper[U32_PER_IDX * entries_used + curr_u32] = vpv[U32_PER_IDX * (r * K + c) + curr_u32]
+            }
+            
+            if r != c {
+                // add entry i,j and j,i in the upper part of matrix
+                for curr_u32 in 0..U32_PER_IDX {
+                    vpv_upper[U32_PER_IDX * entries_used + curr_u32] ^= vpv[U32_PER_IDX * (c * K + r) + curr_u32];
+                }
+            }
+            entries_used += 1;
+        }
+    }
+}
+
+
+
+
+
+
+
+
 
 
 pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
