@@ -18,7 +18,7 @@ extern "C" {
     pub fn randombytes_nist(x: &mut ccty::c_uchar, xlen: ccty::c_ulong);
 
     pub fn AES_128_CTR(
-        output: *mut ccty::c_uchar,
+        output: *mut ccty::c_uint,
         outputByteLen: ccty::c_ulonglong,
         input: *const ccty::c_uchar,
         inputByteLen: ccty::c_ulonglong,

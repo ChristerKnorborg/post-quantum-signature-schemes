@@ -1,5 +1,5 @@
 use std::vec;
-use cipher::consts::U32;
+use cipher::consts::{P1, U32};
 use cipher::typenum::bit;
 
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
@@ -23,6 +23,18 @@ pub struct ExpandedSecretKey {
     o:  [u8 ; O_BYTES]
 }
 
+pub struct ExpandedPublicKey {
+    p1: [u32 ; P1_BYTES/4],
+    p2: [u32 ; P2_BYTES/4],
+    p3: [u32 ; P3_BYTES/4],
+}
+
+
+pub struct CompactPublicKey {
+    pub seed: [u8 ; 16],
+    pub p3: [u32 ; P3_BYTES/4], 
+}
+
 
 
 const U32_PER_IDX: usize = M / 4 / 2;
@@ -31,7 +43,7 @@ const U32_PER_IDX: usize = M / 4 / 2;
 
 
 // MAYO algorithm 5:
-pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
+pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
     
     // Pick random seed_sk at random (using NIST randomness source)
     let mut sk_seed = [0u8; SK_SEED_BYTES];
@@ -58,7 +70,7 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     let o = decode_bytestring_matrix_array!(o_bytes, V, O);
 
     // Derive P1_i and P2_i from pk_seed
-    let mut p = [0u8; P1_BYTES + P2_BYTES];
+    let mut p = [0u32; (P1_BYTES + P2_BYTES)/4];
     safe_aes_128_ctr(
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
@@ -66,23 +78,8 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
         PK_SEED_BYTES as u64,
     );
     
-    let (p1_bytes, p2_bytes) = p.split_at_mut(P1_BYTES);
+    let (p1, mut p2) = p.split_at_mut(P1_BYTES/4);
 
-
-    let mut p1_u32 = [0u32 ; P1_BYTES/4];
-    for (i, chunk) in p1_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p1_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-
-    let mut p2_u32 = [0u32 ; P2_BYTES/4];
-    for (i, chunk) in p2_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p2_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
 
     
     // m p1 matrices are of size (n−o) × (n−o)
@@ -96,32 +93,23 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
 
 
     // Compute (P1*O + P2) in p2
-    p1_times_o_add_p2(&p1_u32, o, &mut p2_u32);
+    p1_times_o_add_p2(&p1, o, &mut p2);
 
     // Compute P3 = O^t * (P1*O + P2) in accumulated in p3
-    ot_times_p2(o, &p2_u32, &mut p3);
+    ot_times_p2(o, &p2, &mut p3);
 
     // Compute upper of p3
     let mut p3_upper = [0u32 ; P3_BYTES/4];
     upper_p3(&mut p3, &mut p3_upper); // OPTIMIZE THIS!
 
 
-    let mut p3_u8 = [0u8 ; P3_BYTES];
-    for (i, &num) in p3_upper.iter().enumerate() {
-        let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-        let start_index = i * 4;
-        p3_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
-    }
-
-
     // Public and secret keys
-    let mut cpk = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3
+    let mut cpk = CompactPublicKey {
+        seed: pk_seed,
+        p3: p3_upper
+    }; // contains pk_seed and encoded_p3
     let csk: [u8 ; CSK_BYTES] = sk_seed;
 
-    cpk[..PK_SEED_BYTES].copy_from_slice(&pk_seed);
-    cpk[PK_SEED_BYTES..].copy_from_slice(&p3_u8); 
-
-    
     return (cpk, csk);
 }
 
@@ -157,7 +145,7 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
 
 
     // Derive P1_i and P2_i from pk_seed
-    let mut p = [0u8; (P1_BYTES + P2_BYTES)];
+    let mut p = [0u32; (P1_BYTES + P2_BYTES)/4];
     safe_aes_128_ctr(
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
@@ -166,25 +154,11 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
     );
 
     
-    let (p1_bytes, p2_bytes) = p.split_at_mut(P1_BYTES);
+    let (p1, mut p2_bytes) = p.split_at_mut(P1_BYTES/4);
 
-    let mut p1_u32 = [0u32 ; P1_BYTES/4];
-    for (i, chunk) in p1_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p1_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-
-    let mut p2_u32 = [0u32 ; P2_BYTES/4];
-    for (i, chunk) in p2_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p2_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
     
     // Compute L matrices BITSLICED and put them inside P_2
-    p1_p1t_times_o_plus_p2(&p1_u32, o,  &mut p2_u32); // m matrices of size (n−o) × o
+    p1_p1t_times_o_plus_p2(&p1, o,  &mut p2_bytes); // m matrices of size (n−o) × o
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
@@ -193,8 +167,8 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
         l:  [0u32 ; P2_BYTES/4],
         o:  [0u8 ; O_BYTES]};
 
-    esk.p1.copy_from_slice(&p1_u32);
-    esk.l.copy_from_slice(&p2_u32);
+    esk.p1.copy_from_slice(&p1);
+    esk.l.copy_from_slice(&p2_bytes);
     esk.o.copy_from_slice(&o_bytes);
 
     return esk;
@@ -207,28 +181,29 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
 
 // Mayo algorithm 7
 // Expands a public key from its compact representation
-pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
-
-    // Parse cpk
-    let pk_seed_slice = &cpk[0..PK_SEED_BYTES];
-    let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
-        .try_into()
-        .expect("Slice has incorrect length");
+pub fn expand_pk(cpk: CompactPublicKey) -> ExpandedPublicKey {
 
 
     // Expand seed_pk and return
-    let mut aes_bytes = [0u8; (P1_BYTES + P2_BYTES)];
+    let mut aes_output = [0u32; (P1_BYTES + P2_BYTES)/4];
     safe_aes_128_ctr(
-        &mut aes_bytes,
+        &mut aes_output,
         (P1_BYTES + P2_BYTES) as u64,
-        &pk_seed,
+        &cpk.seed,
         PK_SEED_BYTES as u64,
     );
 
-    let mut expanded_pk = [0u8 ; EPK_BYTES];
-    let cpk_bytes = &cpk[PK_SEED_BYTES..];
-    expanded_pk[..P1_BYTES + P2_BYTES].copy_from_slice(&aes_bytes);
-    expanded_pk[P1_BYTES + P2_BYTES..].copy_from_slice(&cpk_bytes);
+    let (p1, p2) = aes_output.split_at(P1_BYTES/4);
+
+    let mut expanded_pk = ExpandedPublicKey{ 
+        p1: [0u32 ; P1_BYTES/4],
+        p2: [0u32 ; P2_BYTES/4],
+        p3: [0u32 ; P3_BYTES/4]
+    };
+
+    expanded_pk.p1.copy_from_slice(&p1);
+    expanded_pk.p2.copy_from_slice(&p2);
+    expanded_pk.p3 = cpk.p3;
 
     return expanded_pk;
 }
@@ -248,28 +223,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let l = &expanded_sk.l;
     let o_bytestring = &expanded_sk.o;
 
-    
-    
-
-    let mut p1_bytestring = [0u8 ; P1_BYTES];
-    for (i, &num) in expanded_sk.p1.iter().enumerate() {
-        let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-        let start_index = i * 4;
-        p1_bytestring[start_index..start_index + 4].copy_from_slice(&byte_slice);
-    }
-
-
-    let mut l_bytestring = [0u8 ; L_BYTES];
-    for (i, &num) in expanded_sk.l.iter().enumerate() {
-        let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-        let start_index = i * 4;
-        l_bytestring[start_index..start_index + 4].copy_from_slice(&byte_slice);
-    }
-
-
     let o = decode_bytestring_matrix_array!(o_bytestring, V, O);
-
-
 
     // Hash message 
     let mut m_digest = [0u8; DIGEST_BYTES];
@@ -349,6 +303,8 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         y[..M].copy_from_slice(&t);
         let mut ell = 0;
 
+
+
         let mut m_matrices_array = [0u32 ; K*O*M / 8];
 
         // Build K matrices of size M x O
@@ -395,7 +351,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         for i in 0..K {
             for j in (i..K).rev() {
 
-                 // // Calculate position of in upper triangular part of matrix
+                // Calculate position of in upper triangular part of matrix
                 let pos = i * K + j - (i * (i + 1) / 2);
                 let encoded_u = &bitsliced_upper_vpv[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
 
@@ -414,7 +370,6 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
                 for d in 0..M {
                     y[d + ell] ^= u[d];
                 }
-
 
                 // Update A cols with + z^ell * Mj
                 for col in i * O..(i + 1) * O {
@@ -481,13 +436,12 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
 // MAYO algorithm 9
 // Verifi the signature of a message using the expanded public key
-pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>) -> bool {
+pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &Vec<u8>) -> bool {
 
     // Retrieve the public information from the expanded public key
-    let p1_bytes = &expanded_pk[0..P1_BYTES];
-    let p2_bytes = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
-    let p3_bytes = &expanded_pk[P1_BYTES + P2_BYTES..];
-
+    let p1 = &expanded_pk.p1;
+    let p2 = &expanded_pk.p2;
+    let p3 = &expanded_pk.p3;
 
 
     // Decode signature and derive salt
@@ -532,46 +486,11 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
-
-
-
-
-    
-    
-
-
-
-
-    let mut p1_u32 = [0u32 ; P1_BYTES/4];
-    for (i, chunk) in p1_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p1_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-    let mut p2_u32 = [0u32 ; P2_BYTES/4];
-    for (i, chunk) in p2_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p2_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-    let mut p3_u32 = [0u32 ; P3_BYTES/4];
-    for (i, chunk) in p3_bytes.chunks(4).enumerate() {
-        let mut array = [0u8; 4];
-        array.copy_from_slice(chunk);
-        p3_u32[i] = u32::from_le_bytes(array); // Use from_be_bytes for big endian
-    }
-
-
-
     let mut big_p = [0u32 ; (P1_BYTES + P2_BYTES + P3_BYTES)/4];
 
     // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                   (0     P^3_a)
-    create_big_p_bitsliced(&p1_u32, &p2_u32, &p3_u32, &mut big_p); // OPTIMIZE THIS!
-
-
+    create_big_p_bitsliced(p1, p2, p3, &mut big_p); // OPTIMIZE THIS!
 
 
     // Compute s^t * P*
@@ -646,10 +565,10 @@ pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
 
 // MAYO algorithm 11
 // Expand a public key from its compact representation and verify a signature
-pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: [u8 ; CPK_BYTES]) -> (bool, Vec<u8>) {
+pub fn api_sign_open(sign_con_mes: Vec<u8>, cpk: CompactPublicKey) -> (bool, Vec<u8>) {
     
     // Expand public key
-    let expanded_pk = expand_pk(pk);
+    let expanded_pk = expand_pk(cpk);
 
     // Extract signature and message from input
     let signature = &sign_con_mes[0..SIG_BYTES];

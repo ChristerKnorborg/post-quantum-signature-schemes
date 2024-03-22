@@ -4,7 +4,7 @@ use std::path::Path;
 
 use std::fs::OpenOptions;
 use std::io::Write;
-use crate::constants::{COMPARE_FILE_NAME, SIG_BYTES, VERSION};
+use crate::constants::{COMPARE_FILE_NAME, CPK_BYTES, P3_BYTES, PK_SEED_BYTES, SIG_BYTES, VERSION};
 use crate::utils::bytes_to_hex_string;
 use crate::mayo_functionality::{api_sign, api_sign_open, compact_key_gen};
 use crate::crypto_primitives::{safe_random_bytes_init, safe_random_bytes};
@@ -68,14 +68,31 @@ pub fn write_and_compare_kat_file() {
 
 
     let (cpk, csk) = compact_key_gen();
+
+    let cpk_seed = cpk.seed;
+    let cpk_p3_u8 = cpk.p3;
+
+    let mut p3_u8 = [0u8 ; P3_BYTES];
+    for (i, &num) in cpk_p3_u8.iter().enumerate() {
+        let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
+        let start_index = i * 4;
+        p3_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
+    }
+
+    let mut cpk_array = [0u8 ; CPK_BYTES];
+    cpk_array[..PK_SEED_BYTES].copy_from_slice(&cpk_seed);
+    cpk_array[PK_SEED_BYTES..].copy_from_slice(&p3_u8);
+
     let signature = api_sign(messages[count].clone(), csk.clone());
-    let (ver_cor, _) = api_sign_open(signature.clone(), cpk.clone());
+    let (ver_cor, _) = api_sign_open(signature.clone(), cpk);
 
 
 
     let seed_hex = bytes_to_hex_string(&seeds[count], false);
     let msg_hex = bytes_to_hex_string(&messages[count], false);
-    let cpk_hex = bytes_to_hex_string(&cpk.to_vec(), false);
+    
+
+    let cpk_hex = bytes_to_hex_string(&cpk_array.to_vec(), false);
     let csk_hex = bytes_to_hex_string(&csk.to_vec(), false);
     let sm_hex = bytes_to_hex_string(&signature, false);
     

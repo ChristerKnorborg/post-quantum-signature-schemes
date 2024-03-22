@@ -34,7 +34,7 @@ pub fn safe_random_bytes(random_arrays: &mut [u8], nbytes: u64) {
 }
 
 pub fn safe_aes_128_ctr(
-    output: &mut [u8],
+    output: &mut [u32],
     output_byte_len: u64,
     input: &[u8],
     input_byte_len: u64,
