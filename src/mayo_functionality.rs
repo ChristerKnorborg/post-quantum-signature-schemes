@@ -1,4 +1,6 @@
 use std::vec;
+use cipher::consts::U32;
+
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
@@ -7,7 +9,7 @@ use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
-use crate::utils::write_u32_array_to_file_byte;
+use crate::utils::{bytes_to_hex_string, write_u32_array_to_file_byte};
 use crate::{
     decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
     encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
@@ -551,26 +553,14 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     // Compute s^t * P*
     let mut s_p = [0u32; K*N*M/8];
     st_times_big_p(s_matrix, &big_p, &mut s_p);
-
-
-    write_u32_array_to_file_byte("FIRST.txt", &s_p);
-
-
+    
     // Compute s^t * P* * s
     let mut temp = [0u32; K*K*M/8];
     st_times_big_p_times_s(&s_p, s_matrix, &mut temp);
 
-
-    write_u32_array_to_file_byte("SECOND.txt", &temp);
-
-
-    const SIZE: usize = (K * (K + 1) / 2); // Size of upper triangular part of matrix of size K x K
+    const SIZE: usize = K * (K + 1) / 2; // Size of upper triangular part of matrix of size K x K
     let mut upper_temp = [0u32; SIZE*M/8];
     upper_big_p(&temp, &mut upper_temp); 
-
-
-    write_u32_array_to_file_byte("THIRD.txt", &upper_temp);
-
 
     for i in 0..K {
         for j in (i..K).rev() {
@@ -578,33 +568,37 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
 
 
             // // Calculate position of in upper triangular part of matrix
-            // let pos = i * K + j - (i * (i + 1) / 2);
-            // let encoded_u = upper_temp[pos];
+            let pos = i * K + j - (i * (i + 1) / 2);
+            const U32_PER_IDX: usize = M / 4 / 2;
+            let mut encoded_u = &upper_temp[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
 
 
-            // let mut u_u8: [u8; 64] = [0u8 ; M];
-            // let byte_slice = encoded_u.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-            // u_u8[0..4].copy_from_slice(&byte_slice);
-
-
-
-
-
-            // let u = decode_bit_sliced_array!(encoded_u, M);
-
+            let mut encoded_u_u8 = [0u8 ; M/2];
+            for (d, &num) in encoded_u.iter().enumerate() {
+                let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
+                let start_index = d * 4;
+                encoded_u_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
+            }
 
 
 
 
-            // // y = y - u * z^ell - Instead of subtracting with shifted u,
-            // // sub (XOR) with shifted y.
-            // for d in 0..M {
-            //     y[d + ell] ^= u[d];
-            // }
-            // ell = ell + 1;
+            let u = decode_bit_sliced_array!(encoded_u_u8, M);
+
+
+
+
+
+            // y = y - u * z^ell - Instead of subtracting with shifted u,
+            // sub (XOR) with shifted y.
+            for d in 0..M {
+                y[d + ell] ^= u[d];
+            }
+            ell = ell + 1;
 
         }
     }
+
     let y = reduce_mod_f(y);
 
     // Accept signature if y = t

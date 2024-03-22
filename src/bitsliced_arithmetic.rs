@@ -133,7 +133,7 @@ pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
 
 
 
-pub fn st_times_big_p(s: [[u8; 66]; 9], big_p: &[u32], acc: &mut [u32]) {
+pub fn st_times_big_p(s: [[u8; N]; K], big_p: &[u32], acc: &mut [u32]) {
 
     let mut entries_used = 0;
 
@@ -154,7 +154,7 @@ pub fn st_times_big_p(s: [[u8; 66]; 9], big_p: &[u32], acc: &mut [u32]) {
 }
 
 
-pub fn st_times_big_p_times_s(big_p: &[u32], s: [[u8; 66]; 9], acc: &mut [u32]) {
+pub fn st_times_big_p_times_s(big_p: &[u32], s: [[u8; N]; K], acc: &mut [u32]) {
 
 
     // Mat rows outer most
