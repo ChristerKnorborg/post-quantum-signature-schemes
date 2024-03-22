@@ -4,12 +4,12 @@ use cipher::consts::U32;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::{create_big_p_bitsliced, ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, st_times_big_p, st_times_big_p_times_s, upper_big_p, upper_p3};
+use crate::bitsliced_arithmetic::{create_big_p_bitsliced, ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, st_times_big_p, st_times_big_p_times_s, upper_big_p, upper_p3, vt_times_l};
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
-use crate::utils::{bytes_to_hex_string, write_u32_array_to_file_byte};
+use crate::utils::{bytes_to_hex_string, write_u32_array_to_file_byte, write_u8_array_to_file_byte};
 use crate::{
     decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
     encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
@@ -18,13 +18,13 @@ use crate::{
 
 pub struct ExpandedSecretKey {
     p1: [u32 ; P1_BYTES/4],
-    l:  [u32 ; P2_BYTES/4],
+    l:  [u32 ; L_BYTES/4],
     o:  [u8 ; O_BYTES]
 }
 
 
 
-
+const U32_PER_IDX: usize = M / 4 / 2;
 
 
 
@@ -243,11 +243,11 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let expanded_sk: ExpandedSecretKey = expand_sk(compact_secret_key);
 
     // Decode expanded secret key
-    let p1_bytestring = &expanded_sk.p1;
-    let l_bytestring = &expanded_sk.l;
+    let p1 = &expanded_sk.p1;
+    let l = &expanded_sk.l;
     let o_bytestring = &expanded_sk.o;
 
-
+    
     
 
     let mut p1_bytestring = [0u8 ; P1_BYTES];
@@ -266,10 +266,9 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     }
 
 
-    // Assign matrices with decoded information
     let o = decode_bytestring_matrix_array!(o_bytestring, V, O);
-    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    let l = decode_bit_sliced_matrices!(l_bytestring, V, O, M, false);
+
+
 
     // Hash message 
     let mut m_digest = [0u8; DIGEST_BYTES];
@@ -348,107 +347,48 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         let mut y = [0u8 ; M + SHIFTS];
         y[..M].copy_from_slice(&t);
         let mut ell = 0;
-        let mut m_matrices = [[[0u8; O]; M]; K]; // Vector of size m x o of zeroes
+
+        let mut m_matrices_array = [0u32 ; K*O*M / 8];
 
         // Build K matrices of size M x O
-        for i in 0..K {
-            // Set the j-th row of m_i 
-            for j in 0..M {
-                let res = vector_matrix_mul!(v[i], l[j], V, O); // (1 x (n-o)) * ((n-o) x o) = 1 x o
-                m_matrices[i][j] = res; 
-            }
-        }
-
-        for i in 0..K {
-
-            let mut trans_mult_v = [[0u8 ; V]; M];
-            for a in 0..M {
-                trans_mult_v[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-            }
-
-            for j in (i..K).rev() {
-
-                let mut u = [0u8; M];
-                if i == j {
-                    for a in 0..M {
-
-                        u[a] = vector_mul!(trans_mult_v[a], v[i], V);  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
-                    }
-                } else {
-                    for a in 0..M {
-                        let left_term = vector_mul!(trans_mult_v[a], v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
-
-                        let trans_mult = vector_transposed_matrix_mul!(v[j], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                        let right_term = vector_mul!(trans_mult, v[i], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
-
-                        u[a] = add(left_term, right_term); 
-                    }
-                }
-
-                // y = y - u * z^ell - Instead of subtracting with shifted u,
-                // we just sub (XOR) with shifted y for easier loop structre
-                for d in 0..M {
-                    y[d + ell] ^= u[d];
-                }
-
-                // Update A cols with + z^ell * Mj
-                for col in i * O..(i + 1) * O {
-                    for row in 0..M {
-                        a[row + ell][col] ^= m_matrices[j][row][col % O];
-                    }
-                }
-
-                if i != j {
-                    // Update A cols with + z^ell * Mi
-                    for col in j * O..(j + 1) * O {
-                        for row in 0..M {
-                            a[row + ell][col] ^= m_matrices[i][row][col % O];
-                        }
-                    }
-                }
-                ell += 1;
-            }
-        }
+        vt_times_l(v, l, &mut m_matrices_array);
 
 
-        let y = reduce_mod_f(y);
-        let a = reduce_a_mod_f(a);
+        let mut m_matrices = [[[0u8; O]; M]; K]; 
         
-        // Try to solve the linear system Ax = y
-        x = match sample_solution(a, y, r) {
-            Ok(x) => x, // If Ok
-            Err(_) => {
-                continue; // If Err (no solution found), continue to the next iteration of the loop
+        
+        // Assign the indexes of m matrices to columns of m
+        for i in 0..K {
+            for j in 0..O {
+
+                let curr_idx = (M/8) * (i * O + j);
+                let curr_vec = &m_matrices_array[curr_idx..curr_idx+U32_PER_IDX];
+
+                let mut encoded_m_row_u8 = [0u8 ; M/2];
+                for (d, &num) in curr_vec.iter().enumerate() {
+                    let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
+                    let start_index = d * 4;
+                    encoded_m_row_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
+                }   
+                
+                let decoded_m_row = decode_bit_sliced_array!(encoded_m_row_u8, M);
+                for col in 0..M {
+                    m_matrices[i][col][j] = decoded_m_row[col];
+                }
             }
-        };
+        }
+
+    
+
+
+
+
+
         break; // If Ok, break the loop
     } // ctr loop ends
 
-    // Finish and output signature
-    let mut signature = [0u8; K * N];
-
-
-    for i in 0..K {
-        let x_idx: [u8 ; O] = x[i * O..(i + 1) * O]
-            .try_into()
-            .expect("Slice has incorrect length");
-        let ox: [u8 ; V] = matrix_vec_mul!(o, x_idx, V, O); // (n−o) × o * o × 1 = (n−o) × 1
-
-        for j in 0..V {
-            v[i][j] = add(ox[j], v[i][j]);
-        }
-
-        signature[i * N..(i + 1) * N - O].copy_from_slice(&v[i]);
-        signature[i*N + V..(i + 1) * N].copy_from_slice(&x_idx);
-    }
-
-    let mut sig_con_salt = [0u8 ; SIG_BYTES];
-    let signature_encoded = encode_to_bytestring_array!(signature, K*N, SIG_BYTES-SALT_BYTES); // SALT_BYTES is NOT included in the signature
-
-    sig_con_salt[..SIG_BYTES-SALT_BYTES].copy_from_slice(&signature_encoded);
-    sig_con_salt[SIG_BYTES-SALT_BYTES..].copy_from_slice(&salt);
-
-    return sig_con_salt;
+    // dummy return
+    return [0u8 ; SIG_BYTES];
 }
 
 
@@ -566,10 +506,8 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
         for j in (i..K).rev() {
 
 
-
             // // Calculate position of in upper triangular part of matrix
             let pos = i * K + j - (i * (i + 1) / 2);
-            const U32_PER_IDX: usize = M / 4 / 2;
             let mut encoded_u = &upper_temp[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
 
 

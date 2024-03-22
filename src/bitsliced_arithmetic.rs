@@ -75,6 +75,22 @@ pub fn upper_p3(p3: &mut [u32], p3_upper: &mut [u32]){
 }
 
 
+pub fn vt_times_l(v: [[u8 ; V]; K], l: &[u32], acc: &mut [u32])  {
+
+
+    // Iterat over all indexes of p1_p1t as it is NOT upper triangular.
+    for r in 0..K {
+        for c in 0..V {
+            for k in 0..O { // Iterate over all nibbles in the current column of O
+                let l_start_idx = U32_PER_IDX * (c * O + k);
+                let acc_start_idx = U32_PER_IDX * (r * O + k);
+                
+                mul_add_bitsliced_m_vec(&l, l_start_idx, v[r][c], acc, acc_start_idx);
+            }
+        }
+    }  
+
+}
 
 
 pub fn p1_p1t_times_o_plus_p2(p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]) {
@@ -259,7 +275,6 @@ pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u3
         }
     }
 }
-
 
 
 
