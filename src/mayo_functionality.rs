@@ -2,19 +2,17 @@ use std::vec;
 use cipher::consts::{P1, U32};
 use cipher::typenum::bit;
 
-use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::{create_big_p_bitsliced, ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, st_times_big_p, st_times_big_p_times_s, upper_big_p, upper_p3, upper_vpv, vt_times_l, vt_times_p1, vt_times_p1_times_v};
+use crate::bitsliced_arithmetic::{create_big_p_bitsliced, ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, st_times_big_p, st_times_big_p_times_s,  vt_times_l, vt_times_p1, vt_times_p1_times_v};
 use crate::constants::{
-    CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
+    CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::utils::{bytes_to_hex_string, write_u32_array_to_file_byte, write_u8_array_to_file_byte};
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
-    encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
-    transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, matrix_vec_mul, upper
 };
 
 pub struct ExpandedSecretKey {
@@ -100,11 +98,11 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
 
     // Compute upper of p3
     let mut p3_upper = [0u32 ; P3_BYTES/4];
-    upper_p3(&mut p3, &mut p3_upper); // OPTIMIZE THIS!
+    upper!(&mut p3, &mut p3_upper, V, O); 
 
 
     // Public and secret keys
-    let mut cpk = CompactPublicKey {
+    let cpk = CompactPublicKey {
         seed: pk_seed,
         p3: p3_upper
     }; // contains pk_seed and encoded_p3
@@ -123,7 +121,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
     let sk_seed = csk;
 
 
-    
     // Derive pk_seed and Oil space from sk_seed
     let mut s = [0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
@@ -153,7 +150,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
         PK_SEED_BYTES as u64,
     );
 
-    
     let (p1, mut p2_bytes) = p.split_at_mut(P1_BYTES/4);
 
     
@@ -163,9 +159,11 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
 
-    let mut esk =  ExpandedSecretKey { p1: [0u32 ; P1_BYTES/4],
+    let mut esk =  ExpandedSecretKey { 
+        p1: [0u32 ; P1_BYTES/4],
         l:  [0u32 ; P2_BYTES/4],
-        o:  [0u8 ; O_BYTES]};
+        o:  [0u8 ; O_BYTES]
+    };
 
     esk.p1.copy_from_slice(&p1);
     esk.l.copy_from_slice(&p2_bytes);
@@ -183,7 +181,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
 // Expands a public key from its compact representation
 pub fn expand_pk(cpk: CompactPublicKey) -> ExpandedPublicKey {
 
-
     // Expand seed_pk and return
     let mut aes_output = [0u32; (P1_BYTES + P2_BYTES)/4];
     safe_aes_128_ctr(
@@ -198,12 +195,11 @@ pub fn expand_pk(cpk: CompactPublicKey) -> ExpandedPublicKey {
     let mut expanded_pk = ExpandedPublicKey{ 
         p1: [0u32 ; P1_BYTES/4],
         p2: [0u32 ; P2_BYTES/4],
-        p3: [0u32 ; P3_BYTES/4]
+        p3: cpk.p3
     };
 
     expanded_pk.p1.copy_from_slice(&p1);
     expanded_pk.p2.copy_from_slice(&p2);
-    expanded_pk.p3 = cpk.p3;
 
     return expanded_pk;
 }
@@ -345,7 +341,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
         const SIZE: usize = K * (K + 1) / 2; // Size of upper triangular part of matrix of size K x K
         let mut bitsliced_upper_vpv = [0u32 ; SIZE*M/8];
-        upper_vpv(&bitsliced_vt_p_v, &mut bitsliced_upper_vpv);
+        upper!(bitsliced_vt_p_v, &mut bitsliced_upper_vpv, K, K);
 
 
         for i in 0..K {
@@ -503,7 +499,7 @@ pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &Vec<u8
 
     const SIZE: usize = K * (K + 1) / 2; // Size of upper triangular part of matrix of size K x K
     let mut upper_temp = [0u32; SIZE*M/8];
-    upper_big_p(&temp, &mut upper_temp); 
+    upper!(&temp, &mut upper_temp, K, K); 
 
     for i in 0..K {
         for j in (i..K).rev() {
@@ -582,30 +578,6 @@ pub fn api_sign_open(sign_con_mes: Vec<u8>, cpk: CompactPublicKey) -> (bool, Vec
     }
     return (result, message);
 }
-
-
-
-
-
-// Method to apply the upper function to a matrix (as described in the MAYO paper)
-pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
-
-    // Iterate over everything above the diagonal
-    for i in 0..O {
-        for j in (i + 1)..O {
-            matrix[i][j] ^= matrix[j][i]; // GF(16) addition is the same as XOR
-            matrix[j][i] = 0;
-        }
-    }
-    return matrix;
-}
-
-
-
-
-
-
-
 
 
 

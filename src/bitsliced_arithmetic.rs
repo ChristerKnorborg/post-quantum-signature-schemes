@@ -46,31 +46,35 @@ pub fn ot_times_p2(o: [[u8 ; O] ; V], p2: &[u32], p3: &mut [u32]){
     }
 }
 
-// Method to apply the upper function (as described in the MAYO paper) to the p3 matrices.  
-pub fn upper_p3(p3: &mut [u32], p3_upper: &mut [u32]){
 
-    
+// Method to apply the upper function to a matrix (as described in the MAYO paper)
+#[macro_export]
+macro_rules! upper {
+    ($matrix:expr, $matrix_upper:expr, $rows:expr, $cols:expr) => {
+        {
 
-    let mut entries_used = 0;
-    // Iterate over everything above the diagonal
-    for r in 0..V {  
-        for c in r..O {
+            let mut entries_used = 0;
 
+            // Iterate over everything above the diagonal
+            for r in 0..$rows{
+                for c in r..$cols {
+                    for curr_u32 in 0..U32_PER_IDX {
+                        $matrix_upper[U32_PER_IDX * entries_used + curr_u32] = $matrix[U32_PER_IDX * (r * $cols + c) + curr_u32];
+                    }
 
-            for curr_u32 in 0..U32_PER_IDX {
-                p3_upper[U32_PER_IDX * entries_used + curr_u32] = p3[U32_PER_IDX * (r * O + c) + curr_u32]
-            }
-            
-            if r != c {
-                // add entry i,j and j,i in the upper part of matrix
-                for curr_u32 in 0..U32_PER_IDX {
-                    p3_upper[U32_PER_IDX * entries_used + curr_u32] ^= p3[U32_PER_IDX * (c * O + r) + curr_u32];
+                    if r != c {
+                        for curr_u32 in 0..U32_PER_IDX {
+                            // add entry i,j and j,i in the upper part of matrix
+                            $matrix_upper[U32_PER_IDX * entries_used + curr_u32] ^= $matrix[U32_PER_IDX * (c * $cols + r) + curr_u32];
+                        }
+                    }
+                    entries_used += 1;
                 }
             }
-            entries_used += 1;
         }
-    }
+    };
 }
+
 
 
 pub fn vt_times_l(v: [[u8 ; V]; K], l: &[u32], acc: &mut [u32])  {
@@ -126,33 +130,6 @@ pub fn vt_times_p1_times_v(v: [[u8 ; V]; K], vt_p1: &[u32], acc: &mut [u32]) {
         }
     }
 }
-
-
-
-
-// Method to apply the upper function (as described in the MAYO paper) to the p3 matrices.  
-pub fn upper_vpv(vpv: &[u32], vpv_upper: &mut [u32]){
-
-    let mut entries_used = 0;
-    // Iterate over everything above the diagonal
-    for r in 0..K {  
-        for c in r..K {
-
-            for curr_u32 in 0..U32_PER_IDX {
-                vpv_upper[U32_PER_IDX * entries_used + curr_u32] = vpv[U32_PER_IDX * (r * K + c) + curr_u32]
-            }
-            
-            if r != c {
-                // add entry i,j and j,i in the upper part of matrix
-                for curr_u32 in 0..U32_PER_IDX {
-                    vpv_upper[U32_PER_IDX * entries_used + curr_u32] ^= vpv[U32_PER_IDX * (c * K + r) + curr_u32];
-                }
-            }
-            entries_used += 1;
-        }
-    }
-}
-
 
 
 
@@ -260,34 +237,6 @@ pub fn st_times_big_p_times_s(big_p: &[u32], s: [[u8; N]; K], acc: &mut [u32]) {
         }
     }
 }
-
-
-
-
-// Method to apply the upper function (as described in the MAYO paper) to the.  
-pub fn upper_big_p(big_p: &[u32], big_p_upper: &mut [u32]){
-
-    
-    let mut entries_used = 0;
-    // Iterate over everything above the diagonal
-    for r in 0..K{  
-        for c in r..K {
-
-            for curr_u32 in 0..U32_PER_IDX {
-                big_p_upper[U32_PER_IDX * entries_used + curr_u32] = big_p[U32_PER_IDX * (r * K + c) + curr_u32]
-            }
-            
-            if r != c {
-                // add entry i,j and j,i in the upper part of matrix
-                for curr_u32 in 0..U32_PER_IDX {
-                    big_p_upper[U32_PER_IDX * entries_used + curr_u32] ^= big_p[U32_PER_IDX * (c * K + r) + curr_u32];
-                }
-            }
-            entries_used += 1;
-        }
-    }
-}
-
 
 
 
