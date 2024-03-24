@@ -5,15 +5,19 @@ use cipher::typenum::bit;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::{create_big_p_bitsliced, ot_times_p2, p1_p1t_times_o_plus_p2, p1_times_o_add_p2, st_times_big_p, st_times_big_p_times_s,  vt_times_l, vt_times_p1, vt_times_p1_times_v};
+use crate::bitsliced_arithmetic::{create_big_p_bitsliced, mul_add_bitsliced_m_vec, p1_p1t_times_o_plus_p2, st_times_big_p, st_times_big_p_times_s,  vt_times_l, vt_times_p1, vt_times_p1_times_v};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::utils::{bytes_to_hex_string, write_u32_array_to_file_byte, write_u8_array_to_file_byte};
 use crate::{
-    decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, matrix_vec_mul, upper
+    decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, matrix_vec_mul, transposed_mat_mul_bitsliced_mat_add, upper, upper_triangular_bitsliced_mul_mat_add
 };
+
+
+
+const U32_PER_IDX: usize = M / 4 / 2;
 
 pub struct ExpandedSecretKey {
     p1: [u32 ; P1_BYTES/4],
@@ -32,11 +36,6 @@ pub struct CompactPublicKey {
     pub seed: [u8 ; 16],
     pub p3: [u32 ; P3_BYTES/4], 
 }
-
-
-
-const U32_PER_IDX: usize = M / 4 / 2;
-
 
 
 
@@ -80,21 +79,20 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
 
 
     
-    // m p1 matrices are of size (n−o) × (n−o)
-    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    // Allocate space for P3_i. Size is o × o
-    let mut p3 = [0u32 ; O*O*M/8];
+    // m p1 matrices of size (n−o) × (n−o)
+    // m p2 matrices of size (n−o) × o (not upper triangular matrices)
+    // m P3 matrices of size is o × o
 
 
     // Compute P3 = (−O^T * P1 * O ) − (−O^T * P2) as P3 = O^t * (P1*O + P2)
+    // Compute (P1*O + P2) stored in p2
+    upper_triangular_bitsliced_mul_mat_add!(&p1, o, &mut p2, V, V, O);
+    
 
+    // Compute P3 = O^t * (P1*O + P2) stored in p3
+    let mut p3 = [0u32 ; O*O*M/8]; // m matrices of size o × o ( divide by 8 from bytes to u32 and 2 nibbles per byte)
 
-
-    // Compute (P1*O + P2) in p2
-    p1_times_o_add_p2(&p1, o, &mut p2);
-
-    // Compute P3 = O^t * (P1*O + P2) in accumulated in p3
-    ot_times_p2(o, &p2, &mut p3);
+    transposed_mat_mul_bitsliced_mat_add!(o, &p2, &mut p3, V, O, O);
 
     // Compute upper of p3
     let mut p3_upper = [0u32 ; P3_BYTES/4];
@@ -136,7 +134,7 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
         .try_into()
         .expect("Slice has incorrect length");
 
-    // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
+    // Make Oil space from o_bytes
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
     let o = decode_bytestring_matrix_array!(o_bytes, V, O);
 
@@ -215,8 +213,8 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let expanded_sk: ExpandedSecretKey = expand_sk(compact_secret_key);
 
     // Decode expanded secret key
-    let p1 = &expanded_sk.p1;
-    let l = &expanded_sk.l;
+    let p1: &[u32; P1_BYTES/4] = &expanded_sk.p1;
+    let l: [u32; L_BYTES/4] = expanded_sk.l;
     let o_bytestring = &expanded_sk.o;
 
     let o = decode_bytestring_matrix_array!(o_bytestring, V, O);
@@ -304,7 +302,8 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         let mut m_matrices_array = [0u32 ; K*O*M / 8];
 
         // Build K matrices of size M x O
-        vt_times_l(v, l, &mut m_matrices_array);
+        //transposed_mat_mul_bitsliced_mat_add!(v, &l, &mut m_matrices_array, K, V, O); 
+        vt_times_l(v, &l, &mut m_matrices_array);
 
 
         let mut m_matrices = [[[0u8; O]; M]; K]; 
@@ -334,7 +333,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         
         let mut bitsliced_vt_p = [0u32 ; V*K*M/ 8]; 
         vt_times_p1(v, p1, &mut bitsliced_vt_p);
-
+        
         let mut bitsliced_vt_p_v = [0u32 ; K*K*M / 8]; 
         vt_times_p1_times_v(v, &bitsliced_vt_p, &mut bitsliced_vt_p_v);
 

@@ -7,47 +7,54 @@ const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single ind
 
 
 
-pub fn p1_times_o_add_p2 (p1: &[u32], o: [[u8 ; O] ; V], p2: &mut [u32]){
 
-    
-    let mut entries_used = 0;
-    for r in 0..V {
-        for c in r..V { // c = r as p1 is triangular
-            for k in 0..O { // Iterate over all nibbles in the current column of O
-                let p1_start_idx = U32_PER_IDX * entries_used;
-                let p2_acc_start_idx = U32_PER_IDX * (r * O + k);
-                
-                mul_add_bitsliced_m_vec(&p1, p1_start_idx, o[c][k], p2, p2_acc_start_idx);
+
+/// Performs multiplication of an upper triangular bitsliced matrix (`$bs_mat`)
+/// with a standard matrix (`$mat`), and adds the result to an accumulator (`$output_acc`).
+#[macro_export]
+macro_rules! upper_triangular_bitsliced_mul_mat_add {
+    ($bs_mat:expr, $mat:expr, $output_acc:expr, $bs_mat_rows:expr, $bs_mat_cols:expr, $mat_cols:expr) => {{
+
+        let mut entries_used = 0;
+
+        for r in 0..$bs_mat_rows {
+            for c in r..$bs_mat_cols { // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+                for k in 0..$mat_cols {
+                    let bs_mat_start_idx = entries_used * U32_PER_IDX;
+                    let output_acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
+
+                    mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx, $mat[c][k], $output_acc, output_acc_start_idx);
+                }
+                entries_used += 1;
             }
-            entries_used += 1;
         }
-    }    
+    }};
+}
+
+
+/// Performs multiplication of a standard matrix (`$mat`) with a bitsliced matrix (`$bs_mat`),
+/// and adds the result to an accumulator (`$output_acc`).
+#[macro_export]
+macro_rules! transposed_mat_mul_bitsliced_mat_add {
+    ($mat:expr, $bs_mat:expr, $output_acc:expr, $mat_rows:expr, $mat_cols:expr, $bs_mat_cols:expr) => {{
+
+        for r in 0..$mat_cols { // Switched rows and cols iteration to transpose mat
+            for c in 0..$mat_rows {
+                for k in 0..$bs_mat_cols {
+                    let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
+                    let output_acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
+
+                    mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $output_acc, output_acc_start_idx);
+                }
+            }
+        }
+    }};
 }
 
 
 
-
-pub fn ot_times_p2(o: [[u8 ; O] ; V], p2: &[u32], p3: &mut [u32]){
-
-
-    
-
-    // Switched rows and cols to transpose O
-    for r in 0..O { 
-        for c in 0..V { // 
-            for k in 0..O { // Iterate over all nibbles in the current column of p2
-
-                let p2_start_idx = U32_PER_IDX * (c * O + k); 
-                let p3_acc_start_idx = U32_PER_IDX * (r * O + k);
-
-                mul_add_bitsliced_m_vec(&p2, p2_start_idx, o[c][r], p3, p3_acc_start_idx);
-            }
-        }
-    }
-}
-
-
-// Method to apply the upper function to a matrix (as described in the MAYO paper)
+/// Method to apply the upper function to a matrix where every entry 
+/// Matrix[i][j] = Matrix[j][i] + Matrix[i][j] for i>j and Matrix[i][j] = 0 for i=j
 #[macro_export]
 macro_rules! upper {
     ($matrix:expr, $matrix_upper:expr, $rows:expr, $cols:expr) => {
@@ -305,7 +312,7 @@ pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u3
 
 
 
-fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
+pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
 
 
     const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial. E.g. 32 for M=128
@@ -360,4 +367,8 @@ fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &
         acc[acc_idx3] ^= x3 & a;
     }
 }
+
+
+
+
 
