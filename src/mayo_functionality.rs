@@ -3,7 +3,7 @@ use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::{create_big_p_bitsliced, mul_add_bitsliced_m_vec, p1_add_p1t, vt_times_l};
+use crate::bitsliced_arithmetic::{create_big_p_bitsliced, mul_add_bitsliced_m_vec, p1_add_p1t};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
@@ -292,16 +292,11 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
         let mut ell = 0;
 
 
-
-        let mut m_matrices_array = [0u32 ; K*O*M / 8];
-
         // Build K matrices of size M x O
-        //transposed_mat_mul_bitsliced_mat_add!(v, &l, &mut m_matrices_array, K, V, O); 
-        vt_times_l(v, &l, &mut m_matrices_array);
-
+        let mut m_matrices_array = [0u32 ; K*O*M / 8];
+        mat_mul_bitsliced_mat_add!(v, l, &mut m_matrices_array, K, V, O); 
 
         let mut m_matrices = [[[0u8; O]; M]; K]; 
-        
         
         // Assign the indexes of m matrices to columns of m
         for i in 0..K {

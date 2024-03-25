@@ -1,4 +1,14 @@
-use crate::constants::{K, M, O, V};
+/* 
+    This file contains code heavily inspired by the MAYO C implementation for NIST found at: https://github.com/PQCMayo/MAYO-C.
+    Much of this code is adapted from the original C implementation to fit our Rust implementation for doing bitsliced arithmetic 
+*/
+
+
+
+
+
+
+use crate::constants::{M, O, V};
 
 
 
@@ -71,26 +81,6 @@ macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
 }
 
 
-// #[macro_export]
-// macro_rules! triangular_bitsliced_mat_mul_add {
-//     ($mat:expr, $bs_mat:expr, $acc:expr, $mat_rows:expr, $mat_cols:expr, $bs_mat_cols:expr) => {{
-        
-//         let mut entries_used = 0;
-//         for r in 0..$mat_cols {
-//             for c in r..$mat_cols { // Note: Iterates in a triangular manner
-//                 for k in 0..$bs_mat_cols {
-//                     let bs_mat_start_idx = entries_used * U32_PER_IDX;
-//                     let acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
-
-//                     mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx, $mat[k][c], $acc, acc_start_idx);
-//                 }
-//                 entries_used += 1;
-//             }
-//         }
-//     }};
-// }
-
-
 
 
 
@@ -127,23 +117,6 @@ macro_rules! upper {
     };
 }
 
-
-
-pub fn vt_times_l(v: [[u8 ; V]; K], l: &[u32], acc: &mut [u32])  {
-
-
-    // Iterat over all indexes of p1_p1t as it is NOT upper triangular.
-    for r in 0..K {
-        for c in 0..V {
-            for k in 0..O { // Iterate over all nibbles in the current column of O
-                let l_start_idx = U32_PER_IDX * (c * O + k);
-                let acc_start_idx = U32_PER_IDX * (r * O + k);
-                
-                mul_add_bitsliced_m_vec(&l, l_start_idx, v[r][c], acc, acc_start_idx);
-            }
-        }
-    }  
-}
 
 
 #[macro_export]
@@ -244,8 +217,6 @@ pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u3
 
 
 
-
-
 pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
 
 
@@ -283,14 +254,14 @@ pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, ac
         // Degree 1 term of the nibble (x^1)
         let a: u32 = input[in0] ^ input[in3];
         acc[acc0] ^= x1 & input[in3];
-        acc[acc1] ^= x1 & a;
+        acc[acc1] ^= x1 & a;                    
         acc[acc2] ^= x1 & input[in1];
         acc[acc3] ^= x1 & input[in2];
 
         // Degree 2 term of the nibble (x^2)
         let b: u32 = input[in3] ^ input[in2];
         acc[acc0] ^= x2 & input[in2];
-        acc[acc1] ^= x2 & b;
+        acc[acc1] ^= x2 & b;                
         acc[acc2] ^= x2 & a;
         acc[acc3] ^= x2 & input[in1];
 
@@ -302,7 +273,6 @@ pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, ac
         acc[acc3] ^= x3 & a;
     }
 }
-
 
 
 
