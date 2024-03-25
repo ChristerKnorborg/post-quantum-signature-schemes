@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 // use criterion_cycles_per_byte::CyclesPerByte;
 use gnuplot::{Caption, Color, Figure};
@@ -100,7 +102,8 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     name = my_bench;
-    config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    //config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    config = Criterion::default().measurement_time(Duration::from_secs(25)).sample_size(500);
     targets = criterion_benchmark
     
 );

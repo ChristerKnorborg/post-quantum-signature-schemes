@@ -1,18 +1,16 @@
 use std::vec;
-use cipher::consts::{P1, U32};
-use cipher::typenum::bit;
 
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::bitsliced_arithmetic::{create_big_p_bitsliced, mul_add_bitsliced_m_vec, p1_p1t_times_o_plus_p2, st_times_big_p, st_times_big_p_times_s,  vt_times_l, vt_times_p1, vt_times_p1_times_v};
+use crate::bitsliced_arithmetic::{create_big_p_bitsliced, mul_add_bitsliced_m_vec, p1_add_p1t, vt_times_l};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
-use crate::utils::{bytes_to_hex_string, write_u32_array_to_file_byte, write_u8_array_to_file_byte};
+
 use crate::{
-    decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, matrix_vec_mul, transposed_mat_mul_bitsliced_mat_add, upper, upper_triangular_bitsliced_mul_mat_add
+    bitsliced_mat_mul_mat_add, decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, mat_mul_bitsliced_mat_add, matrix_vec_mul, transposed_mat_mul_bitsliced_mat_add, upper, upper_triangular_bitsliced_mat_mul_transposed_mat_add, vec_add
 };
 
 
@@ -58,9 +56,7 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
 
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
-    let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
-        .try_into()
-        .expect("Slice has incorrect length");
+    let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice.try_into().expect("Slice has incorrect length");
 
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
@@ -86,7 +82,7 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
 
     // Compute P3 = (−O^T * P1 * O ) − (−O^T * P2) as P3 = O^t * (P1*O + P2)
     // Compute (P1*O + P2) stored in p2
-    upper_triangular_bitsliced_mul_mat_add!(&p1, o, &mut p2, V, V, O);
+    bitsliced_mat_mul_mat_add!(&p1, o, &mut p2, V, V, O, true); // upper_triangular = true
     
 
     // Compute P3 = O^t * (P1*O + P2) stored in p3
@@ -104,6 +100,7 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
         seed: pk_seed,
         p3: p3_upper
     }; // contains pk_seed and encoded_p3
+
     let csk: [u8 ; CSK_BYTES] = sk_seed;
 
     return (cpk, csk);
@@ -130,9 +127,7 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
 
     // Set pk_seed
     let pk_seed_slice = &s[0..PK_SEED_BYTES];
-    let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice
-        .try_into()
-        .expect("Slice has incorrect length");
+    let pk_seed: [u8; PK_SEED_BYTES] = pk_seed_slice.try_into().expect("Slice has incorrect length");
 
     // Make Oil space from o_bytes
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
@@ -148,26 +143,28 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
         PK_SEED_BYTES as u64,
     );
 
-    let (p1, mut p2_bytes) = p.split_at_mut(P1_BYTES/4);
+    let (p1, p2) = p.split_at_mut(P1_BYTES/4);
 
     
-    // Compute L matrices BITSLICED and put them inside P_2
-    p1_p1t_times_o_plus_p2(&p1, o,  &mut p2_bytes); // m matrices of size (n−o) × o
+    // Compute L = (P1 + P1^t)*O + P2 
+
+    // P1 + P1^t
+    let mut p1_p1t_added = [0u32 ; V*V*M/8];
+    p1_add_p1t(&p1, &mut p1_p1t_added);
+
+    // Compute (P1 + P1^t)*O + P2 stored in p2
+    bitsliced_mat_mul_mat_add!(p1_p1t_added, o, p2, V, V, O, false); // upper_triangular = false
+
+
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
 
-    let mut esk =  ExpandedSecretKey { 
-        p1: [0u32 ; P1_BYTES/4],
-        l:  [0u32 ; P2_BYTES/4],
-        o:  [0u8 ; O_BYTES]
-    };
-
-    esk.p1.copy_from_slice(&p1);
-    esk.l.copy_from_slice(&p2_bytes);
-    esk.o.copy_from_slice(&o_bytes);
-
-    return esk;
+    return ExpandedSecretKey {
+        p1: p1.try_into().expect("Slice has incorrect length"),
+        l: p2.try_into().expect("Slice has incorrect length"),
+        o: o_bytes.try_into().expect("Slice has incorrect length"),
+    }
 }
 
 
@@ -188,23 +185,20 @@ pub fn expand_pk(cpk: CompactPublicKey) -> ExpandedPublicKey {
         PK_SEED_BYTES as u64,
     );
 
-    let (p1, p2) = aes_output.split_at(P1_BYTES/4);
+    let (p1_slice, p2_slice) = aes_output.split_at(P1_BYTES/4);
 
-    let mut expanded_pk = ExpandedPublicKey{ 
-        p1: [0u32 ; P1_BYTES/4],
-        p2: [0u32 ; P2_BYTES/4],
+    return ExpandedPublicKey{ 
+        p1: p1_slice.try_into().expect("Slice has incorrect length"),
+        p2: p2_slice.try_into().expect("Slice has incorrect length"),
         p3: cpk.p3
     };
-
-    expanded_pk.p1.copy_from_slice(&p1);
-    expanded_pk.p2.copy_from_slice(&p2);
-
-    return expanded_pk;
 }
+
+
 
 // MAYO algorithm 8
 // Signs a message using an expanded secret key
-pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG_BYTES] {
+pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SIG_BYTES] {
 
     let mut x = [0u8; K*O]; // Initialize x to zero
     let mut v = [[0u8; V]; K]; // Initialize v to zero
@@ -213,9 +207,9 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let expanded_sk: ExpandedSecretKey = expand_sk(compact_secret_key);
 
     // Decode expanded secret key
-    let p1: &[u32; P1_BYTES/4] = &expanded_sk.p1;
+    let p1: [u32; P1_BYTES/4] = expanded_sk.p1;
     let l: [u32; L_BYTES/4] = expanded_sk.l;
-    let o_bytestring = &expanded_sk.o;
+    let o_bytestring: [u8; O_BYTES] = expanded_sk.o;
 
     let o = decode_bytestring_matrix_array!(o_bytestring, V, O);
 
@@ -224,7 +218,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     safe_shake256(
         &mut m_digest,
         DIGEST_BYTES as u64,
-        &message,
+        message,
         message.len() as u64,
     );
 
@@ -314,33 +308,27 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
             for j in 0..O {
 
                 let curr_idx = (M/8) * (i * O + j);
-                let curr_vec = &m_matrices_array[curr_idx..curr_idx+U32_PER_IDX];
-
-                let mut encoded_m_row_u8 = [0u8 ; M/2];
-                for (d, &num) in curr_vec.iter().enumerate() {
-                    let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-                    let start_index = d * 4;
-                    encoded_m_row_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
-                }   
+                let encoded_m = &m_matrices_array[curr_idx..curr_idx+U32_PER_IDX];
                 
-                let decoded_m_row = decode_bit_sliced_array!(encoded_m_row_u8, M);
+                let decoded_m_row = decode_bit_sliced_array!(encoded_m);
                 for col in 0..M {
                     m_matrices[i][col][j] = decoded_m_row[col];
                 }
             }
         }
 
-        
-        let mut bitsliced_vt_p = [0u32 ; V*K*M/ 8]; 
-        vt_times_p1(v, p1, &mut bitsliced_vt_p);
-        
-        let mut bitsliced_vt_p_v = [0u32 ; K*K*M / 8]; 
-        vt_times_p1_times_v(v, &bitsliced_vt_p, &mut bitsliced_vt_p_v);
+        // v^t * P1
+        let mut vt_p1 = [0u32 ; V*K*M/ 8]; 
+        upper_triangular_bitsliced_mat_mul_transposed_mat_add!(p1, v, &mut vt_p1, V, V, K);
+
+        // v^t * P1 * v
+        let mut vt_p1_v = [0u32 ; K*K*M / 8]; 
+        mat_mul_bitsliced_mat_add!(v, vt_p1, &mut vt_p1_v, K, V, K);
 
 
         const SIZE: usize = K * (K + 1) / 2; // Size of upper triangular part of matrix of size K x K
-        let mut bitsliced_upper_vpv = [0u32 ; SIZE*M/8];
-        upper!(bitsliced_vt_p_v, &mut bitsliced_upper_vpv, K, K);
+        let mut upper_vt_p1_v = [0u32 ; SIZE*M/8];
+        upper!(vt_p1_v, &mut upper_vt_p1_v, K, K);
 
 
         for i in 0..K {
@@ -348,16 +336,10 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
                 // Calculate position of in upper triangular part of matrix
                 let pos = i * K + j - (i * (i + 1) / 2);
-                let encoded_u = &bitsliced_upper_vpv[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
+                let encoded_u = &upper_vt_p1_v[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
 
-                let mut encoded_u_u8 = [0u8 ; M/2];
-                for (d, &num) in encoded_u.iter().enumerate() {
-                    let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-                    let start_index = d * 4;
-                    encoded_u_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
-                }
 
-                let u = decode_bit_sliced_array!(encoded_u_u8, M);
+                let u = decode_bit_sliced_array!(encoded_u);
 
                 
                 // y = y - u * z^ell - Instead of subtracting with shifted u,
@@ -403,14 +385,10 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
 
     for i in 0..K {
-        let x_idx: [u8 ; O] = x[i * O..(i + 1) * O]
-            .try_into()
-            .expect("Slice has incorrect length");
+        let x_idx: [u8 ; O] = x[i * O..(i + 1) * O].try_into().expect("Slice has incorrect length");
         let ox: [u8 ; V] = matrix_vec_mul!(o, x_idx, V, O); // (n−o) × o * o × 1 = (n−o) × 1
 
-        for j in 0..V {
-            v[i][j] = add(ox[j], v[i][j]);
-        }
+        vec_add!(v[i], ox, V);
 
         signature[i * N..(i + 1) * N - O].copy_from_slice(&v[i]);
         signature[i*N + V..(i + 1) * N].copy_from_slice(&x_idx);
@@ -431,12 +409,12 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
 // MAYO algorithm 9
 // Verifi the signature of a message using the expanded public key
-pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &Vec<u8>) -> bool {
+pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &[u8]) -> bool {
 
     // Retrieve the public information from the expanded public key
-    let p1 = &expanded_pk.p1;
-    let p2 = &expanded_pk.p2;
-    let p3 = &expanded_pk.p3;
+    let p1 = expanded_pk.p1;
+    let p2 = expanded_pk.p2;
+    let p3 = expanded_pk.p3;
 
 
     // Decode signature and derive salt
@@ -485,36 +463,30 @@ pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &Vec<u8
 
     // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                   (0     P^3_a)
-    create_big_p_bitsliced(p1, p2, p3, &mut big_p); // OPTIMIZE THIS!
+    create_big_p_bitsliced(&p1, &p2, &p3, &mut big_p); // OPTIMIZE THIS!
 
 
-    // Compute s^t * P*
-    let mut s_p = [0u32; K*N*M/8];
-    st_times_big_p(s_matrix, &big_p, &mut s_p);
+    // Compute s^t * P
+    let mut st_p = [0u32; K*N*M/8];
+    upper_triangular_bitsliced_mat_mul_transposed_mat_add!(big_p, s_matrix, &mut st_p, N, N, K);
     
-    // Compute s^t * P* * s
-    let mut temp = [0u32; K*K*M/8];
-    st_times_big_p_times_s(&s_p, s_matrix, &mut temp);
+    // Compute s^t * P * s
+    let mut st_p_s = [0u32; K*K*M/8];
+    mat_mul_bitsliced_mat_add!(s_matrix, st_p, &mut st_p_s, K, N, K);
+
 
     const SIZE: usize = K * (K + 1) / 2; // Size of upper triangular part of matrix of size K x K
-    let mut upper_temp = [0u32; SIZE*M/8];
-    upper!(&temp, &mut upper_temp, K, K); 
+    let mut upper_st_p_s = [0u32; SIZE*M/8];
+    upper!(&st_p_s, &mut upper_st_p_s, K, K); 
 
     for i in 0..K {
         for j in (i..K).rev() {
 
             // // Calculate position of in upper triangular part of matrix
             let pos = i * K + j - (i * (i + 1) / 2);
-            let mut encoded_u = &upper_temp[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
+            let encoded_u = &upper_st_p_s[pos * U32_PER_IDX .. (pos * U32_PER_IDX) + U32_PER_IDX];
 
-            let mut encoded_u_u8 = [0u8 ; M/2];
-            for (d, &num) in encoded_u.iter().enumerate() {
-                let byte_slice = num.to_le_bytes(); // Convert each u32 to 4 u8s. Use to_be_bytes for big endian.
-                let start_index = d * 4;
-                encoded_u_u8[start_index..start_index + 4].copy_from_slice(&byte_slice);
-            }
-
-            let u = decode_bit_sliced_array!(encoded_u_u8, M);
+            let u = decode_bit_sliced_array!(encoded_u);
 
             // y = y - u * z^ell - Instead of subtracting with shifted u,
             // sub (XOR) with shifted y.
@@ -542,13 +514,13 @@ pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &Vec<u8
 pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
 
     // Create signature based on expanded secret key and message
-    let signature = sign(csk, message.clone());
+    let signature = sign(csk, &message);
 
     // Concatenate signature and message
     // Note the message length cannot be known at compile time (Hence vec is used instead of array)
     let mut sign_con_mes = Vec::with_capacity(SIG_BYTES + message.len());
-    sign_con_mes.append(&mut signature.to_vec());
-    sign_con_mes.append(&mut message.to_vec());
+    sign_con_mes.extend_from_slice(&signature);
+    sign_con_mes.extend(message);
 
     return sign_con_mes;
 }
@@ -567,15 +539,15 @@ pub fn api_sign_open(sign_con_mes: Vec<u8>, cpk: CompactPublicKey) -> (bool, Vec
 
     // Extract signature and message from input
     let signature = &sign_con_mes[0..SIG_BYTES];
-    let mut message = sign_con_mes[SIG_BYTES..].to_vec();
+    let message_slice = &sign_con_mes[SIG_BYTES..];
 
     // Verify the signature based on expanded public key and message
-    let result = verify(expanded_pk, signature, &message);
+    let result = verify(expanded_pk, signature, message_slice);
 
     if result == false {
-        message = vec![0u8]; // If the signature is invalid, the message is set to zero
+        return (result, vec![0u8]); // If the signature is invalid, the message is set to zero
     }
-    return (result, message);
+    return (result, message_slice.to_vec()); // Only convert if valid signature
 }
 
 

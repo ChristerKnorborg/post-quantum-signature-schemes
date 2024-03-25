@@ -111,29 +111,37 @@ macro_rules! encode_bit_sliced_array {
 // Mayo Algorithm 4 (inverse): Decodes a bitsliced representation of a array v ∈ F_{16}^{m} into an array
 #[macro_export]
 macro_rules! decode_bit_sliced_array {
-    ($bytestring:expr, $OUT_LEN:expr) => {{
-        let mut v = [0u8; $OUT_LEN];
+    ($bytestring:expr) => {{
 
-        for i in 0..($OUT_LEN / 8) {
-            let b0 = $bytestring[i];
-            let b1 = $bytestring[$OUT_LEN / 8 + i];
-            let b2 = $bytestring[$OUT_LEN / 4 + i];
-            let b3 = $bytestring[3 * $OUT_LEN / 8 + i];
 
-            for j in 0..8 {
+        const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial. E.g. 2 for M=64
+
+
+        let mut output_array = [0u8; M];
+
+        for i in 0..U32_PER_TERM {
+            for j in 0..32{
+
+
+                let b0 = $bytestring[i];
+                let b1 = $bytestring[i+U32_PER_TERM];
+                let b2 = $bytestring[i+2*U32_PER_TERM];
+                let b3 = $bytestring[i+3*U32_PER_TERM];
+
                 // Reconstruct each element from the bits
-                let a0 = (b0 >> j) & 0x1; // Least significant bit
-                let a1 = (b1 >> j) & 0x1; // Second least significant bit
-                let a2 = (b2 >> j) & 0x1; // Third least significant bit
-                let a3 = (b3 >> j) & 0x1; // Most significant bit
+                let a0 = ((b0 >> j) & 0x1) as u8; // Least significant bit
+                let a1 = ((b1 >> j) & 0x1) as u8; // Second least significant bit
+                let a2 = ((b2 >> j) & 0x1) as u8; // Third least significant bit
+                let a3 = ((b3 >> j) & 0x1) as u8; // Most significant bit
 
                 // Combine the bits to form an element of GF(16)
-                v[i * 8 + j] = (a3 << 3) | (a2 << 2) | (a1 << 1) | a0;
+                output_array[i*32+j] = (a3 << 3) | (a2 << 2) | (a1 << 1) | a0;
             }
         }
-        v
+        output_array
     }};
 }
+
 
 
 
