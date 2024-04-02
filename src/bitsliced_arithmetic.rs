@@ -215,22 +215,37 @@ pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u3
 
 
 
-
-
+// This function (rewritten to Rust from the MAYO authors' C implementation) multiplies a bitsliced vectors of m field elements
+// with a nibble. A bitsliced vector is has of m/32 * 4 consecutive u32s, where every m/32 u32s represent a term for all m elements.
 pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
 
 
-    const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial. E.g. 2 for M=64
+    const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial.
 
     // Terms of the nibble x^3 + x^2 + x + 1. 
     // Create a mask for the nibble of 32 bits for each of the 4 degrees. E.g. 1001 becomes:
     // x0 = 11111111 11111111 11111111 11111111, x1 = 00000000 00000000 00000000 00000000 etc.
-    let x0: u32 = ((nibble & 1) != 0) as u32 * u32::MAX;
-    let x1: u32 = (((nibble >> 1) & 1) != 0) as u32 * u32::MAX;
-    let x2: u32 = (((nibble >> 2) & 1) != 0) as u32 * u32::MAX;
-    let x3: u32 = (((nibble >> 3) & 1) != 0) as u32 * u32::MAX;
+    let n0: u32 = ((nibble & 1) != 0) as u32 * u32::MAX;
+    let n1: u32 = (((nibble >> 1) & 1) != 0) as u32 * u32::MAX;
+    let n2: u32 = (((nibble >> 2) & 1) != 0) as u32 * u32::MAX;
+    let n3: u32 = (((nibble >> 3) & 1) != 0) as u32 * u32::MAX;
 
-    
+
+    // In the group defined by the polynomial x^3 + x^2 + x + 1:    x^6 ≡ x^3 + x^2,   x^5 ≡ x^2 + x,   x^4 ≡ x + 1.
+    // Therefore, the multiplication results are as follows:
+    // x^0 = in0 * n0 
+    // x^1 = in0 * n1 + in1 * n0
+    // x^2 = in0 * n2 + in1 * n1 + in2 * n0
+    // x^3 = in0 * n3 + in1 * n2 + in2 * n1 + in3 * n0
+    // x^4 = in1 * n3 + in2 * n2 + in3 * n1
+    // x^5 = in2 * n3 + in3 * n2
+    // x^6 = in3 * n3 
+    // In the loop below:
+    //      * x^1 = x^1, x^4 (after reduction) and x^5 (after reduction)
+    //      * x^2 = x^2, x^5 (after reduction) and x^6 (after reduction)
+    //      * x^3 = x^3, x^6 (after reduction)
+    // Therefore, acc1 (x^1), acc2 (x^2), acc (x^3) are set to all combination that result in those terms (inclusive reduced terms).
+
     for i in 0..U32_PER_TERM {
 
         let in0 = input_start + i;
@@ -244,33 +259,34 @@ pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, ac
         let acc2 = acc_start + 2 * U32_PER_TERM + i;
         let acc3 = acc_start + 3 * U32_PER_TERM + i;
 
+        
+        let a: u32 = input[in0] ^ input[in3];
+        let b: u32 = input[in3] ^ input[in2];
+        let c: u32 = input[in2] ^ input[in1];
 
         // Degree 0 term of the nibble (x^0)
-        acc[acc0] ^= x0 & input[in0];
-        acc[acc1] ^= x0 & input[in1];
-        acc[acc2] ^= x0 & input[in2];
-        acc[acc3] ^= x0 & input[in3]; 
+        acc[acc0] ^= n0 & input[in0];
+        acc[acc1] ^= n0 & input[in1];
+        acc[acc2] ^= n0 & input[in2];
+        acc[acc3] ^= n0 & input[in3]; 
 
         // Degree 1 term of the nibble (x^1)
-        let a: u32 = input[in0] ^ input[in3];
-        acc[acc0] ^= x1 & input[in3];
-        acc[acc1] ^= x1 & a;                    
-        acc[acc2] ^= x1 & input[in1];
-        acc[acc3] ^= x1 & input[in2];
+        acc[acc0] ^= n1 & input[in3];
+        acc[acc1] ^= n1 & a;                    
+        acc[acc2] ^= n1 & input[in1];
+        acc[acc3] ^= n1 & input[in2];
 
         // Degree 2 term of the nibble (x^2)
-        let b: u32 = input[in3] ^ input[in2];
-        acc[acc0] ^= x2 & input[in2];
-        acc[acc1] ^= x2 & b;                
-        acc[acc2] ^= x2 & a;
-        acc[acc3] ^= x2 & input[in1];
+        acc[acc0] ^= n2 & input[in2];
+        acc[acc1] ^= n2 & b;                
+        acc[acc2] ^= n2 & a;
+        acc[acc3] ^= n2 & input[in1];
 
         // Degree 3 term of the nibble (x^3)
-        let c: u32 = input[in2] ^ input[in1];
-        acc[acc0] ^= x3 & input[in1];
-        acc[acc1] ^= x3 & c;
-        acc[acc2] ^= x3 & b;
-        acc[acc3] ^= x3 & a;
+        acc[acc0] ^= n3 & input[in1];
+        acc[acc1] ^= n3 & c;
+        acc[acc2] ^= n3 & b;
+        acc[acc3] ^= n3 & a;
     }
 }
 
