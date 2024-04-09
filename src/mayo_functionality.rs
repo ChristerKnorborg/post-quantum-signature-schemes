@@ -72,7 +72,7 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
         // Compute: P1*O + P2
         let mut temp = matrix_mul!(p1[i], V, V, o, O); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
         temp = matrix_add!(temp, p2[i], V, O);
-
+        
 
         // Upper triangular part of the result
         p3[i] = upper(matrix_mul!(transposed_o, O, V, temp, O)); //  o × (n−o) * (n−o) × o = o × o

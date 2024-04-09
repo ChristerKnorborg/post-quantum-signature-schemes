@@ -2,6 +2,8 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
+use crate::{asm_instructions::safe_asm, constants::{O, V}};
+
 
 
 // Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
@@ -203,7 +205,27 @@ macro_rules! vec_add {
 
 
 
+pub fn matrix_mul_P1_O(p1: [[u8; V]; V], o: [[u8; O]; V]) -> [[u8; O]; V] {
+    let mut res = [[0u8; O]; V];
 
+    for i in 0..V {
+        for j in 0..O-1 {
+            for k in 0..V {
+                res[i][j] = add(res[i][j], mul(p1[i][k], o[k][j]));
+            }
+        }
+    }
+    let mut final_o_vec = [0u8; V];
+
+    for i in 0..V {
+        final_o_vec[i] = o[i][O-1];
+    }
+
+    safe_asm(&mut res[V-1], &p1[V-1], &final_o_vec);
+
+    //Do ASM instruction for the last row of res
+    return res
+}
 
 
 #[cfg(test)]
