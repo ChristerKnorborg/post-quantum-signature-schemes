@@ -21,7 +21,7 @@
 
 
 void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
-    int i;
+     int i;
 
 
     for (i = 0; i < (n & ~7); i+=8) {
@@ -33,9 +33,7 @@ void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
         poly16x8_t res = vmull_p8(poly_va, poly_vb); // Perform widening multiplication
 
         uint8x8_t narrowed_res = vqmovn_u16(res); // Narrowing conversion to uint8x8_t
-        
-        
-
+                
         // Find the highest bits to reduce.
         uint8x8_t constant_vec_xor = vdup_n_u8((u_int8_t) 0xf0); 
         uint8x8_t high_coeffs = vand_u8(narrowed_res, constant_vec_xor);
@@ -50,31 +48,15 @@ void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
         uint8x8_t final_res = vand_u8(res_before_and, constant_vec_and);
 
 
-        /* uint64_t high_coeffs = narrowed_res & 0x7070707070707070; // Extract coefficients (x^6, x^5, x^4) from every 8 polynomial. E.g. use and with 01110000...01110000
+        // Perform XOR operation between all elements of the vector
+        uint8x8_t xor_sum = veor_u8(final_res, vext_u8(final_res, final_res, 1)); // XOR adjacent pairs of elements
 
-        uint64_t reduced_coeffs = (high_coeffs >> 3) ^ (high_coeffs >> 4);
+        // Extract the result of the last XOR operation
+        uint8_t result_of_matrix = vget_lane_u8(xor_sum, 0); // Extract the first 8-bit element from the result vector
 
+        *result ^= result_of_matrix;
+        }
 
-
-        // Add reduced coefficients to lower 4 bits in each 8 and remove pre reduced coefficients
-        result = (narrowed_res ^ reduced_coeffs) & 0x0F0F0F0F0F0F0F0F; */
-
-
-         // Load the result[i] into a uint8x8_t vector
-        uint8x8_t result_vec = vld1_u8(&result[i]);
-
-        // Perform XOR operation between result[i] and final_res
-        uint8x8_t xor_result = veor_u8(result_vec, final_res);
-
-        // Store the result back into result[i]
-        vst1_u8(&result[i], xor_result);
-
-
-        
-
-
-
-    }
     // Handle remaining elements (if any)
     for (; i < n; ++i) {
         u_int8_t res;
@@ -85,8 +67,9 @@ void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
         
         u_int8_t first_4_bits = res & 0xf0;
         u_int8_t overflow_bits = (first_4_bits >> 4) ^ (first_4_bits >> 3);  
-        result[i] ^= (res ^ overflow_bits) & 0x0f;
+        *result ^= (res ^ overflow_bits) & 0x0f;
     }
+
 }
 
 /* void test_neon() {
@@ -105,5 +88,5 @@ void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
 
     printf("Result: ");
     print_f(result, n);
-} */
+}*/ 
 
