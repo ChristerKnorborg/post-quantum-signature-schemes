@@ -1,4 +1,5 @@
 use crate::genkat::bindings;
+use crate::assembly::arm_instructions;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
 use sha3::digest::{ExtendableOutput, Update, XofReader};
@@ -112,6 +113,11 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
     reader.read(&mut output); // Read the output into the allocated space
 
     return output;
+}
+
+
+pub fn safe_asm(res_last_row: &mut [u8], p1_last_row: &[u8], final_o_vec: &[u8], row_length: i32) {
+    unsafe { arm_instructions::vmull_values(res_last_row.as_mut_ptr(), p1_last_row.as_ptr(), final_o_vec.as_ptr(), row_length); }
 }
 
 

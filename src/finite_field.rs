@@ -2,7 +2,7 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use crate::{asm_instructions::safe_asm, constants::{O, V}};
+use crate::{crypto_primitives::safe_asm, constants::{O, V}};
 
 
 
@@ -35,7 +35,7 @@ pub fn mul(x: u8, y: u8) -> u8 {
     res ^= (x & 2)*y; // Multiply by x^1
     res ^= (x & 4)*y; // Multiply by x^2
     res ^= (x & 8)*y; // Multiply by x^3
-
+    
     // Reduce modulo by the irreducible polynomial x^4 + x + 1 
     let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit is always 0, cause we can't get more than x^6)
     
@@ -207,11 +207,14 @@ macro_rules! vec_add {
 
 pub fn matrix_mul_P1_O(p1: [[u8; V]; V], o: [[u8; O]; V]) -> [[u8; O]; V] {
     let mut res = [[0u8; O]; V];
-
+    let mut counter = 0;
     for i in 0..V {
-        for j in 0..O-1 {
+        for j in 0..(O-1) {
             for k in 0..V {
+                counter = counter +1; 
+                if counter < 23549-V {
                 res[i][j] = add(res[i][j], mul(p1[i][k], o[k][j]));
+                }
             }
         }
     }
@@ -221,7 +224,7 @@ pub fn matrix_mul_P1_O(p1: [[u8; V]; V], o: [[u8; O]; V]) -> [[u8; O]; V] {
         final_o_vec[i] = o[i][O-1];
     }
 
-    safe_asm(&mut res[V-1], &p1[V-1], &final_o_vec);
+    safe_asm(&mut res[V-1], &p1[V-1], &final_o_vec, V.try_into().unwrap());
 
     //Do ASM instruction for the last row of res
     return res

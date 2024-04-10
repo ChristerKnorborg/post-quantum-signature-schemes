@@ -6,12 +6,17 @@
         "./Cargo.toml",
         "./Cargo.toml",
         "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml",
         "./Cargo.toml"
     ],
 
     "files.associations": {
+        "*.sage": "python",
         "rng.h": "c",
-        "ctype.h": "c"
+        "ctype.h": "c",
+        "arm_neon.h": "c"
     }
 
 
