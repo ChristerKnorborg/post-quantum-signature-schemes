@@ -2,7 +2,9 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use crate::{crypto_primitives::safe_asm, constants::{O, V}};
+use cipher::consts::P2;
+
+use crate::{constants::{O, V}, crypto_primitives::{safe_veor, safe_vmull}};
 
 
 
@@ -205,31 +207,44 @@ macro_rules! vec_add {
 
 
 
-pub fn matrix_mul_P1_O(p1: [[u8; V]; V], o: [[u8; O]; V]) -> [[u8; O]; V] {
+pub fn matrix_mul_P1_O(p1: [[u8; V]; V], o: [[u8; V]; O]) -> [[u8; O]; V] {
     let mut res = [[0u8; O]; V];
-    
-    for i in 0..V {
-        for j in 0..(O-1) {
-            for k in 0..V {
-                res[i][j] = add(res[i][j], mul(p1[i][k], o[k][j]));
-            }
+
+    for i in 0..O {  
+        for j in 0..V {
+            safe_vmull(&mut res[j][i], &p1[j], &o[i], V.try_into().unwrap());
         }
     }
-    let mut final_o_vec = [0u8; V];
-
-    //one iteration from 0 to k
-    for i in 0..V {
-        final_o_vec[i] = o[i][O-1];
-    }
-    
-    
-    //skal ramme res [V-1][O] - Altså den sidste indgang i res
-
-    println!("Before {}",res[V-1][O-1]);
-    safe_asm(&mut res[V-1][O-1], &p1[V-1], &final_o_vec, V.try_into().unwrap());
-    println!("After {}",res[V-1][O-1]);
     return res
 }
+
+pub fn matrix_mul_P1O_O_transposed(o_transposed: [[u8; V]; O], p1O: [[u8; O]; V]) -> [[u8; O]; O] {
+    let mut res = [[0u8; O]; O];
+
+    let mut p1O_vec = [0u8; V];
+
+    for i in 0..O {  
+        for j in 0..V {
+            p1O_vec[j] = p1O[j][i];
+        }
+        for j in 0..O {
+            safe_vmull(&mut res[j][i], &o_transposed[j], &p1O_vec, V.try_into().unwrap());
+        }
+    }
+    return res
+}
+
+
+pub fn matrix_add_P1O_P2(p1O: [[u8; O]; V], p2: [[u8; O]; V]) -> [[u8; O]; V] {
+    let mut res = [[0u8; O]; V];
+
+    for i in 0..V {  
+            safe_veor(&mut res[i], &p1O[i], &p2[i], O.try_into().unwrap());
+    }
+    
+    return res;
+}
+
 
 
 #[cfg(test)]

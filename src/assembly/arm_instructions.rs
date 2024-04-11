@@ -7,6 +7,13 @@ extern "C" {
         b: *const ccty::c_uchar,
         n: ccty::c_int
     );
+
+    pub fn veor_values(
+        result: *const ccty::c_uchar, // Pointer to const u8 for C compatibility
+        a: *const ccty::c_uchar, 
+        b: *const ccty::c_uchar,
+        n: ccty::c_int
+    );
 }
 
 

@@ -116,8 +116,12 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
 }
 
 
-pub fn safe_asm(res: &mut u8, p1_last_row: &[u8], final_o_vec: &[u8], row_length: i32) {
+pub fn safe_vmull(res: &mut u8, p1_last_row: &[u8], final_o_vec: &[u8], row_length: i32) {
     unsafe { arm_instructions::vmull_values(res, p1_last_row.as_ptr(), final_o_vec.as_ptr(), row_length); }
+}
+
+pub fn safe_veor(res:  &mut [u8], p1_last_row: &[u8], final_o_vec: &[u8], row_length: i32) {
+    unsafe { arm_instructions::veor_values(res.as_mut_ptr(), p1_last_row.as_ptr(), final_o_vec.as_ptr(), row_length); }
 }
 
 

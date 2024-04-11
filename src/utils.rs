@@ -41,7 +41,7 @@ pub fn write_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
     
     for byte in data.iter() {
-        write!(file, "{:}", byte)?;
+        writeln!(file, "{:}", byte)?;
     }
     
     Ok(())

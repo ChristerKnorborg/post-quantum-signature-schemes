@@ -1,12 +1,13 @@
 use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
-use crate::finite_field::{add, matrix_mul_P1_O, mul};
+use crate::finite_field::{add, matrix_add_P1O_P2, matrix_mul_P1O_O_transposed, matrix_mul_P1_O, mul};
 use crate::sample::sample_solution;
 
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
+use crate::utils::write_to_file_int;
 use crate::{
     decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
     encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
@@ -63,19 +64,20 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
 
     // Compute P3_i as (−O^T * P1_i * O ) − (−O^T * P2_i)
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
+
+    // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
+    let transposed_o = transpose_matrix_array!(o, V, O);
     for i in 0..M {
-        // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
-        let transposed_o = transpose_matrix_array!(o, V, O);
-
-
         // P3 = O^t * (P1*O + P2) 
         // Compute: P1*O + P2
-        let mut temp = matrix_mul_P1_O(p1[i], o); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
-        temp = matrix_add!(temp, p2[i], V, O);
+        let mut temp = matrix_mul_P1_O(p1[i], transposed_o); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
+        // let mut temp = matrix_mul!(p1[i], V,  V, o, O);
+        let mut temp2 = matrix_add_P1O_P2(temp, p2[i]);
         
 
         // Upper triangular part of the result
-        p3[i] = upper(matrix_mul!(transposed_o, O, V, temp, O)); //  o × (n−o) * (n−o) × o = o × o
+        // p3[i] = upper(matrix_mul!(transposed_o, O, V, temp2, O)); //  o × (n−o) * (n−o) × o = o × o
+        p3[i] = upper(matrix_mul_P1O_O_transposed(transposed_o, temp2));
     }
 
     let encoded_p3: [u8 ; P3_BYTES] = encode_bit_sliced_matrices!(p3, O, O, M, true, P3_BYTES); // m p3 matrices are of size o × o

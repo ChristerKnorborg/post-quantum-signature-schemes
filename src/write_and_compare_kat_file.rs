@@ -92,6 +92,7 @@ pub fn write_and_compare_kat_file() {
     writeln!(file, "smlen = {}", smlen).unwrap();
     writeln!(file, "sm = {}", sm_hex).unwrap();
     writeln!(file, "").unwrap(); 
+    
 
     assert!(ver_cor);
     
