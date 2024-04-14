@@ -116,14 +116,22 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
 }
 
 
-pub fn safe_vmull(res: &mut u8, p1_last_row: &[u8], final_o_vec: &[u8], row_length: i32) {
-    unsafe { arm_instructions::vmull_values(res, p1_last_row.as_ptr(), final_o_vec.as_ptr(), row_length); }
+pub fn safe_vmull(res: &mut u8, vec1: &[u8], vec2:  &[u8], row_length: i32) {
+    unsafe { arm_instructions::vmull_values(res, vec1.as_ptr(), vec2.as_ptr(), row_length); }
 }
 
-pub fn safe_veor(res:  &mut [u8], p1_last_row: &[u8], final_o_vec: &[u8], row_length: i32) {
-    unsafe { arm_instructions::veor_values(res.as_mut_ptr(), p1_last_row.as_ptr(), final_o_vec.as_ptr(), row_length); }
+pub fn safe_veor(res: &mut [u8], vec1: &[u8], vec2: &[u8], row_length: i32) {
+    unsafe { arm_instructions::veor_values( res.as_mut_ptr(), vec1.as_ptr(), vec2.as_ptr(), row_length); }
 }
 
+pub fn safe_vmull_flat(res: &mut [u8], vec1: &[u8], vec2:  &[u8], row_vec1: i32, cols_vec1: i32, cols_vec2: i32) {
+    unsafe { arm_instructions::vmull_values_flat(res.as_mut_ptr(), vec1.as_ptr(), vec2.as_ptr(), row_vec1, cols_vec1, cols_vec2); }
+}
+
+
+pub fn safe_o_transposed_mul_p2(res: &mut [u8], o: &[u8], p2:  &[u8], o_rows: i32, o_cols: i32, p2_rows: i32, p2_cols: i32) {
+    unsafe { arm_instructions::o_transposed_mul_p2(res.as_mut_ptr(), o.as_ptr(), p2.as_ptr(), o_rows, o_cols, p2_rows, p2_cols); }
+}
 
 
 

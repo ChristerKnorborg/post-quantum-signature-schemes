@@ -28,7 +28,7 @@ void veor_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
 
         uint8x8_t res = veor_u8(va, vb); // Perform widening multiplication
 
-        vst1_u8(result, res);
+        vst1_u8(&result[i], res);
     }    
 
      // Handle remaining elements (if any)
@@ -39,7 +39,7 @@ void veor_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
 
 
 void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
-     int i;
+    int i;
 
     uint8x8_t constant_vec_xor = vdup_n_u8((u_int8_t) 0xf0); 
     uint8x8_t constant_vec_and = vdup_n_u8((u_int8_t) 0x0f); 
@@ -64,18 +64,6 @@ void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
 
         uint8x8_t final_res = vand_u8(res_before_and, constant_vec_and);
 
-
-        // From here down does not work
-
-        // add to accumulator - note that vget_lane_u8 only takes constants as index
-        /* *result ^= vget_lane_u8(final_res, 0);
-        *result ^= vget_lane_u8(final_res, 1);
-        *result ^= vget_lane_u8(final_res, 2);
-        *result ^= vget_lane_u8(final_res, 3);
-        *result ^= vget_lane_u8(final_res, 4);
-        *result ^= vget_lane_u8(final_res, 5);
-        *result ^= vget_lane_u8(final_res, 6);
-        *result ^= vget_lane_u8(final_res, 7); */
 
        // Horizontal XOR reduction of 'final_res' to a single byte
         uint8x8_t xor_fold1 = veor_u8(final_res, vext_u8(final_res, final_res, 4));
@@ -103,6 +91,51 @@ void vmull_values(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
         *result ^= (res ^ overflow_bits) & 0x0f;
     }
 }
+
+
+void vmull_values_flat(u_int8_t *result, u_int8_t *a, u_int8_t *b, int rows_a, int cols_a, int cols_b) {
+
+
+    int SIZE = 1; // In example we have every whole matrix for itself - not m stored in a row.
+
+
+    for (int r = 0; r < rows_a; r++) {
+            for (int k = 0; k < cols_b; k++) { 
+                vmull_values(&result[SIZE * (r * cols_b + k)], &a[r*rows_a], &b[k*rows_a], rows_a);
+            }
+    }
+}
+
+
+
+void o_transposed_mul_p2(u_int8_t *result, u_int8_t *o, u_int8_t *p2, int o_rows, int o_cols, int p2_rows, int p2_cols){
+
+
+    int SIZE = 1;  // Assuming each result is a single byte, adjust as needed
+
+    // Temporary vector to hold one column of P2
+    u_int8_t *p2_col = (u_int8_t *)malloc(p2_rows * sizeof(u_int8_t));
+
+    // Iterate over each row of O (each representing a column of original O)
+    for (int r = 0; r < o_rows; r++) {
+        for (int c = 0; c < p2_cols; c++) {
+
+            // Extract the column vector from P2
+            for (int i = 0; i < p2_rows; i++) {
+                p2_col[i] = p2[i * p2_cols + c];
+            }
+            
+            // Perform vector multiplication using vmull_values
+            vmull_values(&result[SIZE * (r * p2_cols + c)], &o[r * o_cols], p2_col, o_cols); // o_cols is equivalent to p2_rows
+        }
+    }
+
+    free(p2_col);  // Clean up allocated memory
+}
+
+
+
+
 
 /* void test_neon() {
     // Test cases

@@ -1,13 +1,13 @@
 use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
-use crate::finite_field::{add, matrix_add_P1O_P2, matrix_mul_P1O_O_transposed, matrix_mul_P1_O, mul};
+use crate::finite_field::{add, matrix_add_P1O_P2, matrix_add_P1O_P2_flat, matrix_mul_P1O_O_transposed, matrix_mul_P1O_O_transposed_flat, matrix_mul_P1_O, matrix_mul_P1_O_flat, mul};
 use crate::sample::sample_solution;
 
 use crate::constants::{
     CPK_BYTES, CSK_BYTES, DIGEST_BYTES, EPK_BYTES, ESK_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
-use crate::utils::write_to_file_int;
+use crate::utils::{print_matrix, write_to_file_int};
 use crate::{
     decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
     encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
@@ -15,7 +15,99 @@ use crate::{
 };
 
 
+fn transform_p1_array(input: [[[u8; V]; V]; M]) -> [[u8; V * V]; M] {
+    let mut output = [[0u8; V * V]; M]; // Initialize the output array
 
+    for (z, two_d_array) in input.iter().enumerate() {
+        let mut flat_index = 0; // Index for the flattened array
+        for y in 0..V {
+            for x in 0..V {
+                output[z][flat_index] = two_d_array[y][x];
+                flat_index += 1;
+            }
+        }
+    }
+
+    output
+}
+
+fn transform_p2_array(input: [[[u8; O]; V]; M]) -> [[u8; O * V]; M] {
+    let mut output = [[0u8; O * V]; M]; // Initialize the output array
+
+    for (z, two_d_array) in input.iter().enumerate() {
+        let mut flat_index = 0; // Index for the flattened array
+        for y in 0..V {
+            for x in 0..O {
+                output[z][flat_index] = two_d_array[y][x];
+                flat_index += 1;
+            }
+        }
+    }
+
+    output
+}
+
+
+fn transform_p3_array(input: [[[u8; O]; O]; M]) -> [[u8; O * O]; M] {
+    let mut output = [[0u8; O * O]; M]; // Initialize the output array
+
+    for (z, two_d_array) in input.iter().enumerate() {
+        let mut flat_index = 0; // Index for the flattened array
+        for y in 0..O {
+            for x in 0..O {
+                output[z][flat_index] = two_d_array[y][x];
+                flat_index += 1;
+            }
+        }
+    }
+
+    output
+}
+
+
+fn inverse_transform_p3_array(input: [[u8; O * O]; M]) -> [[[u8; O]; O]; M] {
+    let mut output = [[[0u8; O]; O]; M]; // Initialize the output array
+
+    for (z, flat_array) in input.iter().enumerate() {
+        let mut flat_index = 0; // Index for the flattened array
+        for y in 0..O {
+            for x in 0..O {
+                output[z][y][x] = flat_array[flat_index];
+                flat_index += 1;
+            }
+        }
+    }
+
+    output
+}
+
+
+fn transform_transposed_o_array(input: [[u8; V]; O]) -> [u8; O * V] {
+    let mut output = [0u8; O * V]; // Initialize the output array
+
+    let mut flat_index = 0; // Index for the flattened array
+    for y in 0..O {
+        for x in 0..V {
+            output[flat_index] = input[y][x];
+            flat_index += 1;
+        }
+    }
+
+    output
+}
+
+fn transform_array(input: [u8; O * V]) -> [[u8; O]; V] {
+    let mut output = [[0u8; O]; V]; // Initialize the output array with zeros
+
+    for i in 0..input.len() {
+        let row = i / O; // Determine which row in the output array
+        let col = i % O; // Determine which column in the output array
+        
+        output[row][col] = input[i];
+    }
+
+    output
+}
 
 
 // MAYO algorithm 5:
@@ -59,26 +151,28 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     
     let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);    // m p1 matrices are of size (n−o) × (n−o)
     let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let mut p3 = [[[0u8; O]; O]; M];                                    // Allocate space for P_{i}^(3). Size is o × o
+    let mut p3_flat = [[0u8; O*O]; M];                                    // Allocate space for P_{i}^(3). Size is o × o
 
 
-    // Compute P3_i as (−O^T * P1_i * O ) − (−O^T * P2_i)
-    // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
+    let p1_flat = transform_p1_array(p1);
+    let p2_flat = transform_p2_array(p2);
 
     // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
     let transposed_o = transpose_matrix_array!(o, V, O);
+    let transposed_o_flat = transform_transposed_o_array(transposed_o);
+    
+    
+    
     for i in 0..M {
         // P3 = O^t * (P1*O + P2) 
         // Compute: P1*O + P2
-        let mut temp = matrix_mul_P1_O(p1[i], transposed_o); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
-        // let mut temp = matrix_mul!(p1[i], V,  V, o, O);
-        let mut temp2 = matrix_add_P1O_P2(temp, p2[i]);
-        
+        let temp = matrix_mul_P1_O_flat(p1_flat[i], transposed_o_flat); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
+        let temp2 = matrix_add_P1O_P2_flat(temp, p2_flat[i]);
 
-        // Upper triangular part of the result
-        // p3[i] = upper(matrix_mul!(transposed_o, O, V, temp2, O)); //  o × (n−o) * (n−o) × o = o × o
-        p3[i] = upper(matrix_mul_P1O_O_transposed(transposed_o, temp2));
+        p3_flat[i] = upper_flat(matrix_mul_P1O_O_transposed_flat(transposed_o_flat, temp2));
     }
+
+    let p3 = inverse_transform_p3_array(p3_flat);
 
     let encoded_p3: [u8 ; P3_BYTES] = encode_bit_sliced_matrices!(p3, O, O, M, true, P3_BYTES); // m p3 matrices are of size o × o
 
@@ -568,6 +662,21 @@ pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
     return matrix;
 }
 
+
+pub fn upper_flat(mut matrix: [u8; O * O]) -> [u8; O * O] {
+    // Iterate over everything above the diagonal
+    for i in 0..O {
+        for j in (i + 1)..O {
+            let idx_ij = i * O + j;  // Calculate the flat index for the element at [i][j]
+            let idx_ji = j * O + i;  // Calculate the flat index for the element at [j][i]
+
+            // GF(16) addition is the same as XOR
+            matrix[idx_ij] ^= matrix[idx_ji];
+            matrix[idx_ji] = 0;
+        }
+    }
+    return matrix;
+}
 
 
 
