@@ -200,7 +200,7 @@ pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
 // Signs a message using an expanded secret key
 // MAYO algorithm 8
 // Signs a message using an expanded secret key
-pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG_BYTES] {
+pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SIG_BYTES] {
 
     let mut x = [0u8; K*O]; // Initialize x to zero
     let mut v = [[0u8; V]; K]; // Initialize v to zero
@@ -519,7 +519,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
 pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
 
     // Create signature based on expanded secret key and message
-    let signature = sign(csk, message.clone());
+    let signature = sign(csk, &message);
 
     // Concatenate signature and message
     // Note the message length cannot be known at compile time (Hence vec is used instead of array)
