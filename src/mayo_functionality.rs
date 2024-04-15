@@ -61,11 +61,11 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     let mut p3 = [[[0u8; O]; O]; M];                                    // Allocate space for P_{i}^(3). Size is o × o
 
 
+    let transposed_o = transpose_matrix_array!(o, V, O);
     // Compute P3_i as (−O^T * P1_i * O ) − (−O^T * P2_i)
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
     for i in 0..M {
         // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
-        let transposed_o = transpose_matrix_array!(o, V, O);
 
 
         // P3 = O^t * (P1*O + P2) 
@@ -259,15 +259,15 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
     let t = decode_bytestring_to_array!(&t_output, M);
     
-
+    
+    let mut v_shake_input = [0u8 ; DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1];
+    v_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest);
+    v_shake_input[DIGEST_BYTES..DIGEST_BYTES + SALT_BYTES].copy_from_slice(&salt);
+    v_shake_input[DIGEST_BYTES + SALT_BYTES..DIGEST_BYTES + SALT_BYTES + CSK_BYTES].copy_from_slice(&compact_secret_key);
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
-
+        
         // Derive v_i and r
-        let mut v_shake_input = [0u8 ; DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1];
-        v_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest);
-        v_shake_input[DIGEST_BYTES..DIGEST_BYTES + SALT_BYTES].copy_from_slice(&salt);
-        v_shake_input[DIGEST_BYTES + SALT_BYTES..DIGEST_BYTES + SALT_BYTES + CSK_BYTES].copy_from_slice(&compact_secret_key);
         v_shake_input[DIGEST_BYTES + SALT_BYTES + CSK_BYTES] = ctr;
 
 
