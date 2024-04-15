@@ -63,9 +63,10 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
 
     // Compute P3_i as (−O^T * P1_i * O ) − (O^T * P2_i)
     // Notice, negation is omimtted as GF(16) negation of an element is the same as the element itself.
+    let transposed_o = transpose_matrix(&o);
     for i in 0..M {
 
-        let transposed_o = transpose_matrix(&o);
+
 
         // Compute: −O^T * P1_i * O
         let mut left_term = matrix_mul(&transposed_o, &p1[i]);
@@ -268,13 +269,14 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
     let t = decode_bytestring_to_vector(M, t_output);
 
 
+    let mut v_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1);
+    v_shake_input.extend(&m_digest);
+    v_shake_input.extend(&salt);
+    v_shake_input.extend(compact_secret_key);
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
         // Derive V from shake256
-        let mut v_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1);
-        v_shake_input.extend(&m_digest);
-        v_shake_input.extend(&salt);
-        v_shake_input.extend(compact_secret_key);
+
         v_shake_input.extend(vec![ctr]);
         let ceil_exp = if K * O % 2 == 0 {
             K * O / 2
@@ -334,6 +336,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
             for j in (i..K).rev() {
                 let mut u = vec![0x0 as u8; M];
+                let v_j_transpose = transpose_vector(&v[j]);
 
                 if i == j {
                     for a in 0..M {
@@ -343,8 +346,6 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 } else {
                     for a in 0..M {
                         let left_term = matrix_vector_mul(&trans_mult_v[a], &v[j])[0];
-
-                        let v_j_transpose = transpose_vector(&v[j]);
                         let trans_mult = matrix_mul(&v_j_transpose, &p1[a]);
                         let right_term = matrix_vector_mul(&trans_mult, &v[i])[0];
 
