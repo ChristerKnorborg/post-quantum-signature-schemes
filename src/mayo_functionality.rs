@@ -9,7 +9,7 @@ use crate::constants::{
 };
 use crate::utils::{print_matrix, write_to_file_int};
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
 fn inverse_transform_p3_array(input: &[u8; M * O * O]) -> [[[u8; O]; O]; M] {
@@ -103,11 +103,9 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     let transposed_o = transpose_matrix_array!(o, V, O);
     let transposed_o_flat = transform_transposed_o_array(transposed_o);
     
-    let mut p3_flat = calculate_p3(transposed_o_flat, p1, p2);
+    let p3 = calculate_p3(transposed_o_flat, p1, p2);
 
-    let p3 = inverse_transform_p3_array(&p3_flat);
-
-    let encoded_p3: [u8 ; P3_BYTES] = encode_bit_sliced_matrices!(p3, O, O, M, true, P3_BYTES); // m p3 matrices are of size o × o
+    let encoded_p3: [u8 ; P3_BYTES] = encode_bit_sliced_matrices_single_array!(p3, O, O, M, true, P3_BYTES); // m p3 matrices are of size o × o
 
     // Public and secret keys
     let mut cpk = [0u8 ; PK_SEED_BYTES + P3_BYTES]; // contains pk_seed and encoded_p3
