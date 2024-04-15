@@ -4,7 +4,7 @@ use std::u8;
 
 use cipher::consts::P2;
 
-use crate::{assembly::arm_instructions::o_transposed_mul_p2, constants::{O, V}, crypto_primitives::{safe_o_transposed_mul_p2, safe_veor, safe_vmull, safe_vmull_flat}};
+use crate::{assembly::arm_instructions::o_transposed_mul_p2, constants::{M, O, V}, crypto_primitives::{safe_calculate_p3, safe_o_transposed_mul_p2, safe_veor, safe_vmull, safe_vmull_flat}};
 
 
 
@@ -203,6 +203,24 @@ macro_rules! vec_add {
         }
         $a
     }};
+}
+
+
+pub fn calculate_p3(o: [u8; O * V], p1: [u8; V*V*M], p2: [u8; V*O*M]) -> [u8; O*O*M] {
+
+    let mut res = [0u8; O * O * M];
+
+    safe_calculate_p3(
+        &mut res,
+        &o,
+        &p1,
+        &p2,
+        V.try_into().unwrap(),
+        O.try_into().unwrap(),
+        M.try_into().unwrap());
+
+        return res;
+
 }
 
 pub fn matrix_mul_P1_O_flat(p1: [u8; V*V], o: [u8; O * V]) -> [u8; O * V] {

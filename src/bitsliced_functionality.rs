@@ -175,6 +175,42 @@ macro_rules! encode_bit_sliced_matrices {
 }
 
 
+#[macro_export]
+macro_rules! encode_bit_sliced_matrices_single_array {
+    ($a:expr, $rows:expr, $cols:expr, $M:expr, $is_triangular:expr, $OUT_BYTES:expr) => {{
+        let mut bytestring = [0u8; $OUT_BYTES];
+        
+        // Initialize variables for indexing and iteration
+        let mut byte_index = 0;
+
+        for i in 0..$rows {
+            for j in 0..$cols {
+                if i <= j || !$is_triangular {
+                    let mut indices_arr = [0u8; $M];
+                    
+                    // Populate indices_arr with elements from the matrices
+                    for mat_index in 0..$M {
+                        // Calculate the 1D index for accessing the matrix element
+                        let index = mat_index * $rows * $cols + i * $cols + j;
+                        indices_arr[mat_index] = $a[index];
+                    }
+
+                    // Use the provided encode function/macro on indices_arr
+                    let encoded_bits: [u8; $M / 2] = encode_bit_sliced_array!(indices_arr, $M);
+
+                    // Copy the encoded bits into the bytestring
+                    let slice_start = byte_index * $M / 2;
+                    let slice_end = (byte_index + 1) * $M / 2;
+                    bytestring[slice_start..slice_end].copy_from_slice(&encoded_bits);
+                    byte_index += 1;
+                }
+            }
+        }
+        bytestring
+    }};
+}
+
+
 
 
 
@@ -209,4 +245,63 @@ macro_rules! decode_bit_sliced_matrices {
 
 
 
+// Mayo Algorithm 3 (inverse): Decodes a bitsliced representation of a vector v ∈ F_{16}^{m} into a vector
+#[macro_export]
+macro_rules! decode_bit_sliced_matrices_single_array {
+    ($bytestring:expr, $rows:expr, $cols:expr, $matrices:expr, $upper_triangular:expr) => {{
+        let sub_byte_end = $matrices / 2;
+        let mut curr_byte_idx = 0;
+
+        // Create a single 1D array to hold all elements
+        let mut a = [0u8; $matrices * $rows * $cols]; // Initialize the matrices array
+
+        for i in 0..$rows {
+            for j in 0..$cols {
+                if i <= j || $upper_triangular == false {
+                    let slice_end = curr_byte_idx + sub_byte_end;
+                    let encoded_bits = &$bytestring[curr_byte_idx..slice_end];
+                    let indices_array = decode_bit_sliced_array!(encoded_bits, $matrices);
+
+                    for (mat_index, &value) in indices_array.iter().enumerate() {
+                        let index = mat_index * $rows * $cols + i * $cols + j;
+                        a[index] = value;
+                    }
+                    curr_byte_idx = slice_end;
+                }
+            }
+        }
+        a
+    }};
+}
+
+
+
+
+#[macro_export]
+macro_rules! decode_bit_sliced_matrices_double_array {
+    ($bytestring:expr, $rows:expr, $cols:expr, $matrices:expr, $upper_triangular:expr) => {{
+        let sub_byte_end = $matrices / 2;
+        let mut curr_byte_idx = 0;
+
+        // Create a 2D array representation for each matrix
+        let mut a = [[0u8; $rows * $cols]; $matrices]; // Initialize the array of matrices
+
+        for i in 0..$rows {
+            for j in 0..$cols {
+                if i <= j || !$upper_triangular {
+                    let slice_end = curr_byte_idx + sub_byte_end;
+                    let encoded_bits = &$bytestring[curr_byte_idx..slice_end];
+                    let indices_array = decode_bit_sliced_array!(encoded_bits, $matrices);
+
+                    for (mat_index, &value) in indices_array.iter().enumerate() {
+                        let index = i * $cols + j; // Index for the 2D slice of the matrix
+                        a[mat_index][index] = value;
+                    }
+                    curr_byte_idx = slice_end;
+                }
+            }
+        }
+        a
+    }};
+}
 

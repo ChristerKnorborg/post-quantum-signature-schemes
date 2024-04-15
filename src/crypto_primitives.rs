@@ -133,6 +133,9 @@ pub fn safe_o_transposed_mul_p2(res: &mut [u8], o: &[u8], p2:  &[u8], o_rows: i3
     unsafe { arm_instructions::o_transposed_mul_p2(res.as_mut_ptr(), o.as_ptr(), p2.as_ptr(), o_rows, o_cols, p2_rows, p2_cols); }
 }
 
+pub fn safe_calculate_p3(res: &mut [u8], o: &[u8], p1: &[u8], p2: &[u8], v_param: i32, o_param: i32, m_param: i32) {
+    unsafe {arm_instructions::calculate_p3(res.as_mut_ptr(), o.as_ptr(), p1.as_ptr(), p2.as_ptr(), v_param, o_param, m_param); }
+}
 
 
 

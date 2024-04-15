@@ -1,6 +1,6 @@
 use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
-use crate::finite_field::{add, matrix_add_P1O_P2, matrix_add_P1O_P2_flat, matrix_mul_P1O_O_transposed, matrix_mul_P1O_O_transposed_flat, matrix_mul_P1_O, matrix_mul_P1_O_flat, mul};
+use crate::finite_field::{add, calculate_p3, matrix_add_P1O_P2, matrix_add_P1O_P2_flat, matrix_mul_P1O_O_transposed, matrix_mul_P1O_O_transposed_flat, matrix_mul_P1_O, matrix_mul_P1_O_flat, mul};
 use crate::sample::sample_solution;
 
 use crate::constants::{
@@ -9,71 +9,17 @@ use crate::constants::{
 };
 use crate::utils::{print_matrix, write_to_file_int};
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_matrix_array, decode_bytestring_to_array, 
-    encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
-    transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
-
-fn transform_p1_array(input: [[[u8; V]; V]; M]) -> [[u8; V * V]; M] {
-    let mut output = [[0u8; V * V]; M]; // Initialize the output array
-
-    for (z, two_d_array) in input.iter().enumerate() {
-        let mut flat_index = 0; // Index for the flattened array
-        for y in 0..V {
-            for x in 0..V {
-                output[z][flat_index] = two_d_array[y][x];
-                flat_index += 1;
-            }
-        }
-    }
-
-    output
-}
-
-fn transform_p2_array(input: [[[u8; O]; V]; M]) -> [[u8; O * V]; M] {
-    let mut output = [[0u8; O * V]; M]; // Initialize the output array
-
-    for (z, two_d_array) in input.iter().enumerate() {
-        let mut flat_index = 0; // Index for the flattened array
-        for y in 0..V {
-            for x in 0..O {
-                output[z][flat_index] = two_d_array[y][x];
-                flat_index += 1;
-            }
-        }
-    }
-
-    output
-}
-
-
-fn transform_p3_array(input: [[[u8; O]; O]; M]) -> [[u8; O * O]; M] {
-    let mut output = [[0u8; O * O]; M]; // Initialize the output array
-
-    for (z, two_d_array) in input.iter().enumerate() {
-        let mut flat_index = 0; // Index for the flattened array
-        for y in 0..O {
-            for x in 0..O {
-                output[z][flat_index] = two_d_array[y][x];
-                flat_index += 1;
-            }
-        }
-    }
-
-    output
-}
-
-
-fn inverse_transform_p3_array(input: [[u8; O * O]; M]) -> [[[u8; O]; O]; M] {
+fn inverse_transform_p3_array(input: &[u8; M * O * O]) -> [[[u8; O]; O]; M] {
     let mut output = [[[0u8; O]; O]; M]; // Initialize the output array
 
-    for (z, flat_array) in input.iter().enumerate() {
-        let mut flat_index = 0; // Index for the flattened array
+    for z in 0..M {
         for y in 0..O {
             for x in 0..O {
-                output[z][y][x] = flat_array[flat_index];
-                flat_index += 1;
+                let flat_index = z * O * O + y * O + x; // Calculate flat index for 1D array
+                output[z][y][x] = input[flat_index]; // Assign value to the output matrix
             }
         }
     }
@@ -149,30 +95,17 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     let p2_bytes = &p[P1_BYTES..];
 
     
-    let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);    // m p1 matrices are of size (n−o) × (n−o)
-    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let mut p3_flat = [[0u8; O*O]; M];                                    // Allocate space for P_{i}^(3). Size is o × o
+    let p1 = decode_bit_sliced_matrices_single_array!(p1_bytes, V, V, M, true);    // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices_single_array!(p2_bytes, V, O, M, false);    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)                              // Allocate space for P_{i}^(3). Size is o × o
 
-
-    let p1_flat = transform_p1_array(p1);
-    let p2_flat = transform_p2_array(p2);
 
     // transpose (Negation omitted as GF(16) negation of an element is the same as the element itself)
     let transposed_o = transpose_matrix_array!(o, V, O);
     let transposed_o_flat = transform_transposed_o_array(transposed_o);
     
-    
-    
-    for i in 0..M {
-        // P3 = O^t * (P1*O + P2) 
-        // Compute: P1*O + P2
-        let temp = matrix_mul_P1_O_flat(p1_flat[i], transposed_o_flat); // (n−o) × (n−o) * (n−o) × o = (n−o) × o
-        let temp2 = matrix_add_P1O_P2_flat(temp, p2_flat[i]);
+    let mut p3_flat = calculate_p3(transposed_o_flat, p1, p2);
 
-        p3_flat[i] = upper_flat(matrix_mul_P1O_O_transposed_flat(transposed_o_flat, temp2));
-    }
-
-    let p3 = inverse_transform_p3_array(p3_flat);
+    let p3 = inverse_transform_p3_array(&p3_flat);
 
     let encoded_p3: [u8 ; P3_BYTES] = encode_bit_sliced_matrices!(p3, O, O, M, true, P3_BYTES); // m p3 matrices are of size o × o
 
