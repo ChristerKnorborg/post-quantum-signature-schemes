@@ -524,8 +524,8 @@ pub fn api_sign(message: Vec<u8>, csk: [u8 ; CSK_BYTES]) -> Vec<u8> {
     // Concatenate signature and message
     // Note the message length cannot be known at compile time (Hence vec is used instead of array)
     let mut sign_con_mes = Vec::with_capacity(SIG_BYTES + message.len());
-    sign_con_mes.append(&mut signature.to_vec());
-    sign_con_mes.append(&mut message.to_vec());
+    sign_con_mes.extend_from_slice(&signature);
+    sign_con_mes.extend(message);
 
     return sign_con_mes;
 }
