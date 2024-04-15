@@ -407,7 +407,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
 
 // MAYO algorithm 9
 // Verifi the signature of a message using the expanded public key
-pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>) -> bool {
+pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &[u8]) -> bool {
 
     // Retrieve the public information from the expanded public key
     let p1_bytestring = &expanded_pk[0..P1_BYTES];
@@ -544,15 +544,15 @@ pub fn api_sign_open(sign_con_mes: Vec<u8>, pk: [u8 ; CPK_BYTES]) -> (bool, Vec<
 
     // Extract signature and message from input
     let signature = &sign_con_mes[0..SIG_BYTES];
-    let mut message = sign_con_mes[SIG_BYTES..].to_vec();
+    let message_slice = &sign_con_mes[SIG_BYTES..];
 
     // Verify the signature based on expanded public key and message
-    let result = verify(expanded_pk, signature, &message);
+    let result = verify(expanded_pk, signature, message_slice);
 
     if result == false {
-        message = vec![0u8]; // If the signature is invalid, the message is set to zero
+        return (result , vec![0u8]);// If the signature is invalid, the message is set to zero
     }
-    return (result, message);
+    return (result, message_slice.to_vec());
 }
 
 
