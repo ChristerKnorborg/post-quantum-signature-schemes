@@ -66,8 +66,6 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
     let transposed_o = transpose_matrix(&o);
     for i in 0..M {
 
-
-
         // Compute: −O^T * P1_i * O
         let mut left_term = matrix_mul(&transposed_o, &p1[i]);
         left_term = matrix_mul(&left_term, &o);
@@ -268,16 +266,17 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     let t = decode_bytestring_to_vector(M, t_output);
 
-
+    // Derive V from shake256
     let mut v_shake_input = Vec::with_capacity(DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1);
     v_shake_input.extend(&m_digest);
     v_shake_input.extend(&salt);
     v_shake_input.extend(compact_secret_key);
+
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
-        // Derive V from shake256
-
+        
         v_shake_input.extend(vec![ctr]);
+
         let ceil_exp = if K * O % 2 == 0 {
             K * O / 2
         } else {
@@ -328,10 +327,14 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
         for i in 0..K {
             let v_i_transpose = transpose_vector(&v[i]);
+            
             let mut trans_mult_v =  vec![vec![vec![0u8 ; N-O]; 1]; M];
+            let mut v_p_v = vec![vec![0u8 ; 1]; M]; 
 
             for a in 0..M {
                 trans_mult_v[a] = matrix_mul(&v_i_transpose, &p1[a]);
+                v_p_v[a] = matrix_vector_mul(&trans_mult_v[a], &v[i]);
+
             }
 
             for j in (i..K).rev() {
@@ -341,7 +344,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 if i == j {
                     for a in 0..M {
 
-                        u[a] = matrix_vector_mul(&trans_mult_v[a], &v[i])[0];
+                        u[a] = v_p_v[a][0];
                     }
                 } else {
                     for a in 0..M {
@@ -489,9 +492,12 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
         let s_i_trans = transpose_vector(&s_matrix[i]);
 
         let mut s_trans_p_mult =  vec![vec![vec![0u8 ; N]; 1]; M];
+        let mut s_trans_p_mult_p = vec![vec![0u8 ; 1]; M];
 
         for a in 0..M {
             s_trans_p_mult[a] = matrix_mul(&s_i_trans, &big_p[a]);
+
+            s_trans_p_mult_p[a] = matrix_vector_mul(&s_trans_p_mult[a], &s_matrix[i]);
         }
 
         for j in (i..K).rev() {
@@ -499,12 +505,10 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
             let s_j_trans = transpose_vector(&s_matrix[j]);
 
             for a in 0..M {
-                let res_mul = matrix_mul(&s_i_trans, &big_p[a]);
-
                 if i == j {
-                    u[a] = matrix_vector_mul(&res_mul, &s_matrix[i])[0];
+                    u[a] = matrix_vector_mul(&s_trans_p_mult[a] , &s_matrix[i])[0];
                 } else {
-                    let left_term = matrix_vector_mul(&res_mul, &s_matrix[j])[0];
+                    let left_term = matrix_vector_mul(&s_trans_p_mult[a], &s_matrix[j])[0];
 
                     let resmul2 = matrix_mul(&s_j_trans, &big_p[a]);
                     let right_term = matrix_vector_mul(&resmul2, &s_matrix[i])[0];
