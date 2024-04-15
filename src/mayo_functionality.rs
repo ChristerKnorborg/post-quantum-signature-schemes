@@ -260,14 +260,15 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let t = decode_bytestring_to_array!(&t_output, M);
     
     
+    // Derive v_i and r
     let mut v_shake_input = [0u8 ; DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1];
     v_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest);
     v_shake_input[DIGEST_BYTES..DIGEST_BYTES + SALT_BYTES].copy_from_slice(&salt);
     v_shake_input[DIGEST_BYTES + SALT_BYTES..DIGEST_BYTES + SALT_BYTES + CSK_BYTES].copy_from_slice(&compact_secret_key);
+
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
         
-        // Derive v_i and r
         v_shake_input[DIGEST_BYTES + SALT_BYTES + CSK_BYTES] = ctr;
 
 
@@ -309,8 +310,10 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         for i in 0..K {
 
             let mut trans_mult_v = [[0u8 ; V]; M];
+            let mut trans_mult_final = [0u8 ; M];
             for a in 0..M {
                 trans_mult_v[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
+                trans_mult_final[a] = vector_mul!(trans_mult_v[a], v[i], V);  
             }
 
             for j in (i..K).rev() {
@@ -319,7 +322,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
                 if i == j {
                     for a in 0..M {
 
-                        u[a] = vector_mul!(trans_mult_v[a], v[i], V);  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
+                        u[a] = trans_mult_final[a]  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
                     }
                 } else {
                     for a in 0..M {
@@ -465,8 +468,11 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     for i in 0..K {
 
         let mut mul_res_arr = [[0u8 ; N]; M];
+        let mut mul_res_final_arr = [0u8; M];
+        
         for a in 0..M {
             mul_res_arr[a] = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
+            mul_res_final_arr[a] = vector_mul!(mul_res_arr[a], s_matrix[i], N);
         }
 
         for j in (i..K).rev() {
@@ -476,7 +482,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
 
 
                 if i == j {
-                    u[a] = vector_mul!(mul_res_arr[a], s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
+                    u[a] = mul_res_final_arr[a] // (1 x n) * (n x 1) = 1 x 1
 
                 } else {
                     let left_term = vector_mul!(mul_res_arr[a], s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
