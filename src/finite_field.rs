@@ -148,6 +148,27 @@ pub fn vector_matrix_mul(vec: &Vec<u8>, matrix: &Vec<Vec<u8>>) -> Vec<u8> {
     return result;
 }
 
+// Vector-matrix multiplication over GF(16) with a transposed vector.
+// Returns a vector of size equal to the number of columns in the matrix.
+pub fn vector_transposed_matrix_mul(a: &Vec<u8>, b: &Vec<Vec<u8>>) -> Vec<u8> {
+    let b_cols = b.len();
+    let b_rows = if b_cols > 0 { b[0].len() } else { 0 };
+
+    let mut result = vec![0u8; b_cols];
+
+    for j in 0..b_cols {
+        for k in 0..b_rows {
+            result[j] = add(result[j], mul(a[k], b[j][k]));
+        }
+    }
+
+    return result
+}
+
+
+
+
+
 
 // Matrix-vector multiplication over GF(16)
 // Returns a vector of size equal to the number of rows in the matrix.
@@ -167,6 +188,25 @@ pub fn matrix_vector_mul(matrix: &Vec<Vec<u8>>, vec: &Vec<u8>) -> Vec<u8> {
     }
 
     return result;
+}
+
+
+
+
+
+// Vector multiplication over GF(16) returning a scalar result.
+pub fn vector_mul(vec1: &Vec<u8>, vec2: &Vec<u8>) -> u8 {
+    assert_eq!(vec1.len(), vec2.len(), "Both vectors must be of the same length");
+
+    let len = vec1.len();
+    let mut result = 0u8;
+
+    for i in 0..len {
+        // Multiply each element of vec1 by the corresponding element of vec2 and sum up the results
+        result = add(result, mul(vec1[i], vec2[i]));
+    }
+
+    return result
 }
 
 
