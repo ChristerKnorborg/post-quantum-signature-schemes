@@ -63,7 +63,7 @@ pub fn echelon_form(mut b: [[u8 ; K*O+1]; M]) -> [[u8 ; K*O+1]; M] {
 pub fn sample_solution(a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<[u8; K*O], &'static str> {
 
 
-    let mut x: [u8; K*O] = r.clone();
+    let mut x: [u8; K*O] = r;
     let mut temp = matrix_vec_mul!(a, x, M, K*O); //  (m x K*O) * (K*O x 1) = (m x 1)
     temp = vec_add!(temp, y, M); // Add same as subtracting in GF(16)
 

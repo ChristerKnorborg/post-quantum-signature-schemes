@@ -254,17 +254,17 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
 
     let t = decode_bytestring_to_array!(&t_output, M);
     
-
+    // Derive v_i and r
+    let mut v_shake_input = [0u8 ; DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1];
+    v_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest);
+    v_shake_input[DIGEST_BYTES..DIGEST_BYTES + SALT_BYTES].copy_from_slice(&salt);
+    v_shake_input[DIGEST_BYTES + SALT_BYTES..DIGEST_BYTES + SALT_BYTES + CSK_BYTES].copy_from_slice(&compact_secret_key);
+        
     // Attempt to find a preimage for t
     for ctr in 0..=255 {
 
         // Derive v_i and r
-        let mut v_shake_input = [0u8 ; DIGEST_BYTES + SALT_BYTES + CSK_BYTES + 1];
-        v_shake_input[..DIGEST_BYTES].copy_from_slice(&m_digest);
-        v_shake_input[DIGEST_BYTES..DIGEST_BYTES + SALT_BYTES].copy_from_slice(&salt);
-        v_shake_input[DIGEST_BYTES + SALT_BYTES..DIGEST_BYTES + SALT_BYTES + CSK_BYTES].copy_from_slice(&compact_secret_key);
         v_shake_input[DIGEST_BYTES + SALT_BYTES + CSK_BYTES] = ctr;
-
 
         const CEIL: usize = K*O / 2; // Ceil (K*O * log_2(q) / 8) - Notice, all versions does not require ceil
         let mut v_bytestring = [0u8; K * V_BYTES + CEIL];
