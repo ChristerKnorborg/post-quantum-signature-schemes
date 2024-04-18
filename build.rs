@@ -14,7 +14,7 @@ fn main() {
     build.file("src/genkat/mem.c")
         .file("src/genkat/aes_c.c")
         .file("src/genkat/fips202.c")
-        .flag("-O2")
-        .flag("-DENABLE_AESNI=ON ")
+        .flag("-O3")
+        .flag("-mcpu=apple-m1")
         .compile("randombytes_nist");
 }
