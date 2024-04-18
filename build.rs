@@ -6,7 +6,7 @@ fn main() {
         .file("src/genkat/aes_c.c")
         .file("src/genkat/fips202.c")
         .file("src/assembly/vmull.c")
-        .flag("-O2")  // Apply optimization level O2
+        .flag("-O3")  // Apply optimization level O3
         .compile("randombytes_nist");
 
 

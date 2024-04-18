@@ -2,9 +2,7 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use cipher::consts::P2;
-
-use crate::{assembly::arm_instructions::o_transposed_mul_p2, constants::{M, O, V}, crypto_primitives::{safe_calculate_p3, safe_o_transposed_mul_p2, safe_veor, safe_vmull, safe_vmull_flat}};
+use crate::{constants::{M, O, V}, crypto_primitives::safe_calculate_p3};
 
 
 
@@ -221,88 +219,6 @@ pub fn calculate_p3(o: [u8; O * V], p1: [u8; V*V*M], p2: [u8; V*O*M]) -> [u8; O*
 
         return res;
 
-}
-
-pub fn matrix_mul_P1_O_flat(p1: [u8; V*V], o: [u8; O * V]) -> [u8; O * V] {
-    let mut res = [0u8; O * V];
-
-    safe_vmull_flat(&mut res, &p1, &o, V.try_into().unwrap(), V.try_into().unwrap(), O.try_into().unwrap());
-
-    return res;
-}
-
-pub fn matrix_mul_P1_O(p1: [[u8; V]; V], o: [[u8; V]; O]) -> [[u8; O]; V] {
-    let mut res = [[0u8; O]; V];
-
-    for i in 0..O {  
-
-        for j in 0..V {
-            safe_vmull(&mut res[j][i], &p1[j], &o[i], V.try_into().unwrap());
-        }
-    }
-    return res
-}
-
-/* pub fn matrix_mul_P1_O_plus_P2(p1: [[u8; V]; V], o: [[u8; V]; O], p2: [[u8; O]; V]) -> [[u8; O]; V] {
-    let mut res = [[0u8; O]; V];
-
-    for i in 0..O {  
-        for j in 0..V {
-            safe_vmull(&mut res[j][i], &p1[j], &o[i], V.try_into().unwrap());
-        }
-
-        safe_veor(res[i], final_o_vec, row_length)
-        
-    }
-    return res
-} */
-
-
-pub fn matrix_mul_P1O_O_transposed_flat(o_transposed: [u8; O*V], p1O: [u8; V * O]) -> [u8; O*O] {
-    
-    
-    let mut res = [0u8; O*O];
-
-    safe_o_transposed_mul_p2(&mut res, &o_transposed, &p1O, O.try_into().unwrap(), V.try_into().unwrap(), V.try_into().unwrap(), O.try_into().unwrap());
-
-    return res
-}
-
-
-
-pub fn matrix_mul_P1O_O_transposed(o_transposed: [[u8; V]; O], p1O: [[u8; O]; V]) -> [[u8; O]; O] {
-    let mut res = [[0u8; O]; O];
-
-    let mut p1O_vec = [0u8; V];
-
-    for i in 0..O {  
-        for j in 0..V {
-            p1O_vec[j] = p1O[j][i];
-        }
-        for j in 0..O {
-            safe_vmull(&mut res[j][i], &o_transposed[j], &p1O_vec, V.try_into().unwrap());
-        }
-    }
-    return res
-}
-
-
-pub fn matrix_add_P1O_P2(p1O: [[u8; O]; V], p2: [[u8; O]; V]) -> [[u8; O]; V] {
-    let mut res = [[0u8; O]; V];
-
-    for i in 0..V {  
-            safe_veor(&mut res[i], &p1O[i], &p2[i], O.try_into().unwrap());
-    }
-    
-    return res;
-}
-
-pub fn matrix_add_P1O_P2_flat(p2: [u8; O * V], p1O: [u8; O * V]) -> [u8; O * V] {
-    let mut res = [0u8; O * V];
-
-    safe_veor(&mut res, &p1O, &p2, (V*O).try_into().unwrap());
-    
-    return res;
 }
 
 

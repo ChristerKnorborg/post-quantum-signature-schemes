@@ -50,7 +50,7 @@ macro_rules! decode_bytestring_to_array {
 }
 
 #[macro_export]
-macro_rules! decode_bytestring_matrix_array {
+macro_rules! decode_bytestring_to_matrix {
     ($bytestring:expr, $rows:expr, $cols:expr) => {{
         // Assuming `decode_bytestring_to_array!` macro is accessible here
         // and can be used to decode the bytestring into a flat array.
