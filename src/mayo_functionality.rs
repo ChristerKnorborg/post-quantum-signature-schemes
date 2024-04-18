@@ -312,7 +312,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
             let mut vi_p_vi = [0u8 ; M];
             for a in 0..M {
                 vi_p[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                vi_p_vi[a] = vector_mul!(vi_p[a], v[i], V);  
+                vi_p_vi[a] = vector_mul!(vi_p[a], v[i], V); // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
             }
 
             for j in (i..K).rev() {
@@ -321,7 +321,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
                 if i == j {
                     for a in 0..M {
 
-                        u[a] = vi_p_vi[a]  // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
+                        u[a] = vi_p_vi[a] 
                     }
                 } else {
                     for a in 0..M {
