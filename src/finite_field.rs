@@ -35,7 +35,7 @@ pub fn mul(x: u8, y: u8) -> u8 {
     res ^= (x & 8)*y; // Multiply by x^3
 
     // Reduce modulo by the irreducible polynomial x^4 + x + 1 
-    let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit is always 0, cause we can't get more than x^6)
+    let first_4_bits: u8 = res & 0x70; // First 4 bits of res (x^7 to x^4. Notice, the first bit is always 0, cause we can't get more than x^6)
     
 
     // Replace x^4 with x + 1 as x^4 (e.g. 16) = x + 1 (under the irreducible polynomial).
@@ -157,7 +157,7 @@ macro_rules! vector_mul {
 
 
 #[macro_export]
-macro_rules! transpose_matrix_array {
+macro_rules! transpose_matrix {
     ($matrix:expr, $rows:expr, $cols:expr) => {{
         // Initialize the transposed matrix with zeroes. The dimensions are swapped.
         let mut transposed = [[0u8; $rows]; $cols];
