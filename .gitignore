@@ -16,3 +16,6 @@ Cargo.lock
 
 # Added by cargo
 /target
+
+#No output files
+*.txt
