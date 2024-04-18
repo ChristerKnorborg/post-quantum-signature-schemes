@@ -15,8 +15,7 @@ use crate::constants::{
 };
 
 
-
-// MAYO algorithm 5:
+// MAYO algorithm 5: Generate a compact key pair (cpk, csk)
 pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
 
 
@@ -24,7 +23,7 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
     let mut sk_seed: Vec<u8> = vec![0u8; SK_SEED_BYTES];
     safe_randombytes(&mut sk_seed, SK_SEED_BYTES as u64);
 
-    // Derive pk_seed and Oil space from sk_seed
+    // Derive pk_seed and O from sk_seed
     let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
     safe_shake256(
         &mut s,
@@ -40,11 +39,11 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
         .expect("Slice has incorrect length");
 
 
-    // Decode Oil space from seed_pk
+    // Decode O from seed_pk
     let o_bytes = s[PK_SEED_BYTES..].to_vec();
     let o = decode_bytestring_to_matrix(V, O, o_bytes);
 
-    //Derive P1_i and P2_i from pk_seed
+    //Derive P1 and P2 from pk_seed
     let mut p: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
         &mut p,
@@ -55,10 +54,8 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
     let p1_bytes = p[0..P1_BYTES].to_vec();
     let p2_bytes = p[P1_BYTES..].to_vec();
 
-    // m p1 matrices are of size (n−o) × (n−o)
-    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p1 = decode_bit_sliced_matrices(V, V, p1_bytes, true);
-    let p2 = decode_bit_sliced_matrices(V, O, p2_bytes, false);
+    let p1 = decode_bit_sliced_matrices(V, V, p1_bytes, true); // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices(V, O, p2_bytes, false); // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
     let mut p3 = vec![vec![vec![0u8; O]; O]; M]; // Allocate space for P_{i}^(3). Size is o × o
 
     // Compute P3_i as (−O^T * P1_i * O ) − (O^T * P2_i)
@@ -100,7 +97,6 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
 // Expands a secret key from its compact representation
 pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
     
-
     let sk_seed: &Vec<u8> = csk;
 
     // Derive S
@@ -118,11 +114,11 @@ pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
         .try_into()
         .expect("Slice has incorrect length");
 
-    // Make Oil space from o_bytes. 
+    // Make O from o_bytes. 
     let mut o_bytes = s[PK_SEED_BYTES..].to_vec();
     let o = decode_bytestring_to_matrix(V, O, o_bytes.clone());
 
-    // Derive P1_i and P2_i from pk_seed
+    // Derive P1 and P2 from pk_seed
     let mut p_bytes: Vec<u8> = vec![0u8; P1_BYTES + P2_BYTES];
     safe_aes_128_ctr(
         &mut p_bytes,
@@ -134,10 +130,8 @@ pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
     let mut p1_bytes = p_bytes[0..P1_BYTES].to_vec();
     let p2_bytes = p_bytes[P1_BYTES..].to_vec();
 
-    // m p1 matrices are of size (n−o) × (n−o)
-    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let p1 = decode_bit_sliced_matrices(V, V, p1_bytes.clone(), true);
-    let p2 = decode_bit_sliced_matrices(V, O, p2_bytes, false);
+    let p1 = decode_bit_sliced_matrices(V, V, p1_bytes.clone(), true); // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices(V, O, p2_bytes, false);     // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
     let mut l = vec![vec![vec![0u8; O]; V]; M]; // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
 
     // Compute L matrices
@@ -326,11 +320,12 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
         for i in 0..K {
            
-            let mut trans_mult_v =  vec![vec![0u8 ; N-O]; M];
-            let mut v_p_v = vec![0u8 ; M]; 
+            // Store v_i*P and v_i*P*v_i in outer loop
+            let mut vi_p =  vec![vec![0u8 ; N-O]; M];
+            let mut vi_p_vi = vec![0u8 ; M]; 
             for a in 0..M {
-                trans_mult_v[a] = vector_matrix_mul(&v[i], &p1[a]);
-                v_p_v[a] = vector_mul(&trans_mult_v[a], &v[i]);
+                vi_p[a] = vector_matrix_mul(&v[i], &p1[a]);
+                vi_p_vi[a] = vector_mul(&vi_p[a], &v[i]);
 
             }
 
@@ -340,13 +335,17 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
                 if i == j {
                     for a in 0..M {
 
-                        u[a] = v_p_v[a];
+                        u[a] = vi_p_vi[a];
                     }
                 } else {
                     for a in 0..M {
-                        let left_term = vector_mul(&trans_mult_v[a], &v[j]);
-                        let trans_mult = vector_matrix_mul(&v[j], &p1[a]);
-                        let right_term = vector_mul(&trans_mult, &v[i]);
+
+                        // Calculate: v_i*P*v_j
+                        let left_term = vector_mul(&vi_p[a], &v[j]);
+
+                        // Calculate: v_j*P*v_i
+                        let vj_p = vector_matrix_mul(&v[j], &p1[a]);
+                        let right_term = vector_mul(&vj_p, &v[i]);
 
                         u[a] = add(left_term, right_term);
                     }
@@ -485,12 +484,13 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
 
     for i in 0..K {
 
-        let mut s_trans_p_mult =  vec![vec![0u8 ; N]; M];
-        let mut s_trans_p_mult_p = vec![0u8; M];
+        // Store s_i*P and s_i*P*s_i in outer loop
+        let mut si_p =  vec![vec![0u8 ; N]; M];
+        let mut si_p_si = vec![0u8; M];
 
         for a in 0..M {
-            s_trans_p_mult[a] = vector_transposed_matrix_mul(&s_matrix[i], &big_p[a]);
-            s_trans_p_mult_p[a] = vector_mul(&s_trans_p_mult[a], &s_matrix[i]);
+            si_p[a] = vector_transposed_matrix_mul(&s_matrix[i], &big_p[a]);
+            si_p_si[a] = vector_mul(&si_p[a], &s_matrix[i]);
         }
 
         for j in (i..K).rev() {
@@ -499,12 +499,15 @@ pub fn verify(expanded_pk: Vec<u8>, signature: Vec<u8>, message: &Vec<u8>) -> bo
             for a in 0..M {
                 
                 if i == j {
-                    u[a] = s_trans_p_mult_p[a];
+                    u[a] = si_p_si[a];
                 } else {
-                    let left_term = vector_mul(&s_trans_p_mult[a], &s_matrix[j]);
 
-                    let resmul2 = vector_transposed_matrix_mul(&s_matrix[j], &big_p[a]);
-                    let right_term = vector_mul(&resmul2, &s_matrix[i]);
+                    // Calculate: s_i*P*s_j
+                    let left_term = vector_mul(&si_p[a], &s_matrix[j]);
+
+                    // Calculate: s_j*P*s_i
+                    let sj_p = vector_transposed_matrix_mul(&s_matrix[j], &big_p[a]);
+                    let right_term = vector_mul(&sj_p, &s_matrix[i]);
 
                     u[a] = add(left_term, right_term);
                 }

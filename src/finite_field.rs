@@ -31,7 +31,7 @@ pub fn mul(x: u8, y: u8) -> u8 {
     res ^= (x & 8)*y; // Multiply by x^3
 
     // Reduce modulo by the irreducible polynomial x^4 + x + 1 
-    let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit (x^7) is always 0, cause we can't get more than x^6)
+    let first_4_bits: u8 = res & 0x70; // First 4 bits of res (x^7 to x^4. Notice, the first bit (x^7) is always 0, cause we can't get more than x^6)
 
     // Replace x^4 with x + 1 as x^4 = x + 1 (under the irreducible polynomial).
     // Replace x^5 with x^2 + x as x^5 = x^2 + x (under the irreducible polynomial).
