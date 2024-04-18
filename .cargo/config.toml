@@ -10,7 +10,6 @@ bench_mayo3 = "bench --no-default-features --features mayo3 --bench benchmark --
 bench_mayo5 = "bench --no-default-features --features mayo5 --bench benchmark -- --verbose"
 
 
-
 [target.'cfg(target_os = "windows")']
 rustflags = ["-C", "link-args=/STACK:4194304"] #4MB
 
