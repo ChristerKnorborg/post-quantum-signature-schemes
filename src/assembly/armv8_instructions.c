@@ -64,25 +64,35 @@
  */
 void mul_add_bitsliced_m_vec_mayo1(u_int32_t *input, u_int32_t input_start, u_int8_t nibble1, u_int8_t nibble2, u_int32_t *acc, u_int32_t acc_start) {
     
-        int u_32_per_term_acc = 2;
-        int u_32_per_term_in = 4;
-        
-        uint32x4_t in0 = vld1q_u32(&input[input_start]);
-        uint32x4_t in1 = vld1q_u32(&input[input_start + u_32_per_term_in]);
-        uint32x4_t in2 = vld1q_u32(&input[input_start + 2 * u_32_per_term_in]);
-        uint32x4_t in3 = vld1q_u32(&input[input_start + 3 * u_32_per_term_in]);
+        int u_32_per_term = 2;
+
+        uint32x2_t in0_0 = vld1_u32(&input[input_start]);
+        uint32x2_t in1_0 = vld1_u32(&input[input_start + u_32_per_term]);
+        uint32x2_t in2_0 = vld1_u32(&input[input_start + 2 * u_32_per_term]);
+        uint32x2_t in3_0 = vld1_u32(&input[input_start + 3 * u_32_per_term]);
+
+        uint32x2_t in0_1 = vld1_u32(&input[8 + input_start]);
+        uint32x2_t in1_1 = vld1_u32(&input[8 + (input_start + u_32_per_term)]);
+        uint32x2_t in2_1 = vld1_u32(&input[8 + (input_start + 2 * u_32_per_term)]);
+        uint32x2_t in3_1 = vld1_u32(&input[8 + (input_start + 3 * u_32_per_term)]);
+
+         // Convert to uint32x4_t for processing
+        uint32x4_t in0 = vcombine_u32(in0_0, in0_1);
+        uint32x4_t in1 = vcombine_u32(in1_0, in1_1);
+        uint32x4_t in2 = vcombine_u32(in2_0, in2_1);
+        uint32x4_t in3 = vcombine_u32(in3_0, in3_1);
 
         // Load accumulators as uint32x2_t
         uint32x2_t acc0_low = vld1_u32(&acc[acc_start]);
-        uint32x2_t acc1_low = vld1_u32(&acc[acc_start + u_32_per_term_acc]);
-        uint32x2_t acc2_low = vld1_u32(&acc[acc_start + 2 * u_32_per_term_acc]);
-        uint32x2_t acc3_low = vld1_u32(&acc[acc_start + 3 * u_32_per_term_acc]);
+        uint32x2_t acc1_low = vld1_u32(&acc[acc_start + u_32_per_term]);
+        uint32x2_t acc2_low = vld1_u32(&acc[acc_start + 2 * u_32_per_term]);
+        uint32x2_t acc3_low = vld1_u32(&acc[acc_start + 3 * u_32_per_term]);
 
         // Convert to uint32x4_t for processing
-        uint32x4_t acc0 = vcombine_u32(acc0_low, vdup_n_u32(0));
-        uint32x4_t acc1 = vcombine_u32(acc1_low, vdup_n_u32(0));
-        uint32x4_t acc2 = vcombine_u32(acc2_low, vdup_n_u32(0));
-        uint32x4_t acc3 = vcombine_u32(acc3_low, vdup_n_u32(0));
+        uint32x4_t acc0 = vcombine_u32(acc0_low, acc0_low);
+        uint32x4_t acc1 = vcombine_u32(acc1_low, acc1_low);
+        uint32x4_t acc2 = vcombine_u32(acc2_low, acc2_low);
+        uint32x4_t acc3 = vcombine_u32(acc3_low, acc3_low);
 
 
         // Nibble mask extraction
@@ -133,9 +143,9 @@ void mul_add_bitsliced_m_vec_mayo1(u_int32_t *input, u_int32_t input_start, u_in
 
         // Store results back to acc array as uint32x2_t
         vst1_u32(&acc[acc_start], veor_u32(vget_low_u32(acc0), vget_high_u32(acc0)));
-        vst1_u32(&acc[acc_start + u_32_per_term_acc], veor_u32(vget_low_u32(acc1), vget_high_u32(acc1)));
-        vst1_u32(&acc[acc_start + 2 * u_32_per_term_acc], veor_u32(vget_low_u32(acc2), vget_high_u32(acc2)));
-        vst1_u32(&acc[acc_start + 3 * u_32_per_term_acc], veor_u32(vget_low_u32(acc2), vget_high_u32(acc2)));
+        vst1_u32(&acc[acc_start + u_32_per_term], veor_u32(vget_low_u32(acc1), vget_high_u32(acc1)));
+        vst1_u32(&acc[acc_start + 2 * u_32_per_term], veor_u32(vget_low_u32(acc2), vget_high_u32(acc2)));
+        vst1_u32(&acc[acc_start + 3 * u_32_per_term], veor_u32(vget_low_u32(acc3), vget_high_u32(acc3)));
 }
 
 void mul_add_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {

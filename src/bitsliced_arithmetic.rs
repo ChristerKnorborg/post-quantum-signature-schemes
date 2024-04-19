@@ -29,13 +29,13 @@ macro_rules! bitsliced_mat_mul_mat_add {
                     let acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
 
                     if(c + 1 < $bs_mat_cols) {
-                        safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $mat[c+1][k],$acc, acc_start_idx.try_into().unwrap());
+                        safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $mat[c+1 ][k],$acc, acc_start_idx.try_into().unwrap());
                     }
                     else {
                         safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $acc, acc_start_idx.try_into().unwrap());
                     }
                 }
-                
+                    
                 if(c + 1 < $bs_mat_cols) {
                     entries_used += 2;
                 }
