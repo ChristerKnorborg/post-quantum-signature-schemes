@@ -2,13 +2,8 @@
     This file contains code heavily inspired by the MAYO C implementation for NIST found at: https://github.com/PQCMayo/MAYO-C.
     Much of this code is adapted from the original C implementation to fit our Rust implementation for doing bitsliced arithmetic 
 */
-
-
-
-
-
-
 use crate::constants::{M, O, V};
+use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo1};
 
 
 
@@ -28,14 +23,25 @@ macro_rules! bitsliced_mat_mul_mat_add {
 
             let c_start = if $upper_triangular { r } else { 0 }; 
 
-            for c in c_start..$bs_mat_cols { // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+            for c in (c_start..$bs_mat_cols).step_by(2) { // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
                 for k in 0..$mat_cols {
                     let bs_mat_start_idx = entries_used * U32_PER_IDX;
                     let acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
 
-                    mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx, $mat[c][k], $acc, acc_start_idx);
+                    if(c + 1 < $bs_mat_cols) {
+                        safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $mat[c+1][k],$acc, acc_start_idx.try_into().unwrap());
+                    }
+                    else {
+                        safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $acc, acc_start_idx.try_into().unwrap());
+                    }
                 }
-                entries_used += 1;
+                
+                if(c + 1 < $bs_mat_cols) {
+                    entries_used += 2;
+                }
+                else {
+                    entries_used += 1;
+                } 
             }
         }
     }};

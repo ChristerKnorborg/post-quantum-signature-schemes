@@ -1,3 +1,4 @@
+use crate::assembly::arm_instructions::{mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1};
 use crate::genkat::bindings;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
@@ -98,10 +99,6 @@ pub fn aes_128_ctr_seed_expansion(pk_seed: [u8; 16], output_length: usize) -> Ve
 }
 
 
-
-
-
-
 // Function to hash a bytestring with SHAKE256 to a specified output length
 pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
     let mut hasher = Shake256::default();
@@ -116,9 +113,25 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
 }
 
 
+pub fn safe_mul_add_bitsliced_m_vec(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
+    unsafe { mul_add_bitsliced_m_vec(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
+}
+
+pub fn safe_mul_add_bitsliced_m_vec_mayo1(input: &[u32], input_start: i32, nibble1: u8, nibble2: u8, acc: &mut [u32], acc_start: i32){
+    unsafe { mul_add_bitsliced_m_vec_mayo1(input.as_ptr(), input_start, nibble1, nibble2, acc.as_mut_ptr(), acc_start) }
+}
 
 
-
+// pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
+//     unsafe {
+//         bindings::shake256(
+//             output.as_mut_ptr(),
+//             output_byte_len,
+//             input.as_ptr(),
+//             input_byte_len,
+//         );
+//     }
+// }
 
 
 

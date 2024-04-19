@@ -10,3 +10,6 @@ pub mod utils;
 pub mod genkat {
     pub mod bindings;
 }
+pub mod assembly {
+    pub mod arm_instructions;
+}
