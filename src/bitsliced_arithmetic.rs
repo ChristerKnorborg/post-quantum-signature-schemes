@@ -19,29 +19,46 @@ macro_rules! bitsliced_mat_mul_mat_add {
 
         let mut entries_used = 0;
 
+        let mut counter = 0;
+
         for r in 0..$bs_mat_rows {
 
             let c_start = if $upper_triangular { r } else { 0 }; 
-
-            for c in (c_start..$bs_mat_cols).step_by(2) { // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+            let uneven_last = $bs_mat_cols - c_start % 2;
+            counter = 0; 
+            for c in (c_start..$bs_mat_cols-2).step_by(2) {
+                 // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+                 println!("c: {}", c);
+                counter += 1;
                 for k in 0..$mat_cols {
                     let bs_mat_start_idx = entries_used * U32_PER_IDX;
                     let acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
 
-                    if(c + 1 < $bs_mat_cols) {
-                        safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $mat[c+1 ][k],$acc, acc_start_idx.try_into().unwrap());
-                    }
-                    else {
-                        safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $acc, acc_start_idx.try_into().unwrap());
-                    }
+                    safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][k], $mat[c+1][k], $acc, acc_start_idx.try_into().unwrap());
+
+                    // if (c == $bs_mat_cols-1 && extra_iteration == 1) {
+                    //     safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c+2][k], $acc, acc_start_idx.try_into().unwrap());
+                    // }
                 }
-                    
-                if(c + 1 < $bs_mat_cols) {
+
+                if uneven_last == 1 {
+                    let bs_mat_start_idx = entries_used * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_cols + $mat_cols-1 ) * U32_PER_IDX;
+
+                    safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][$mat_cols-1], $acc, acc_start_idx.try_into().unwrap());
+                
+                    entries_used += 1;
+                } else {
+                    let bs_mat_start_idx = entries_used * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_cols + $mat_cols-1 ) * U32_PER_IDX;
+
+                    safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][$mat_cols-1], $mat[c+1][$mat_cols-1], $acc, acc_start_idx.try_into().unwrap());
+
                     entries_used += 2;
                 }
-                else {
-                    entries_used += 1;
-                } 
+
+
+                //println!("Counter: {}", counter);    
             }
         }
     }};
