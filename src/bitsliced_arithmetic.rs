@@ -3,7 +3,6 @@
     Much of this code is adapted from the original C implementation to fit our Rust implementation for doing bitsliced arithmetic 
 */
 use crate::constants::{M, O, V};
-use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo1, safe_mul_add_bitsliced_m_vec_mayo1_new};
 
 
 
@@ -31,7 +30,6 @@ macro_rules! bitsliced_mat_mul_mat_add {
                  // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
                 for k in 0..$mat_cols {
                     let bs_mat_start_idx_1 = entries_used * U32_PER_IDX;
-                    let bs_mat_start_idx_2 = (entries_used * U32_PER_IDX)+8;
                     let acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
                     
                     safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), 8, $mat[c][k], $mat[c+1][k], $acc, acc_start_idx.try_into().unwrap());
@@ -71,16 +69,6 @@ macro_rules! transposed_mat_mul_bitsliced_mat_addxD {
                     safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r], $mat[c+1][r], $acc, acc_start_idx.try_into().unwrap());
                 }
             }
-
-            /* if r % 2 == 1 { // If the current row is odd, use process one inner product at a time
-                for k in 0..$bs_mat_cols {
-                    let bs_mat_start_idx = (($mat_rows-1) * $bs_mat_cols + k) * U32_PER_IDX;
-                    let acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
-
-                    //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx);
-                    safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[$mat_rows-1][r], $acc, acc_start_idx.try_into().unwrap());
-                }
-            } */
         }
     }};
 }
@@ -200,25 +188,6 @@ macro_rules! upper {
 }
 
 
-// #[macro_export]
-// macro_rules! mat_mul_bitsliced_mat_add {
-//     ($mat:expr, $bs_mat:expr, $acc:expr, $mat_rows:expr, $mat_cols:expr, $bs_mat_cols:expr) => {{
-//         for r in 0..$mat_rows {
-//             for c in 0..$mat_cols {
-//                 for k in 0..$bs_mat_cols { // Iterate over all elements in the bitsliced matrix column
-//                     let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
-//                     let acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
-
-//                     //mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx, $mat[r][c], $acc, acc_start_idx);
-//                     safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[r][c], $acc, acc_start_idx.try_into().unwrap());
-//                 }
-//             }
-//         }
-//     }};
-// }
-
-
-
 
 #[macro_export]
 macro_rules! mat_mul_bitsliced_mat_add {
@@ -230,7 +199,7 @@ macro_rules! mat_mul_bitsliced_mat_add {
                 for k in (0..$bs_mat_cols) { // Iterate over all elements in the bitsliced matrix column
                     let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
                     let acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
-                    //mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx, $mat[r][c], $acc, acc_start_idx);
+                    
                     safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), offset.try_into().unwrap(), $mat[r][c] , $mat[r][c+1],  $acc, acc_start_idx.try_into().unwrap());
                     //safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[r][c], $acc, acc_start_idx.try_into().unwrap());
                 }
