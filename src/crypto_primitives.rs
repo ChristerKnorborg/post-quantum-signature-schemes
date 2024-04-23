@@ -1,4 +1,4 @@
-use crate::assembly::arm_instructions::{mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1 , mul_add_bitsliced_m_vec_mayo1_new};
+use crate::assembly::arm_instructions::{mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
 use crate::genkat::bindings;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
@@ -121,8 +121,12 @@ pub fn safe_mul_add_bitsliced_m_vec_mayo1(input: &[u32], input_start: i32, input
     unsafe { mul_add_bitsliced_m_vec_mayo1(input.as_ptr(), input_start, input_offset, nibble1, nibble2, acc.as_mut_ptr(), acc_start) }
 }
 
-pub fn safe_mul_add_bitsliced_m_vec_mayo1_new(input: &[u32], input_start_1: i32 , input_start_2 : i32, nibble1: u8, nibble2: u8, acc: &mut [u32], acc_start_1: i32 , acc_start_2 : i32){
-    unsafe { mul_add_bitsliced_m_vec_mayo1_new(input.as_ptr(), input_start_1 ,input_start_2, nibble1, nibble2, acc.as_mut_ptr(), acc_start_1 , acc_start_2) }
+pub fn safe_mul_add_bitsliced_m_vec_mayo3(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
+    unsafe { mul_add_bitsliced_m_vec_mayo3(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
+}
+
+pub fn safe_mul_add_bitsliced_m_vec_mayo5(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
+    unsafe { mul_add_bitsliced_m_vec_mayo5(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
 }
 
 

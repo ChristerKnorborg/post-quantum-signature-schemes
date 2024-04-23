@@ -18,8 +18,10 @@ macro_rules! bitsliced_mat_mul_mat_add {
 
         let mut entries_used = 0;
 
-        for r in 0..$bs_mat_rows {
+        for r in 0..$bs_mat_rows { 
 
+            #[cfg(any(feature = "mayo1", feature = "mayo2"))]
+            {
             // Only iterate upper half if upper triangular. If the current column is odd, do not pack two nibbles in the last column.
             let c_start = if $upper_triangular { r } else { 0 }; 
             let odd_cols_in_row = ($bs_mat_cols - c_start) % 2 == 1;
@@ -31,8 +33,11 @@ macro_rules! bitsliced_mat_mul_mat_add {
                 for k in 0..$mat_cols {
                     let bs_mat_start_idx_1 = entries_used * U32_PER_IDX;
                     let acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
+
+                        // Code to run when the feature flag "mayo1" is enabled
+                        safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), 8, $mat[c][k], $mat[c+1][k], $acc, acc_start_idx.try_into().unwrap());
+            
                     
-                    safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), 8, $mat[c][k], $mat[c+1][k], $acc, acc_start_idx.try_into().unwrap());
                     //safe_mul_add_bitsliced_m_vec_mayo1_new(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(),bs_mat_start_idx_2.try_into().unwrap(), $mat[c][k], $mat[c+1][k], $acc, acc_start_idx.try_into().unwrap(), acc_start_idx.try_into().unwrap());
                 }
                 entries_used += 2;
@@ -44,11 +49,42 @@ macro_rules! bitsliced_mat_mul_mat_add {
                     let bs_mat_start_idx = entries_used * U32_PER_IDX;
                     let acc_start_idx = (r * $mat_cols + k) * U32_PER_IDX;
 
-                    safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[$bs_mat_cols-1][k], $acc, acc_start_idx.try_into().unwrap());
+                        // Code to run when the feature flag "mayo1" is enabled
+                        safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[$bs_mat_cols-1][k], $acc, acc_start_idx.try_into().unwrap());
                 }
                 entries_used += 1;
             }
         }
+    
+        #[cfg(any(feature = "mayo3", feature = "mayo5"))]
+        {
+            // Only iterate upper half if upper triangular. If the current column is odd, do not pack two nibbles in the last column.
+            let c_start = if $upper_triangular { r } else { 0 }; 
+
+            for c in (c_start..$bs_mat_cols) {
+                 // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+                for k in 0..$mat_cols {
+                    let bs_mat_start_idx_1 = entries_used * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_cols + k ) * U32_PER_IDX;
+
+                    #[cfg(feature = "mayo3")]
+                    {
+                        // Code to run when the feature flag "mayo1" is enabled
+                        safe_mul_add_bitsliced_m_vec_mayo3(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), $mat[c][k], $acc, acc_start_idx.try_into().unwrap());
+                    }
+                    
+                    #[cfg(feature = "mayo5")]
+                    {
+                        // Code to run when the feature flag "mayo1" is enabled
+                        safe_mul_add_bitsliced_m_vec_mayo5(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), $mat[c][k], $acc, acc_start_idx.try_into().unwrap());
+                    }
+                    
+                }
+                entries_used += 1;
+            }
+
+        }
+    }
     }};
 }
 
@@ -60,6 +96,10 @@ macro_rules! transposed_mat_mul_bitsliced_mat_addxD {
     ($mat:expr, $bs_mat:expr, $acc:expr, $mat_rows:expr, $mat_cols:expr, $bs_mat_cols:expr) => {{
 
         for r in (0..$mat_cols) { // Switched rows and cols iteration to transpose mat
+
+
+            #[cfg(any(feature = "mayo1", feature = "mayo2"))]
+            {
             for c in (0..$mat_rows).step_by(2) {
                 for k in 0..$bs_mat_cols {
                     let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
@@ -70,6 +110,31 @@ macro_rules! transposed_mat_mul_bitsliced_mat_addxD {
                 }
             }
         }
+
+
+
+        #[cfg(any(feature = "mayo5", feature = "mayo3"))]{
+            for c in (0..$mat_rows) {
+                for k in 0..$bs_mat_cols {
+                    let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
+                    let acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
+
+                    #[cfg(feature = "mayo5")]{
+                    //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx);
+                    safe_mul_add_bitsliced_m_vec_mayo5(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r], $acc, acc_start_idx.try_into().unwrap());
+               
+               
+                    }
+                    #[cfg(feature = "mayo3")]{
+                        //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx);
+                        safe_mul_add_bitsliced_m_vec_mayo3(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r], $acc, acc_start_idx.try_into().unwrap());
+                    
+                    
+                    }
+            }
+        }
+        }
+    }
     }};
 }
 
@@ -79,35 +144,64 @@ macro_rules! transposed_mat_mul_bitsliced_mat_add {
     ($mat:expr, $bs_mat:expr, $acc:expr, $mat_rows:expr, $mat_cols:expr, $bs_mat_cols:expr) => {{
 
         let offset = $bs_mat_cols * U32_PER_IDX;  // Calculate the index in the bitsliced matrix
+        let odd_cols_in_row = $mat_rows % 2 == 1;
 
 
         // Ensure we only process pairs of rows, assuming $mat_rows is even
         for r in 0..$mat_cols {  // Transpose means we treat each column of $mat as a row
 
-            let odd_cols_in_row = $mat_rows % 2 == 1;
 
-            for c in (0..$mat_rows).step_by(2) {  // Step by 2 to handle two rows at a time
+            #[cfg(any(feature = "mayo1", feature = "mayo2"))]
+            {
+                for c in (0..$mat_rows).step_by(2) {  // Step by 2 to handle two rows at a time
+                    for k in 0..$bs_mat_cols {
+                        let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
+                        let acc_start_idx_1 = (r * $bs_mat_cols + k) * U32_PER_IDX;  // Calculate the index in the accumulator matrix
+    
+    
+                        // Call the function that handles two indexes at a time
+                        safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), offset.try_into().unwrap(), $mat[c][r] , $mat[c+1][r],  $acc, acc_start_idx_1.try_into().unwrap());
+                        //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx_1);
+                        //safe_mul_add_bitsliced_m_vec_mayo1_new(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r], $mat[c+1][r], $acc, acc_start_idx_1.try_into().unwrap(), acc_start_idx_2.try_into().unwrap());
+                    }
+    
+                    if odd_cols_in_row {
+                        for k in 0..$mat_cols {
+                            let bs_mat_start_idx = (($mat_rows-1) * $bs_mat_cols + k) * U32_PER_IDX;
+                            let acc_start_idx = (r * $mat_cols + k) * U32_PER_IDX;
+        
+                            safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[$mat_rows-1][r], $acc, acc_start_idx.try_into().unwrap());
+                        }
+                    }
+                
+                }
+            }
+
+
+            #[cfg(any(feature = "mayo3", feature = "mayo5"))]{
+
+            for c in (0..$mat_rows) {  // Step by 2 to handle two rows at a time
                 for k in 0..$bs_mat_cols {
                     let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
                     let acc_start_idx_1 = (r * $bs_mat_cols + k) * U32_PER_IDX;  // Calculate the index in the accumulator matrix
 
+                    #[cfg(feature = "mayo3")]
+                    {
+                        safe_mul_add_bitsliced_m_vec_mayo3(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r],  $acc, acc_start_idx_1.try_into().unwrap());
+                    }    
 
-                    // Call the function that handles two indexes at a time
-                    safe_mul_add_bitsliced_m_vec_mayo1(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), offset.try_into().unwrap(), $mat[c][r] , $mat[c+1][r],  $acc, acc_start_idx_1.try_into().unwrap());
-                    //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx_1);
-                    //safe_mul_add_bitsliced_m_vec_mayo1_new(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r], $mat[c+1][r], $acc, acc_start_idx_1.try_into().unwrap(), acc_start_idx_2.try_into().unwrap());
-                }
-
-                if odd_cols_in_row {
-                    for k in 0..$mat_cols {
-                        let bs_mat_start_idx = (($mat_rows-1) * $bs_mat_cols + k) * U32_PER_IDX;
-                        let acc_start_idx = (r * $mat_cols + k) * U32_PER_IDX;
-    
-                        safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[$mat_rows-1][r], $acc, acc_start_idx.try_into().unwrap());
-                    }
+                    #[cfg(feature = "mayo5")]
+                    {
+                        safe_mul_add_bitsliced_m_vec_mayo5(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r],  $acc, acc_start_idx_1.try_into().unwrap());
+                    }                    
+                    
                 }
             
             }
+        }
+
+
+            
         }
     }};
 }
@@ -119,6 +213,9 @@ macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
 
         let mut entries_used = 0;
         for r in 0..$bs_mat_rows {
+
+            #[cfg(any(feature = "mayo1", feature = "mayo2"))]
+            {
             // Only iterate upper half if upper triangular. If the current column is odd, do not pack two nibbles in the last column.
             let c_start = r; 
             let odd_cols_in_row = ($bs_mat_cols - c_start) % 2 == 1;
@@ -146,7 +243,33 @@ macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
                 }
                 entries_used += 1;
             }
-        }  
+        }
+        #[cfg(any(feature = "mayo3", feature = "mayo5"))]
+        {  
+            
+            for c in (r..$bs_mat_cols) {
+                 // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+                for k in 0..$mat_rows {
+                    let bs_mat_start_idx_1 = entries_used * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_rows + k ) * U32_PER_IDX;
+                    
+                    #[cfg(feature = "mayo3")]
+                    {
+                        // Code to run when the feature flag "mayo1" is enabled
+                        safe_mul_add_bitsliced_m_vec_mayo3(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), $mat[k][c], $acc, acc_start_idx.try_into().unwrap());
+                    }
+                    #[cfg(feature = "mayo5")]
+                    {
+                        // Code to run when the feature flag "mayo1" is enabled
+                        safe_mul_add_bitsliced_m_vec_mayo5(&$bs_mat, bs_mat_start_idx_1.try_into().unwrap(), $mat[k][c], $acc, acc_start_idx.try_into().unwrap());
+                    }
+                }
+                entries_used += 1;
+            }
+            
+    }
+
+}
      }};
 }
 
@@ -195,6 +318,9 @@ macro_rules! mat_mul_bitsliced_mat_add {
         let offset = $bs_mat_cols * U32_PER_IDX;
 
         for r in 0..$mat_rows {
+            
+            #[cfg(any(feature = "mayo1", feature = "mayo2"))]
+            {  
             for c in (0..$mat_cols).step_by(2) {
                 for k in (0..$bs_mat_cols) { // Iterate over all elements in the bitsliced matrix column
                     let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
@@ -205,6 +331,26 @@ macro_rules! mat_mul_bitsliced_mat_add {
                 }
             }
         }
+        #[cfg(any(feature = "mayo3", feature = "mayo5"))]
+        {  
+            for c in (0..$mat_cols) {
+                for k in (0..$bs_mat_cols) { // Iterate over all elements in the bitsliced matrix column
+                    let bs_mat_start_idx = (c * $bs_mat_cols + k) * U32_PER_IDX;
+                    let acc_start_idx = (r * $bs_mat_cols + k) * U32_PER_IDX;
+                    
+                    #[cfg(feature = "mayo3")]
+                    {  
+                        safe_mul_add_bitsliced_m_vec_mayo3(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[r][c],  $acc, acc_start_idx.try_into().unwrap());
+                    }
+                    #[cfg(feature = "mayo5")]
+                    {  
+                        safe_mul_add_bitsliced_m_vec_mayo5(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[r][c],  $acc, acc_start_idx.try_into().unwrap());
+                    }
+                    //safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[r][c], $acc, acc_start_idx.try_into().unwrap());
+                }
+            }
+        }
+    }
     }};
 }
 

@@ -190,11 +190,40 @@ void mul_add_bitsliced_m_vec_mayo3(u_int32_t *input, u_int32_t input_start, u_in
         acc2 = veorq_u32(acc2, vandq_u32(n3, b));
         acc3 = veorq_u32(acc3, vandq_u32(n3, a));
 
-        // Store results back to acc array as uint32x2_t
-        vst1q_u32(&acc[acc_start], acc0);
-        vst1q_u32(&acc[acc_start + u_32_per_term], acc1);
-        vst1q_u32(&acc[acc_start + 2 * u_32_per_term], acc2);
-        vst1q_u32(&acc[acc_start + 3 * u_32_per_term], acc3); 
+                // Store results back to acc array as uint32x2_t
+    acc[acc_start] = vgetq_lane_u32(acc0, 0);
+    acc[acc_start + 1] = vgetq_lane_u32(acc0, 1);
+    acc[acc_start + 2] = vgetq_lane_u32(acc0, 2);
+
+    acc[acc_start + 3] = vgetq_lane_u32(acc1, 0);
+    acc[acc_start + 4] = vgetq_lane_u32(acc1, 1);
+    acc[acc_start + 5] = vgetq_lane_u32(acc1, 2);
+
+    acc[acc_start + 6] = vgetq_lane_u32(acc2, 0);
+    acc[acc_start + 7] = vgetq_lane_u32(acc2, 1);
+    acc[acc_start + 8] = vgetq_lane_u32(acc2, 2);
+
+    acc[acc_start + 9] = vgetq_lane_u32(acc3, 0);
+    acc[acc_start + 10] = vgetq_lane_u32(acc3, 1);
+    acc[acc_start + 11] = vgetq_lane_u32(acc3, 2);
+
+// //Store the first three lanes of each accumulator vector back to the acc array
+// vst1q_lane_u32(&acc[acc_start], acc0, 0);
+// vst1q_lane_u32(&acc[acc_start + 1], acc0, 1);
+// acc[acc_start + 2] = vgetq_lane_u32(acc0, 2);  // Correctly storing the 3rd element
+
+// vst1q_lane_u32(&acc[acc_start + u_32_per_term], acc1, 0);
+// vst1q_lane_u32(&acc[acc_start + u_32_per_term + 1], acc1, 1);
+// acc[acc_start + u_32_per_term + 2] = vgetq_lane_u32(acc1, 2); // Correctly storing the 3rd element
+
+// vst1q_lane_u32(&acc[acc_start + 2 * u_32_per_term], acc2, 0);
+// vst1q_lane_u32(&acc[acc_start + 2 * u_32_per_term + 1], acc2, 1);
+// acc[acc_start + 2 * u_32_per_term + 2] = vgetq_lane_u32(acc2, 2); // Correctly storing the 3rd element
+
+// vst1q_lane_u32(&acc[acc_start + 3 * u_32_per_term], acc3, 0);
+// vst1q_lane_u32(&acc[acc_start + 3 * u_32_per_term + 1], acc3, 1);
+// acc[acc_start + 3 * u_32_per_term + 2] = vgetq_lane_u32(acc3, 2); // Correctly storing the 3rd element
+
 }
 
 
