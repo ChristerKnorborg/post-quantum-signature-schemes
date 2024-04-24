@@ -24,7 +24,7 @@ void upper(u_int8_t *matrix, int o) {
     }
 }
 
-void xor(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
+void matrix_add(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
     int i;
 
     for (i = 0; i < ((n) & ~7); i+=8) {
@@ -150,7 +150,7 @@ void calculate_p3(u_int8_t *result, u_int8_t *o, u_int8_t *p1, u_int8_t *p2, int
     
     // Calculate P1*O + P2
     u_int8_t *temp2 =  (u_int8_t *)malloc(param_v * param_o * param_m * sizeof(u_int8_t));
-    xor(temp2, temp, p2, param_v*param_o*param_m);
+    matrix_add(temp2, temp, p2, param_v*param_o*param_m);
     // XOR_registers(temp, p2, param_v*param_o);
  
     for (int matrix = 0; matrix < param_m; matrix++) {
@@ -160,26 +160,4 @@ void calculate_p3(u_int8_t *result, u_int8_t *o, u_int8_t *p1, u_int8_t *p2, int
     
     }
 }
-
-
-
-
-
-/* void test_neon() {
-    // Test cases
-    u_int8_t a[] = {2, 3, 3, 4, 10};
-    u_int8_t b[] = {5, 6, 10, 8, 5};
-    u_int8_t result[5];
-    int n = 5;
-
-    printf("Array a: ");
-    print_array(a, n);
-    printf("Array b: ");
-    print_array(b, n);
-
-    vmull_values(result, a, b, n);
-
-    printf("Result: ");
-    print_f(result, n);
-}*/ 
 

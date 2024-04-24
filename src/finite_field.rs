@@ -78,12 +78,15 @@ pub fn div(x: u8, y: u8) -> u8 {
 #[macro_export]
 macro_rules! matrix_add {
     ($a:expr, $b:expr, $rows:expr, $cols:expr) => {{
-        for i in 0..$rows {
-            for j in 0..$cols {
-                $a[i][j] = add($a[i][j], $b[i][j]); // Perform addition directly on matrix a
-            }
-        }
-        $a // Return the modified matrix a as the result
+        // for i in 0..$rows {
+        //     for j in 0..$cols {
+        //         $a[i][j] = add($a[i][j], $b[i][j]); // Perform addition directly on matrix a
+        //     }
+        // }
+        // $a // Return the modified matrix a as the result
+        let mut result = [[0u8; $cols]; $rows];
+        safe_matrix_add(&mut result, $a, $b, $rows * $cols);
+        result
     }};
 }
 
@@ -149,9 +152,8 @@ macro_rules! vector_mul {
 
         let mut result = 0u8;
 
-        for i in 0..$LEN {
-            result = add(result, mul($a[i], $b[i]));
-        }
+        safe_inner_product(result, $a, $b, $LEN.try_into().unwrap());
+
         result
     }};
 }
@@ -170,6 +172,23 @@ macro_rules! transpose_matrix_array {
             }
         }
         transposed
+    }};
+}
+
+#[macro_export]
+macro_rules! transpose_matrix_array_single {
+    ($matrix:expr, $rows:expr, $cols:expr) => {{
+        let mut output = [0u8; $rows * $cols]; // Initialize the output array
+
+        for y in 0..$rows {
+            for x in 0..$cols {
+                let input_index: usize = y * $cols + x; // Calculate index in the input flat array
+                let output_index: usize = x * $rows + y; // Calculate index in the output flat array
+                output[output_index] = $matrix[input_index];
+            }
+        }
+
+        output
     }};
 }
 

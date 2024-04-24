@@ -1,5 +1,5 @@
 use std::vec;
-use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256, safe_matrix_add, safe_inner_product};
 use crate::finite_field::{add, calculate_p3, mul};
 use crate::sample::sample_solution;
 
@@ -8,7 +8,7 @@ use crate::constants::{
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_to_matrix, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, transpose_matrix_array_single, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
 
@@ -136,12 +136,12 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     for i in 0..M {
 
         // P1^T + P1
-        let mut added_p1 = transpose_matrix_array!(p1[i], V, V);
-        added_p1 = matrix_add!(added_p1, p1[i], V, V); 
+        let mut added_p1 = transpose_matrix_array_single!(p1[i], V, V);
+        added_p1 = matrix_add!(added_p1.as_slice(), p1[i], V, V); 
 
         // (P1 + P^T) i )*O + P2
         let mut temp = matrix_mul!(added_p1, V, V, o, O);
-        let temp = matrix_add!(temp, p2[i], V, O);
+        let temp = matrix_add!(temp.as_slice(), p2[i], V, O);
 
         l[i] = temp;
     }
@@ -310,7 +310,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
             let mut vi_p_vi = [0u8 ; M];
             for a in 0..M {
                 vi_p[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                vi_p_vi[a] = vector_mul!(vi_p[a], v[i], V); // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
+                vi_p_vi[a] = vector_mul!(&vi_p[a], &v[i], V); // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
             }
 
             for j in (i..K).rev() {
@@ -325,10 +325,10 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
                     for a in 0..M {
 
                         // Calculate v_i*P*v_j
-                        let left_term = vector_mul!(vi_p[a], v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
+                        let left_term = vector_mul!(&vi_p[a], &v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
 
                         let vj_p = vector_transposed_matrix_mul!(v[j], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
-                        let right_term = vector_mul!(vj_p, v[i], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
+                        let right_term = vector_mul!(&vj_p, &v[i], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
 
                         u[a] = add(left_term, right_term); 
                     }
@@ -472,7 +472,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
         for a in 0..M {
 
             si_p[a] = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
-            si_p_si[a] = vector_mul!(si_p[a], s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
+            si_p_si[a] = vector_mul!(&si_p[a], &s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
         }
 
         for j in (i..K).rev() {
@@ -485,10 +485,10 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
                     u[a] =  si_p_si[a];
 
                 } else {
-                    let left_term = vector_mul!(si_p[a], s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
+                    let left_term = vector_mul!(&si_p[a], &s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
 
                     let sj_p = vector_transposed_matrix_mul!(s_matrix[j], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
-                    let right_term = vector_mul!(sj_p, s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
+                    let right_term = vector_mul!(&sj_p, &s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
                     u[a] = add(left_term, right_term);
                 }
