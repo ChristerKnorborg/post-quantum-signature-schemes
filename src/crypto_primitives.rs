@@ -1,4 +1,4 @@
-use crate::assembly::arm_instructions::{mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
+use crate::assembly::arm_instructions::{encode_bit_sliced_array_mayo12, mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
 use crate::genkat::bindings;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
@@ -130,7 +130,7 @@ pub fn safe_mul_add_bitsliced_m_vec_mayo5(input: &[u32], input_start: i32, nibbl
 }
 
 
-pub fn safe_encode_bit_sliced_array_mayo12(input: &[u8], output: &[u32], matrices: i32){
+pub fn safe_encode_bit_sliced_array_mayo12(input: &mut [u8], output: &mut [u8], matrices: i32){
     unsafe { encode_bit_sliced_array_mayo12(input.as_mut_ptr() , output.as_mut_ptr() , matrices) }
 }
 

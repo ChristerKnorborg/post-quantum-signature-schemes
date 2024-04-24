@@ -285,66 +285,80 @@ void mul_add_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t n
 
 
 
-void encode_bit_sliced_array_mayo12(u_int8_t *input, u_int32_t *output, int matrices) {
+void encode_bit_sliced_array_mayo12(u_int8_t *input, u_int8_t *output, int matrices) {
         
-        uint64_t* input_u64 = (uint64_t*) input;
+        uint32_t* input_u32 = (uint32_t*) input;
 
         // Load 64 bits directly into 64-bit NEON registers
-        uint64x1_t A0 = vld1_u64(&input_u64[0]); // Load the first 64 bits
-        uint64x1_t A1 = vld1_u64(&input_u64[1]); // Load the second 64 bits
-        uint64x1_t A2 = vld1_u64(&input_u64[2]); // Load the third 64 bits
-        uint64x1_t A3 = vld1_u64(&input_u64[3]); // Load the fourth 64 bits
+        uint32x2_t A0 = vld1_u32(&input_u32[0]); // Load the first 64 bits
+        uint32x2_t A1 = vld1_u32(&input_u32[1]); // Load the second 64 bits
+        uint32x2_t A2 = vld1_u32(&input_u32[2]); // Load the third 64 bits
+        uint32x2_t A3 = vld1_u32(&input_u32[3]); // Load the fourth 64 bits
+
+
+        // uint8_t* output_u8 = (uint8_t*) output;
+        // vst1_u8(&output_u8[0], vreinterpret_u8_u64(A0));    // Store 8 bytes of A0_prime
+        // vst1_u8(&output_u8[8], vreinterpret_u8_u64(A1));    // Store 8 bytes of A1_prime
+        // vst1_u8(&output_u8[16], vreinterpret_u8_u64(A2));   // Store 8 bytes of A2_prime
+        // vst1_u8(&output_u8[24], vreinterpret_u8_u64(A3));   // Store 8 bytes of A3_prime
     
 
         // Create a 64-bit NEON register with the constant pattern
-        uint64x1_t mask1  = vdup_n_u64(0x1111111111111111);
-        uint64x1_t mask2  = vdup_n_u64(0x2222222222222222);
-        uint64x1_t mask4  = vdup_n_u64(0x4444444444444444);
-        uint64x1_t mask8  = vdup_n_u64(0x8888888888888888);
+        uint32x2_t mask1  = vdup_n_u32(0x11111111);
+        uint32x2_t mask2  = vdup_n_u32(0x22222222);
+        uint32x2_t mask4  = vdup_n_u32(0x44444444);
+        uint32x2_t mask8  = vdup_n_u32(0x88888888);
 
 
 
         // Bitwise AND and OR operations
-        uint64x1_t A0_prime = vand_u64(A0, mask1);
-        uint64x1_t A3_prime = vand_u64(A1, mask1);
-        A0_prime = vorr_u64(A0_prime, vshl_n_u64(A3_prime, 1));
-        A3_prime = vand_u64(A2, mask1);
-        A0_prime = vorr_u64(A0_prime, vshl_n_u64(A3_prime, 2));
-        A3_prime = vand_u64(A3, mask1);
-        A0_prime = vorr_u64(A0_prime, vshl_n_u64(A3_prime, 3));
+        uint32x2_t A0_prime = vand_u32(A0, mask1);
+        uint32x2_t A3_prime = vand_u32(A1, mask1);
+        A0_prime = vorr_u32(A0_prime, vshl_n_u32(A3_prime, 1));
+        A3_prime = vand_u32(A2, mask1);
+        A0_prime = vorr_u32(A0_prime, vshl_n_u32(A3_prime, 2));
+        A3_prime = vand_u32(A3, mask1);
+        A0_prime = vorr_u32(A0_prime, vshl_n_u32(A3_prime, 3));
 
-        uint64x1_t A1_prime = vand_u64(A1, mask2);
-        A3_prime = vand_u64(A0, mask2);
-        A1_prime = vorr_u64(A1_prime, vshr_n_u64(A3_prime, 1));
-        A3_prime = vand_u64(A2, mask2);
-        A1_prime = vorr_u64(A1_prime, vshl_n_u64(A3_prime, 1));
-        A3_prime = vand_u64(A3, mask2);
-        A1_prime = vorr_u64(A1_prime, vshl_n_u64(A3_prime, 2));
+        uint32x2_t A1_prime = vand_u32(A1, mask2);
+        A3_prime = vand_u32(A0, mask2);
+        A1_prime = vorr_u32(A1_prime, vshr_n_u32(A3_prime, 1));
+        A3_prime = vand_u32(A2, mask2);
+        A1_prime = vorr_u32(A1_prime, vshl_n_u32(A3_prime, 1));
+        A3_prime = vand_u32(A3, mask2);
+        A1_prime = vorr_u32(A1_prime, vshl_n_u32(A3_prime, 2));
 
-        uint64x1_t A2_prime = vand_u64(A2, mask4);
-        A3_prime = vand_u64(A0, mask4);
-        A2_prime = vorr_u64(A2_prime, vshr_n_u64(A3_prime, 2));
-        A3_prime = vand_u64(A1, mask4);
-        A2_prime = vorr_u64(A2_prime, vshr_n_u64(A3_prime, 1));
-        A3_prime = vand_u64(A3, mask4);
-        A2_prime = vorr_u64(A2_prime, vshl_n_u64(A3_prime, 1));
+        uint32x2_t A2_prime = vand_u32(A2, mask4);
+        A3_prime = vand_u32(A0, mask4);
+        A2_prime = vorr_u32(A2_prime, vshr_n_u32(A3_prime, 2));
+        A3_prime = vand_u32(A1, mask4);
+        A2_prime = vorr_u32(A2_prime, vshr_n_u32(A3_prime, 1));
+        A3_prime = vand_u32(A3, mask4);
+        A2_prime = vorr_u32(A2_prime, vshl_n_u32(A3_prime, 1));
 
-        A3_prime = vand_u64(A3, mask8);
-        A3       = vand_u64(A0, mask8);
-        A3_prime = vorr_u64(A3_prime, vshr_n_u64(A3, 3));
-        A3       = vand_u64(A1, mask8);
-        A3_prime = vorr_u64(A3_prime, vshr_n_u64(A3, 2));
-        A3       = vand_u64(A2, mask8);
-        A3_prime = vorr_u64(A3_prime, vshr_n_u64(A3, 1));
+        A3_prime = vand_u32(A3, mask8);
+        A3       = vand_u32(A0, mask8);
+        A3_prime = vorr_u32(A3_prime, vshr_n_u32(A3, 3));
+        A3       = vand_u32(A1, mask8);
+        A3_prime = vorr_u32(A3_prime, vshr_n_u32(A3, 2));
+        A3       = vand_u32(A2, mask8);
+        A3_prime = vorr_u32(A3_prime, vshr_n_u32(A3, 1));
 
 
         // Store results back to the output array
-        // Convert output to a pointer to uint64_t for correct data assignment
-        uint64_t* output_u64 = (uint64_t*) output;
-        vst1_u64(&output_u64[0], A0_prime);
-        vst1_u64(&output_u64[1], A1_prime);
-        vst1_u64(&output_u64[2], A2_prime);
-        vst1_u64(&output_u64[3], A3_prime);
+        uint8_t* output_u8 = (uint8_t*) output;
+        vst1_u8(&output_u8[0], vreinterpret_u8_u32(A0_prime));    // Store 8 bytes of A0_prime
+        vst1_u8(&output_u8[4], vreinterpret_u8_u32(A1_prime));    // Store 8 bytes of A1_prime
+        vst1_u8(&output_u8[8], vreinterpret_u8_u32(A2_prime));   // Store 8 bytes of A2_prime
+        vst1_u8(&output_u8[12], vreinterpret_u8_u32(A3_prime));   // Store 8 bytes of A3_prime
+
+        // uint8_t* output_u8 = (uint8_t*) output;
+        // vst1_u8(&output_u8[0], vreinterpret_u8_u32(vget_get_lane(A0_prime, 0)));    // Store 8 bytes of A0_prime
+        // vst1_u8(&output_u8[4], vreinterpret_u8_u32(vget_get_lane(A1_prime, 0)));    // Store 8 bytes of A1_prime
+        // vst1_u8(&output_u8[8], vreinterpret_u8_u32(vget_get_lane(A2_prime, 0)));   // Store 8 bytes of A2_prime
+        // vst1_u8(&output_u8[12], vreinterpret_u8_u32(vget_get_lane(A3_prime, 0)));   // Store 8 bytes of A3_prime
+
+        // output_u8[0] = (u_int8_t) vget_get_lane(A0_prime, 0) & 0xFF;
 }
 
 
