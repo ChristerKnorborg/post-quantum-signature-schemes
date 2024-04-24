@@ -222,7 +222,6 @@ void mul_add_bitsliced_m_vec_mayo1(u_int32_t *input, u_int32_t input_start, u_in
 
 
 
-
 // First method for MAYO1 and MAYO2 - works similarly to thoes of MAYO3 and MAYO5
 void mul_add_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
     
@@ -281,4 +280,80 @@ void mul_add_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t n
         vst1_u32(&acc[acc_start + 2 * u_32_per_term], acc2); // Stores at index acc_start + 4
         vst1_u32(&acc[acc_start + 3 * u_32_per_term], acc3); // Stores at index acc_start + 6
 }
+
+
+
+
+
+void encode_bit_sliced_array_mayo12(u_int8_t *input, u_int32_t *output, int matrices) {
+        
+        uint64_t* input_u64 = (uint64_t*) input;
+
+        // Load 64 bits directly into 64-bit NEON registers
+        uint64x1_t A0 = vld1_u64(&input_u64[0]); // Load the first 64 bits
+        uint64x1_t A1 = vld1_u64(&input_u64[1]); // Load the second 64 bits
+        uint64x1_t A2 = vld1_u64(&input_u64[2]); // Load the third 64 bits
+        uint64x1_t A3 = vld1_u64(&input_u64[3]); // Load the fourth 64 bits
+    
+
+        // Create a 64-bit NEON register with the constant pattern
+        uint64x1_t mask1  = vdup_n_u64(0x1111111111111111);
+        uint64x1_t mask2  = vdup_n_u64(0x2222222222222222);
+        uint64x1_t mask4  = vdup_n_u64(0x4444444444444444);
+        uint64x1_t mask8  = vdup_n_u64(0x8888888888888888);
+
+
+
+        // Bitwise AND and OR operations
+        uint64x1_t A0_prime = vand_u64(A0, mask1);
+        uint64x1_t A3_prime = vand_u64(A1, mask1);
+        A0_prime = vorr_u64(A0_prime, vshl_n_u64(A3_prime, 1));
+        A3_prime = vand_u64(A2, mask1);
+        A0_prime = vorr_u64(A0_prime, vshl_n_u64(A3_prime, 2));
+        A3_prime = vand_u64(A3, mask1);
+        A0_prime = vorr_u64(A0_prime, vshl_n_u64(A3_prime, 3));
+
+        uint64x1_t A1_prime = vand_u64(A1, mask2);
+        A3_prime = vand_u64(A0, mask2);
+        A1_prime = vorr_u64(A1_prime, vshr_n_u64(A3_prime, 1));
+        A3_prime = vand_u64(A2, mask2);
+        A1_prime = vorr_u64(A1_prime, vshl_n_u64(A3_prime, 1));
+        A3_prime = vand_u64(A3, mask2);
+        A1_prime = vorr_u64(A1_prime, vshl_n_u64(A3_prime, 2));
+
+        uint64x1_t A2_prime = vand_u64(A2, mask4);
+        A3_prime = vand_u64(A0, mask4);
+        A2_prime = vorr_u64(A2_prime, vshr_n_u64(A3_prime, 2));
+        A3_prime = vand_u64(A1, mask4);
+        A2_prime = vorr_u64(A2_prime, vshr_n_u64(A3_prime, 1));
+        A3_prime = vand_u64(A3, mask4);
+        A2_prime = vorr_u64(A2_prime, vshl_n_u64(A3_prime, 1));
+
+        A3_prime = vand_u64(A3, mask8);
+        A3       = vand_u64(A0, mask8);
+        A3_prime = vorr_u64(A3_prime, vshr_n_u64(A3, 3));
+        A3       = vand_u64(A1, mask8);
+        A3_prime = vorr_u64(A3_prime, vshr_n_u64(A3, 2));
+        A3       = vand_u64(A2, mask8);
+        A3_prime = vorr_u64(A3_prime, vshr_n_u64(A3, 1));
+
+
+        // Store results back to the output array
+        // Convert output to a pointer to uint64_t for correct data assignment
+        uint64_t* output_u64 = (uint64_t*) output;
+        vst1_u64(&output_u64[0], A0_prime);
+        vst1_u64(&output_u64[1], A1_prime);
+        vst1_u64(&output_u64[2], A2_prime);
+        vst1_u64(&output_u64[3], A3_prime);
+}
+
+
+
+
+void decode_bit_sliced_array (u_int8_t *input, u_int8_t *output, int matrices) {
+
+}
+
+
+
 

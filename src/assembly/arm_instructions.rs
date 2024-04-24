@@ -35,5 +35,14 @@ extern "C" {
         acc_start: ccty::c_int  // Using c_ulong for size compatibility
     );
 
+
+
+
+    pub fn encode_bit_sliced_array_mayo12
+    (
+        input:  *mut ccty::c_uchar,    
+        output: *mut ccty::c_uint,  // Pointer to const u32 for C compatibility
+        matrices: ccty::c_int,
+    );
 }
 
