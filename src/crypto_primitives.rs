@@ -123,8 +123,11 @@ pub fn safe_matrix_add(res: &mut [u8], a: &[u8], b: &[u8],  n: i32) {
     unsafe { arm_instructions::matrix_add(res.as_mut_ptr(), a.as_ptr(), b.as_ptr(), n)}
 }
 
-pub fn safe_inner_product(mut res: u8, a: &[u8], b: &[u8],  n: i32) {
+pub fn safe_inner_product(res: &mut u8, a: &[u8], b: &[u8],  n: i32) {
     unsafe { arm_instructions::inner_product(res, a.as_ptr(), b.as_ptr(), n)}
+}
+pub fn safe_p1_o_matrix_mult(res: &mut [u8], a: &[u8], b: &[u8],  rows_a: i32, cols_a: i32, cols_b: i32) {
+    unsafe { arm_instructions::p1_o_matrix_mult(res.as_mut_ptr(), a.as_ptr(), b.as_ptr(), rows_a, cols_a, cols_b)}
 }
 
 

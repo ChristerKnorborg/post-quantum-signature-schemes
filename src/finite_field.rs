@@ -84,8 +84,9 @@ macro_rules! matrix_add {
         //     }
         // }
         // $a // Return the modified matrix a as the result
-        let mut result = [[0u8; $cols]; $rows];
-        safe_matrix_add(&mut result, $a, $b, $rows * $cols);
+        
+        let mut result = [0u8; $cols * $rows];
+        safe_matrix_add(&mut result, $a, $b, ($rows * $cols).try_into().unwrap());
         result
     }};
 }
@@ -96,17 +97,36 @@ macro_rules! matrix_add {
 #[macro_export]
 macro_rules! matrix_mul {
     ($a:expr, $rows_a:expr, $cols_a:expr, $b:expr, $cols_b:expr) => {{
-        let mut result = [[0u8; $cols_b]; $rows_a];
+        // let mut result = [[0u8; $cols_b]; $rows_a];
 
-        for i in 0..$rows_a {
-            for j in 0..$cols_b {
-                for k in 0..$cols_a {
-                    // Take the dot product of the i-th row of A and the j-th column of B
-                    result[i][j] = add(result[i][j], mul($a[i][k], $b[k][j]));
+        // for i in 0..$rows_a {
+        //     for j in 0..$cols_b {
+        //         for k in 0..$cols_a {
+        //             // Take the dot product of the i-th row of A and the j-th column of B
+        //             result[i][j] = add(result[i][j], mul($a[i][k], $b[k][j]));
+        //         }
+        //     }
+        // }
+        // result
+        let mut result = [0u8; $cols_b * $rows_a];
+
+        // Temporary vector to hold one column of P2
+        let mut b_col = [0u8; $rows_a];
+    
+            // Iterate over each row of O (each representing a column of original O)
+            for r in 0..$rows_a {
+                for c in 0..$cols_a {
+        
+                    // Extract the column vector from P2
+                    for i in 0..$rows_a {
+                        b_col[i] = $b[i * $cols_a + c];
+                    }
+                    
+                    // Perform vector multiplication using vmull_values
+                    safe_inner_product(&mut result[r * $cols_a + c], &$a[r * $cols_b ..(r+1) * $cols_b], &b_col, $cols_b.try_into().unwrap()); // o_cols is equivalent to p2_rows
                 }
             }
-        }
-        result
+            result
     }};
 }
 
@@ -152,7 +172,10 @@ macro_rules! vector_mul {
 
         let mut result = 0u8;
 
-        safe_inner_product(result, $a, $b, $LEN.try_into().unwrap());
+        for i in 0..$LEN {
+            result = add(result, mul($a[i], $b[i]));
+        }
+        // safe_inner_product(&mut result, $a, $b, $LEN.try_into().unwrap());
 
         result
     }};

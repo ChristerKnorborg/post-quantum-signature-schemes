@@ -103,7 +103,7 @@ void inner_product(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
 
 
 
-void p1_o(u_int8_t *result, u_int8_t *a, u_int8_t *b, int rows_a, int cols_a, int cols_b) {
+void p1_o_matrix_mult(u_int8_t *result, u_int8_t *a, u_int8_t *b, int rows_a, int cols_a, int cols_b) {
 
     for (int r = 0; r < rows_a; r++) {
         for (int k = 0; k < cols_b; k++) { 
@@ -140,11 +140,8 @@ void calculate_p3(u_int8_t *result, u_int8_t *o, u_int8_t *p1, u_int8_t *p2, int
     for (int matrix = 0; matrix < param_m; matrix++) {
 
         // Calculate P1*O
-        p1_o(&temp[matrix * param_o*param_v], &p1[matrix * param_v*param_v], o, param_v, param_v, param_o); // Change to o_cols (now rows are given)
+        p1_o_matrix_mult(&temp[matrix * param_o*param_v], &p1[matrix * param_v*param_v], o, param_v, param_v, param_o); // Change to o_cols (now rows are given)
         
-        // for (int i = 0 ; i < param_v ; i++) {
-        //     innter_product_P1_O(&temp[matrix * (i*param_o)], &p1[matrix * (i*param_v)], o, param_v, param_o);
-        // } 
     }
 
     

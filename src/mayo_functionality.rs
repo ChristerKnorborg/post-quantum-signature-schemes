@@ -1,5 +1,5 @@
 use std::vec;
-use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256, safe_matrix_add, safe_inner_product};
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256, safe_matrix_add, safe_inner_product, safe_p1_o_matrix_mult};
 use crate::finite_field::{add, calculate_p3, mul};
 use crate::sample::sample_solution;
 
@@ -112,7 +112,8 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
     // Make O from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_bytestring_to_matrix!(o_bytes, V, O);
+    let o = decode_bytestring_to_matrix!(o_bytes, O, V);
+    let o_transposed = transform_transposed_o_array(o);
 
 
     //Derive P1 and P2 from pk_seed
@@ -127,26 +128,27 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     let p2_bytes = &p[P1_BYTES..];
 
 
-    let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);  // m p1 matrices are of size (n−o) × (n−o)
-    let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);  // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
-    let mut l = [[[0u8; O]; V]; M];                                  // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
+    let p1 = decode_bit_sliced_matrices_single_array!(p1_bytes, V, V, M, true);  // m p1 matrices are of size (n−o) × (n−o)
+    let p2 = decode_bit_sliced_matrices_single_array!(p2_bytes, V, O, M, false);  // m p2 matrices are of size (n−o) × o (not upper triangular matrices)
+    let mut l = [0u8; O * V * M];                                  // Allocate space for L_i in [m]. Size is (n−o) × o per matrix
     
 
     // Compute L matrices
     for i in 0..M {
 
         // P1^T + P1
-        let mut added_p1 = transpose_matrix_array_single!(p1[i], V, V);
-        added_p1 = matrix_add!(added_p1.as_slice(), p1[i], V, V); 
+        let mut added_p1 = transpose_matrix_array_single!(&p1[i * (V*V)..(i+1)*V*V], V, V);
+        added_p1 = matrix_add!(&added_p1, &p1[i*(V*V)..(i+1)*V*V], V, V); 
 
         // (P1 + P^T) i )*O + P2
-        let mut temp = matrix_mul!(added_p1, V, V, o, O);
-        let temp = matrix_add!(temp.as_slice(), p2[i], V, O);
+        let mut temp = [0u8 ; V*O];
+        safe_p1_o_matrix_mult(&mut temp, &added_p1, &o_transposed, V.try_into().unwrap(), V.try_into().unwrap(), O.try_into().unwrap()); //matrix_mul!(added_p1.as_slice(), V, V, o.as_slice(), O);
+        temp = matrix_add!(&temp, &p2[i * (O*V)..(i+1)*V*O], V, O);
 
-        l[i] = temp;
+        l[i * (O*V)..(i+1) * (O*V)].copy_from_slice(temp.as_slice());
     }
 
-    let encoded_l = encode_bit_sliced_matrices!(l, V, O, M, false, L_BYTES); // m matrices of size (n−o) × o
+    let encoded_l = encode_bit_sliced_matrices_single_array!(l, V, O, M, false, L_BYTES); // m matrices of size (n−o) × o
 
     // To follow the refference implementation append O_bytestring at the end
     // Do not add sk_seed to the expanded secret key
