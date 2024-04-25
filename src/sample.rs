@@ -1,7 +1,7 @@
 use crate::finite_field::{add, inv, mul, sub};
 use crate::constants::{M, K, O};
-use crate::{vec_add};
-use crate::crypto_primitives::{safe_matrix_add};
+use crate::vec_add;
+use crate::crypto_primitives::safe_matrix_add;
 
 
 

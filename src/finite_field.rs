@@ -90,22 +90,6 @@ macro_rules! matrix_add {
 
 #[macro_export]
 macro_rules! vector_matrix_mul {
-    ($a:expr, $b:expr, $vec_len:expr, $mat_cols:expr) => {{
-        let mut result = [0u8; $mat_cols];
-
-        for j in 0..$vec_len {
-            for k in 0..$mat_cols {
-                // Take the dot product of the i-th row of A and the j-th column of B
-                result[k] = add(result[k], mul($a[j], $b[j][k]));
-            }
-        }
-
-        result
-    }};
-}
-
-#[macro_export]
-macro_rules! vector_matrix_mul_test {
     ($vec:expr, $mat:expr, $vec_len:expr, $mat_cols:expr) => {{
 
         let mut result = [0u8; $mat_cols];
@@ -123,23 +107,9 @@ macro_rules! vector_matrix_mul_test {
 }
 
 
+
 #[macro_export]
 macro_rules! vector_transposed_matrix_mul {
-    ($a:expr, $b:expr, $B_ROWS:expr, $B_COLS:expr) => {{
-
-        let mut result = [0u8; $B_COLS];
-
-        for j in 0..$B_COLS {
-            for k in 0..$B_ROWS {
-                result[j] = add(result[j], mul($a[k], $b[k][j]));
-            }
-        }
-        result
-    }};
-}
-
-#[macro_export]
-macro_rules! vector_transposed_matrix_mul_test {
     ($vec:expr, $mat:expr, $mat_rows:expr, $mat_cols:expr) => {{
         let mut result = [0u8; $mat_cols];
         let mut b_vec = [0u8; $mat_rows]; 
