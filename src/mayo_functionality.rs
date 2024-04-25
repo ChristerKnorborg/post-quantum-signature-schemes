@@ -8,7 +8,7 @@ use crate::constants::{
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_vec_mul, transpose_matrix_array, transpose_matrix_array_single, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul,
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_vec_mul, transpose_matrix_array, transpose_matrix_array_single, vector_matrix_mul, vector_matrix_mul_test, vector_mul, vector_transposed_matrix_mul, vector_transposed_matrix_mul_test
 };
 
 
@@ -310,7 +310,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         for i in 0..K {
             // Set the j-th row of m_i 
             for j in 0..M {
-                m_matrices[i][j] = vector_matrix_mul!(v[i], l[j], V, O); // (1 x (n-o)) * ((n-o) x o) = 1 x o
+                m_matrices[i][j] = vector_matrix_mul_test!(&v[i], l[j*V*O..(j+1)*V*O], V, O); // (1 x (n-o)) * ((n-o) x o) = 1 x o
             }
         }
 
@@ -338,7 +338,8 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
                         // Calculate v_i*P*v_j
                         let left_term = vector_mul!(&vi_p[a], &v[j], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
 
-                        let vj_p = vector_transposed_matrix_mul!(v[j], p1[a], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
+                        let vj_p = vector_transposed_matrix_mul_test!(&v[j], &p1[a*V*V..(a+1)*V*V], V, V); // (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
+
                         let right_term = vector_mul!(&vj_p, &v[i], V); // (1 x (n-o)) * ((n-o) x 1) = 1 x 1.
 
                         u[a] = add(left_term, right_term); 
@@ -387,7 +388,6 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     // Finish and output signature
     let mut signature = [0u8; K * N];
 
-
     for i in 0..K {
         let x_idx: [u8 ; O] = x[i * O..(i + 1) * O]
             .try_into()
@@ -413,6 +413,44 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
 
 
+// Construct the m matrices of (P_1 P_2)
+//                             (0   P_3)
+pub fn create_big_p_flat(p1: &[u8], p2: &[u8], p3: &[u8]) -> [u8 ; N*N*M] {
+
+    let mut big_p = [0u8 ; N*N*M];
+
+
+    let mut p1_idx;
+    let mut p2_idx;
+    let mut p3_idx;
+    let mut big_p_idx;
+
+
+    for m in 0..M {
+
+        // Index of current matrices in flat arrays.
+        p1_idx = m*V*V;
+        p2_idx = m*V*O;
+        p3_idx = m*O*O;
+        big_p_idx = m*N*N;
+
+        for r in 0..V {
+            big_p[big_p_idx+(r*N)..big_p_idx+(r*N)+V].copy_from_slice(&p1[p1_idx+(r*V)..p1_idx+(r*V)+V]);
+            big_p[big_p_idx+(r*N)+V..big_p_idx+(r*N)+N].copy_from_slice(&p2[p2_idx+(r*O)..p2_idx+(r*O)+O]);
+        }
+
+        // Set the last O rows to be zeroes concatenated with p3
+        for r in V..N{
+            big_p[big_p_idx+(r*N)+V..big_p_idx+(r*N)+N].copy_from_slice(&p3[p3_idx+((r-V)*O)..p3_idx+((r-V)*O)+O])
+        }
+    }
+    // Set the first V rows to be p1 concatenated with p2
+
+    return big_p;
+}
+
+
+
 
 
 // MAYO algorithm 9
@@ -425,9 +463,9 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
     // Decode the public information into matrices
-    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
-    let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
+    let p1 = decode_bit_sliced_matrices_single_array!(p1_bytestring, V, V, M, true);
+    let p2 = decode_bit_sliced_matrices_single_array!(p2_bytestring, V, O, M, false);
+    let p3 = decode_bit_sliced_matrices_single_array!(p3_bytestring, O, O, M, true);
 
     // Decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
@@ -473,7 +511,11 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
 
     // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                   (0     P^3_a)
-    let big_p = create_big_p_matrices(p1, p2, p3);
+    let big_p = create_big_p_flat(&p1, &p2, &p3);
+
+        // for every matrix a ∈ [m]                   (0     P^3_a)
+
+
 
     for i in 0..K {
 
@@ -482,7 +524,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
         let mut si_p_si = [0u8 ; M];
         for a in 0..M {
 
-            si_p[a] = vector_transposed_matrix_mul!(s_matrix[i], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
+            si_p[a] = vector_transposed_matrix_mul_test!(&s_matrix[i], big_p[a*N*N..(a+1)*N*N], N, N); // (1 x n) * (n x n) = 1 x n
             si_p_si[a] = vector_mul!(&si_p[a], &s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
         }
 
@@ -498,7 +540,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
                 } else {
                     let left_term = vector_mul!(&si_p[a], &s_matrix[j], N); // (1 x n) * (n x 1) = 1 x 1
 
-                    let sj_p = vector_transposed_matrix_mul!(s_matrix[j], big_p[a], N, N); // (1 x n) * (n x n) = 1 x n
+                    let sj_p = vector_transposed_matrix_mul_test!(&s_matrix[j], big_p[a*N*N..(a+1)*N*N], N, N); // (1 x n) * (n x n) = 1 x n
                     let right_term = vector_mul!(&sj_p, &s_matrix[i], N); // (1 x n) * (n x 1) = 1 x 1
 
                     u[a] = add(left_term, right_term);

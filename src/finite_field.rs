@@ -106,15 +106,18 @@ macro_rules! vector_matrix_mul {
 
 #[macro_export]
 macro_rules! vector_matrix_mul_test {
-    ($a:expr, $b:expr, $vec_len:expr, $mat_cols:expr) => {{
+    ($vec:expr, $mat:expr, $vec_len:expr, $mat_cols:expr) => {{
+
         let mut result = [0u8; $mat_cols];
 
-        for j in 0..$vec_len {
-            for k in 0..$mat_cols {
-                result[k] = add(result[k], mul($a[j], $b[j][k]));
+        for k in 0..$mat_cols {
+            let mut column = [0u8 ; $vec_len]; // Mat col is 
+            for j in 0..$vec_len {
+                column[j] = $mat[j * $mat_cols + k];
             }
-        }
 
+            safe_inner_product(&mut result[k], $vec, &column, $vec_len.try_into().unwrap());
+        }
         result
     }};
 }
@@ -135,7 +138,21 @@ macro_rules! vector_transposed_matrix_mul {
     }};
 }
 
+#[macro_export]
+macro_rules! vector_transposed_matrix_mul_test {
+    ($vec:expr, $mat:expr, $mat_rows:expr, $mat_cols:expr) => {{
+        let mut result = [0u8; $mat_cols];
+        let mut b_vec = [0u8; $mat_rows]; 
 
+        for j in 0..$mat_cols {
+            for k in 0..$mat_rows {
+                b_vec[k] = $mat[j * $mat_rows + k];
+            }
+            safe_inner_product(&mut result[j], $vec, &b_vec, $mat_rows.try_into().unwrap());
+        }
+        result
+    }};
+}
 
 
 #[macro_export]
