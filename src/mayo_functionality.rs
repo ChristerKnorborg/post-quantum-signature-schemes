@@ -8,8 +8,11 @@ use crate::constants::{
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix_array, transpose_matrix_array_single, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bit_sliced_matrices_single_array, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices_single_array, encode_to_bytestring_array, matrix_add, matrix_vec_mul, transpose_matrix_array, transpose_matrix_array_single, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul,
 };
+
+
+
 
 
 fn transform_transposed_o_array(input: [[u8; V]; O]) -> [u8; O * V] {
@@ -112,8 +115,10 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
     // Make O from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_bytestring_to_matrix!(o_bytes, O, V);
-    let o_transposed = transform_transposed_o_array(o);
+    let o = decode_bytestring_to_matrix!(o_bytes, V, O);
+
+    let transposed_o = transpose_matrix_array!(o, V, O);
+    let transposed_o_flat = transform_transposed_o_array(transposed_o);
 
 
     //Derive P1 and P2 from pk_seed
@@ -139,10 +144,11 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
         // P1^T + P1
         let mut added_p1 = transpose_matrix_array_single!(&p1[i * (V*V)..(i+1)*V*V], V, V);
         added_p1 = matrix_add!(&added_p1, &p1[i*(V*V)..(i+1)*V*V], V, V); 
+        
 
-        // (P1 + P^T) i )*O + P2
+        // (P1 + P^T) )*O + P2
         let mut temp = [0u8 ; V*O];
-        safe_p1_o_matrix_mult(&mut temp, &added_p1, &o_transposed, V.try_into().unwrap(), V.try_into().unwrap(), O.try_into().unwrap()); //matrix_mul!(added_p1.as_slice(), V, V, o.as_slice(), O);
+        safe_p1_o_matrix_mult(&mut temp, &added_p1, &transposed_o_flat,  V.try_into().unwrap() , V.try_into().unwrap(), O.try_into().unwrap());
         temp = matrix_add!(&temp, &p2[i * (O*V)..(i+1)*V*O], V, O);
 
         l[i * (O*V)..(i+1) * (O*V)].copy_from_slice(temp.as_slice());
@@ -213,9 +219,12 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
     let o_bytestring = &expanded_sk[P1_BYTES + L_BYTES..];
 
     // Assign matrices with decoded information
-    let o = decode_bytestring_to_matrix!(o_bytestring, V, O);
-    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    let l = decode_bit_sliced_matrices!(l_bytestring, V, O, M, false);
+    // let o = decode_bytestring_to_matrix!(o_bytestring, V ,O);
+
+    let o = decode_bytestring_to_array!(o_bytestring, V * O);
+    
+    let p1 = decode_bit_sliced_matrices_single_array!(p1_bytestring, V, V, M, true);
+    let l = decode_bit_sliced_matrices_single_array!(l_bytestring, V, O, M, false);
 
     // Hash message 
     let mut m_digest = [0u8; DIGEST_BYTES];
@@ -311,7 +320,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
             let mut vi_p = [[0u8 ; V]; M];
             let mut vi_p_vi = [0u8 ; M];
             for a in 0..M {
-                vi_p[a] = vector_transposed_matrix_mul!(v[i], p1[a], V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
+                vi_p[a] = matrix_vec_mul!(&p1[a*(V*V)..(a+1)*(V*V)], &v[i] , V, V); //  (1 x (n-o)) * ((n-o) x (n-o)) = 1 x (n-o).
                 vi_p_vi[a] = vector_mul!(&vi_p[a], &v[i], V); // (1 x (n-o)) * ((n-o) x (n-o)) * ((n-o)) x 1) = 1 x 1.
             }
 
@@ -383,7 +392,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
         let x_idx: [u8 ; O] = x[i * O..(i + 1) * O]
             .try_into()
             .expect("Slice has incorrect length");
-        let ox: [u8 ; V] = matrix_vec_mul!(o, x_idx, V, O); // (n−o) × o * o × 1 = (n−o) × 1
+        let ox: [u8 ; V] = matrix_vec_mul!(&o, &x_idx, V, O); // (n−o) × o * o × 1 = (n−o) × 1
 
         for j in 0..V {
             v[i][j] = add(ox[j], v[i][j]);

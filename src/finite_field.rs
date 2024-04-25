@@ -78,13 +78,7 @@ pub fn div(x: u8, y: u8) -> u8 {
 #[macro_export]
 macro_rules! matrix_add {
     ($a:expr, $b:expr, $rows:expr, $cols:expr) => {{
-        // for i in 0..$rows {
-        //     for j in 0..$cols {
-        //         $a[i][j] = add($a[i][j], $b[i][j]); // Perform addition directly on matrix a
-        //     }
-        // }
-        // $a // Return the modified matrix a as the result
-        
+
         let mut result = [0u8; $cols * $rows];
         safe_matrix_add(&mut result, $a, $b, ($rows * $cols).try_into().unwrap());
         result
@@ -95,43 +89,6 @@ macro_rules! matrix_add {
 
 
 #[macro_export]
-macro_rules! matrix_mul {
-    ($a:expr, $rows_a:expr, $cols_a:expr, $b:expr, $cols_b:expr) => {{
-        // let mut result = [[0u8; $cols_b]; $rows_a];
-
-        // for i in 0..$rows_a {
-        //     for j in 0..$cols_b {
-        //         for k in 0..$cols_a {
-        //             // Take the dot product of the i-th row of A and the j-th column of B
-        //             result[i][j] = add(result[i][j], mul($a[i][k], $b[k][j]));
-        //         }
-        //     }
-        // }
-        // result
-        let mut result = [0u8; $cols_b * $rows_a];
-
-        // Temporary vector to hold one column of P2
-        let mut b_col = [0u8; $rows_a];
-    
-            // Iterate over each row of O (each representing a column of original O)
-            for r in 0..$rows_a {
-                for c in 0..$cols_a {
-        
-                    // Extract the column vector from P2
-                    for i in 0..$rows_a {
-                        b_col[i] = $b[i * $cols_a + c];
-                    }
-                    
-                    // Perform vector multiplication using vmull_values
-                    safe_inner_product(&mut result[r * $cols_a + c], &$a[r * $cols_b ..(r+1) * $cols_b], &b_col, $cols_b.try_into().unwrap()); // o_cols is equivalent to p2_rows
-                }
-            }
-            result
-    }};
-}
-
-
-#[macro_export]
 macro_rules! vector_matrix_mul {
     ($a:expr, $b:expr, $vec_len:expr, $mat_cols:expr) => {{
         let mut result = [0u8; $mat_cols];
@@ -139,6 +96,21 @@ macro_rules! vector_matrix_mul {
         for j in 0..$vec_len {
             for k in 0..$mat_cols {
                 // Take the dot product of the i-th row of A and the j-th column of B
+                result[k] = add(result[k], mul($a[j], $b[j][k]));
+            }
+        }
+
+        result
+    }};
+}
+
+#[macro_export]
+macro_rules! vector_matrix_mul_test {
+    ($a:expr, $b:expr, $vec_len:expr, $mat_cols:expr) => {{
+        let mut result = [0u8; $mat_cols];
+
+        for j in 0..$vec_len {
+            for k in 0..$mat_cols {
                 result[k] = add(result[k], mul($a[j], $b[j][k]));
             }
         }
@@ -169,13 +141,9 @@ macro_rules! vector_transposed_matrix_mul {
 #[macro_export]
 macro_rules! vector_mul {
     ($a:expr, $b:expr, $LEN:expr) => {{
-
         let mut result = 0u8;
 
-        for i in 0..$LEN {
-            result = add(result, mul($a[i], $b[i]));
-        }
-        // safe_inner_product(&mut result, $a, $b, $LEN.try_into().unwrap());
+        safe_inner_product(&mut result, $a, $b, $LEN.try_into().unwrap());
 
         result
     }};
@@ -223,9 +191,7 @@ macro_rules! matrix_vec_mul {
         let mut result = [0u8; $MAT_ROWS]; 
 
         for i in 0..$MAT_ROWS {
-            for j in 0..$MAT_COLS {
-                result[i] = add(result[i], mul($matrix[i][j], $array[j]));
-            }
+            safe_inner_product(&mut result[i], &$matrix[i*$MAT_COLS..], $array, $MAT_COLS.try_into().unwrap());
         }
 
         result
@@ -234,14 +200,12 @@ macro_rules! matrix_vec_mul {
 
 
 
-
 #[macro_export]
 macro_rules! vec_add {
     ($a:expr, $b:expr, $LEN:expr) => {{
-        for i in 0..$LEN {
-            $a[i] = add($a[i], $b[i]);
-        }
-        $a
+        let mut result = [0u8; $LEN];
+        safe_matrix_add(&mut result, &$a, &$b, ($LEN).try_into().unwrap());
+        result
     }};
 }
 

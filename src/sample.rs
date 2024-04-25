@@ -1,6 +1,24 @@
 use crate::finite_field::{add, inv, mul, sub};
 use crate::constants::{M, K, O};
-use crate::{matrix_vec_mul, vec_add};
+use crate::{vec_add};
+use crate::crypto_primitives::{safe_matrix_add};
+
+
+
+macro_rules! matrix_vec_mul_sample {
+    ($matrix:expr, $array:expr, $MAT_ROWS:expr, $MAT_COLS:expr) => {{
+        let mut result = [0u8; $MAT_ROWS]; 
+
+        for i in 0..$MAT_ROWS {
+            for j in 0..$MAT_COLS{
+                result[i] = add(result[i], mul($matrix[i][j], $array[j]));
+            }
+        }
+
+        result
+    }};
+}
+
 
 
 // MAYO Algorithm 1: Echelon Form
@@ -64,7 +82,7 @@ pub fn sample_solution(a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<
 
 
     let mut x: [u8; K*O] = r.clone();
-    let mut temp = matrix_vec_mul!(a, x, M, K*O); //  (m x K*O) * (K*O x 1) = (m x 1)
+    let mut temp = matrix_vec_mul_sample!(a, x, M, K*O); //  (m x K*O) * (K*O x 1) = (m x 1)
     temp = vec_add!(temp, y, M); // Add same as subtracting in GF(16)
 
 
@@ -107,7 +125,7 @@ pub fn sample_solution(a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<
             temp_mult[i] = mul(y_ech[r], row[c]);
         }
 
-        vec_add!(y_ech, temp_mult, M); // Add same as subtracting in GF(16)
+        y_ech = vec_add!(y_ech, temp_mult, M); // Add same as subtracting in GF(16)
     }
     Ok(x)
 }
