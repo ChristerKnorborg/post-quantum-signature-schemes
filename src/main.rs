@@ -9,10 +9,10 @@ fn main() {
     
 
     // make example. Add other values for clarity
-    let mut test = [0u8; 64];
+    let mut test = [0u8; 32];
     //test[0] = 1;
-    test[63] = 0b1111;
-    test[62] = 0b1111;
+    test[31] = 0b1111;
+    test[30] = 0b1111;
 
     println!("test:");
     for &byte in test.iter() {
@@ -20,7 +20,7 @@ fn main() {
     }
 
 
-    let plain = encode_bit_sliced_array!(test, 64);
+    let plain = encode_bit_sliced_array!(test, 32);
 
     println!();
     println!("plain:");
@@ -28,7 +28,7 @@ fn main() {
         print!("{:08b}", byte);
     }
 
-    let mut modified_test = [0u8; 32]; // Half the size of the original, as we're combining every two nibbles
+    let mut modified_test = [0u8; 32/2]; // Half the size of the original, as we're combining every two nibbles
     for i in (0..test.len()).step_by(2) {
         let first_nibble = test[i] & 0x0F;      // Last 4 bits of the first byte
         let second_nibble = test[i+1] & 0x0F;  // Last 4 bits of the second byte
@@ -36,7 +36,7 @@ fn main() {
     }
 
 
-    let mut assembly = [0u8; 64/2];
+    let mut assembly = [0u8; 32/2];
     safe_encode_bit_sliced_array_mayo12(&mut modified_test, &mut assembly, 32);
 
 
@@ -47,7 +47,6 @@ fn main() {
     }
 
 
-    
     println!();
     println!("plain: {:?}", plain);
     println!("assembly: {:?}", assembly);
