@@ -112,13 +112,10 @@ macro_rules! vector_matrix_mul {
 macro_rules! vector_transposed_matrix_mul {
     ($vec:expr, $mat:expr, $mat_rows:expr, $mat_cols:expr) => {{
         let mut result = [0u8; $mat_cols];
-        let mut b_vec = [0u8; $mat_rows]; 
 
         for j in 0..$mat_cols {
-            for k in 0..$mat_rows {
-                b_vec[k] = $mat[j * $mat_rows + k];
-            }
-            safe_inner_product(&mut result[j], $vec, &b_vec, $mat_rows.try_into().unwrap());
+            let row_as_column = &$mat[j * $mat_rows..(j + 1) * $mat_rows];
+            safe_inner_product(&mut result[j], $vec, row_as_column, $mat_rows.try_into().unwrap());
         }
         result
     }};

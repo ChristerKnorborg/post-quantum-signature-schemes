@@ -415,7 +415,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: Vec<u8>) -> [u8 ; SIG
 
 // Construct the m matrices of (P_1 P_2)
 //                             (0   P_3)
-pub fn create_big_p_flat(p1: &[u8], p2: &[u8], p3: &[u8]) -> [u8 ; N*N*M] {
+pub fn create_big_p(p1: &[u8], p2: &[u8], p3: &[u8]) -> [u8 ; N*N*M] {
 
     let mut big_p = [0u8 ; N*N*M];
 
@@ -447,6 +447,43 @@ pub fn create_big_p_flat(p1: &[u8], p2: &[u8], p3: &[u8]) -> [u8 ; N*N*M] {
     // Set the first V rows to be p1 concatenated with p2
 
     return big_p;
+}
+
+
+
+pub fn create_big_p_transposed(p1: &[u8], p2: &[u8], p3: &[u8]) -> [u8; N*N*M] {
+    let mut big_p = [0u8; N*N*M];
+
+    for m in 0..M {
+        // Base index for each matrix 'm' within the flat output array
+        let big_p_base = m * N * N;
+
+        // Transpose P1 and place in the upper left of the transposed big_p (upper left of original)
+        for i in 0..V {
+            for j in 0..V {
+                big_p[big_p_base + j * N + i] = p1[m * V * V + i * V + j];
+            }
+        }
+
+        // Transpose P2 and place it in the lower left of the transposed big_p (upper right of original)
+        for i in 0..V {
+            for j in 0..O {
+                big_p[big_p_base + (j + V) * N + i] = p2[m * V * O + i * O + j];
+            }
+        }
+
+        // P3 already fills the lower right quadrant; transposed it will fill lower right as well
+        for i in 0..O {
+            for j in 0..O {
+                big_p[big_p_base + (j + V) * N + (i + V)] = p3[m * O * O + i * O + j];
+            }
+        }
+
+        // The upper right quadrant of the transposed matrix (lower left of original) remains zero.
+        // No need to set zeros because the array is initialized with zeros.
+    }
+
+    big_p
 }
 
 
@@ -511,7 +548,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
 
     // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                   (0     P^3_a)
-    let big_p = create_big_p_flat(&p1, &p2, &p3);
+    let big_p = create_big_p(&p1, &p2, &p3);
 
         // for every matrix a ∈ [m]                   (0     P^3_a)
 
