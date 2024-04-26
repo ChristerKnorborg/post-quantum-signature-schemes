@@ -10,13 +10,17 @@ fn main() {
 
     // make example. Add other values for clarity
     let mut test = [0u8; 32];
-    //test[0] = 1;
-    test[31] = 0b1111;
-    test[30] = 0b1111;
+   /* for i in 0..31 {
+        if i % 5 == 0 {
+            test[i] = 0b1111;
+        }
+    }*/
 
+    test[30] = 0b1111;
+    test[31] = 0b1111;
     println!("test:");
     for &byte in test.iter() {
-        print!("{:08b}", byte); // Print each byte in binary, padded to 8 bits
+     //   print!("{:08b}", byte); // Print each byte in binary, padded to 8 bits
     }
 
 
@@ -46,7 +50,7 @@ fn main() {
         print!("{:08b}", byte);
     }
 
-
+    
     println!();
     println!("plain: {:?}", plain);
     println!("assembly: {:?}", assembly);

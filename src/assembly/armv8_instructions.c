@@ -298,9 +298,9 @@ void encode_bit_sliced_array_mayo12(u_int8_t *input, u_int8_t *output, int matri
 
         // uint8_t* output_u8 = (uint8_t*) output;
         // vst1_u8(&output_u8[0], vreinterpret_u8_u64(A0));    // Store 8 bytes of A0_prime
-        // vst1_u8(&output_u8[8], vreinterpret_u8_u64(A1));    // Store 8 bytes of A1_prime
-        // vst1_u8(&output_u8[16], vreinterpret_u8_u64(A2));   // Store 8 bytes of A2_prime
-        // vst1_u8(&output_u8[24], vreinterpret_u8_u64(A3));   // Store 8 bytes of A3_prime
+        // vst1_u8(&output_u8[4], vreinterpret_u8_u64(A1));    // Store 8 bytes of A1_prime
+        // vst1_u8(&output_u8[8], vreinterpret_u8_u64(A2));   // Store 8 bytes of A2_prime
+        // vst1_u8(&output_u8[12], vreinterpret_u8_u64(A3));   // Store 8 bytes of A3_prime
     
 
         // Create a 64-bit NEON register with the constant pattern
@@ -346,19 +346,19 @@ void encode_bit_sliced_array_mayo12(u_int8_t *input, u_int8_t *output, int matri
 
 
         // Store results back to the output array
-        uint8_t* output_u8 = (uint8_t*) output;
-        vst1_u8(&output_u8[0], vreinterpret_u8_u32(A0_prime));    // Store 8 bytes of A0_prime
-        vst1_u8(&output_u8[4], vreinterpret_u8_u32(A1_prime));    // Store 8 bytes of A1_prime
-        vst1_u8(&output_u8[8], vreinterpret_u8_u32(A2_prime));   // Store 8 bytes of A2_prime
-        vst1_u8(&output_u8[12], vreinterpret_u8_u32(A3_prime));   // Store 8 bytes of A3_prime
-
         // uint8_t* output_u8 = (uint8_t*) output;
-        // vst1_u8(&output_u8[0], vreinterpret_u8_u32(vget_get_lane(A0_prime, 0)));    // Store 8 bytes of A0_prime
-        // vst1_u8(&output_u8[4], vreinterpret_u8_u32(vget_get_lane(A1_prime, 0)));    // Store 8 bytes of A1_prime
-        // vst1_u8(&output_u8[8], vreinterpret_u8_u32(vget_get_lane(A2_prime, 0)));   // Store 8 bytes of A2_prime
-        // vst1_u8(&output_u8[12], vreinterpret_u8_u32(vget_get_lane(A3_prime, 0)));   // Store 8 bytes of A3_prime
+        // vst1_u8(&output_u8[0], vreinterpret_u8_u32(A0_prime));    // Store 8 bytes of A0_prime
+        // vst1_u8(&output_u8[4], vreinterpret_u8_u32(A1_prime));    // Store 8 bytes of A1_prime
+        // vst1_u8(&output_u8[8], vreinterpret_u8_u32(A2_prime));   // Store 8 bytes of A2_prime
+        // vst1_u8(&output_u8[12], vreinterpret_u8_u32(A3_prime));   // Store 8 bytes of A3_prime
 
-        // output_u8[0] = (u_int8_t) vget_get_lane(A0_prime, 0) & 0xFF;
+       
+       // Store results back to the output array
+        uint8_t* output_u8 = (uint8_t*) output;
+        *(uint32_t*)&output_u8[0] = vget_lane_u32(A0_prime, 0);
+        *(uint32_t*)&output_u8[4] = vget_lane_u32(A1_prime, 0);
+        *(uint32_t*)&output_u8[8] = vget_lane_u32(A2_prime, 0);
+        *(uint32_t*)&output_u8[12] = vget_lane_u32(A3_prime, 0);
 }
 
 
