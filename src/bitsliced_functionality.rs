@@ -139,44 +139,8 @@ macro_rules! decode_bit_sliced_array {
 
 
 
-
-
-// MAYO Algorithm 3: Encodes m matrices A_i of ∈ F_{16}^{r x c} into a bitsliced representation
 #[macro_export]
 macro_rules! encode_bit_sliced_matrices {
-    ($a:expr, $rows:expr, $cols:expr, $M:expr, $is_triangular:expr, $OUT_BYTES:expr) => {{
-        let mut bytestring = [0u8; $OUT_BYTES];
-        
-        // Initialize variables for indexing and iteration
-        let mut byte_index = 0;
-
-        for i in 0..$rows {
-            for j in 0..$cols {
-                if i <= j || !$is_triangular {
-                    let mut indices_arr = [0u8; $M];
-                    
-                    // Populate indices_arr with elements from the matrices
-                    for (idx, mat) in $a.iter().enumerate() {
-                        indices_arr[idx] = mat[i][j];
-                    }
-
-                    // Use the provided encode function/macro on indices_arr
-                    let encoded_bits: [u8; $M / 2] = encode_bit_sliced_array!(indices_arr, $M);
-
-                    // Copy the encoded bits into the bytestring
-                    let slice_range = byte_index * $M / 2..(byte_index + 1) * $M / 2;
-                    bytestring[slice_range].copy_from_slice(&encoded_bits);
-                    byte_index += 1;
-                }
-            }
-        }
-        bytestring
-    }};
-}
-
-
-#[macro_export]
-macro_rules! encode_bit_sliced_matrices_single_array {
     ($a:expr, $rows:expr, $cols:expr, $M:expr, $is_triangular:expr, $OUT_BYTES:expr) => {{
         let mut bytestring = [0u8; $OUT_BYTES];
         
@@ -216,38 +180,10 @@ macro_rules! encode_bit_sliced_matrices_single_array {
 
 
 
+
 // Mayo Algorithm 3 (inverse): Decodes a bitsliced representation of a vector v ∈ F_{16}^{m} into a vector
 #[macro_export]
 macro_rules! decode_bit_sliced_matrices {
-    ($bytestring:expr, $rows:expr, $cols:expr, $matrices:expr, $upper_triangular:expr) => {{
-        let sub_byte_end = $matrices / 2;
-        let mut curr_byte_idx = 0;
-
-        let mut a = [[[0u8; $cols]; $rows]; $matrices]; // Initialize the matrices array
-
-        for i in 0..$rows {
-            for j in 0..$cols {
-                if i <= j || $upper_triangular == false {
-                    let slice_end = curr_byte_idx + sub_byte_end;
-                    let encoded_bits = &$bytestring[curr_byte_idx..slice_end];
-                    let indices_array = decode_bit_sliced_array!(encoded_bits, $matrices);
-
-                    for (mat_index, &value) in indices_array.iter().enumerate() {
-                        a[mat_index][i][j] = value;
-                    }
-                    curr_byte_idx = slice_end;
-                }
-            }
-        }
-        a
-    }};
-}
-
-
-
-// Mayo Algorithm 3 (inverse): Decodes a bitsliced representation of a vector v ∈ F_{16}^{m} into a vector
-#[macro_export]
-macro_rules! decode_bit_sliced_matrices_single_array {
     ($bytestring:expr, $rows:expr, $cols:expr, $matrices:expr, $upper_triangular:expr) => {{
         let sub_byte_end = $matrices / 2;
         let mut curr_byte_idx = 0;

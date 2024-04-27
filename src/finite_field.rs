@@ -2,10 +2,6 @@
 // Concretely, f(x) = x^4 + x + 1 is used. 
 use std::u8;
 
-use crate::{constants::{M, O, V}, crypto_primitives::safe_calculate_p3};
-
-
-
 // Negation in GF(16) of any element is the element itself because a is it's own additive inverse (where 0 is the additive identity).
 // Hence, -a = a in binary fields (GF(2^n)).
 #[inline]  
@@ -95,28 +91,22 @@ macro_rules! vector_matrix_mul {
         let mut result = [0u8; $mat_cols];
 
         for k in 0..$mat_cols {
-            let mut column = [0u8 ; $vec_len]; // Mat col is 
-            for j in 0..$vec_len {
-                column[j] = $mat[j * $mat_cols + k];
-            }
-
-            safe_inner_product(&mut result[k], $vec, &column, $vec_len.try_into().unwrap());
+            safe_inner_product(&mut result[k], $vec, &$mat[k*$vec_len..], $vec_len.try_into().unwrap());
         }
         result
     }};
 }
 
 
-
 #[macro_export]
-macro_rules! vector_transposed_matrix_mul {
-    ($vec:expr, $mat:expr, $mat_rows:expr, $mat_cols:expr) => {{
-        let mut result = [0u8; $mat_cols];
+macro_rules! vec_matrix_mul {
+    ($array:expr, $matrix:expr, $mat_rows:expr, $mat_cols:expr) => {{
+        let mut result = [0u8; $mat_rows]; 
 
-        for j in 0..$mat_cols {
-            let row_as_column = &$mat[j * $mat_rows..(j + 1) * $mat_rows];
-            safe_inner_product(&mut result[j], $vec, row_as_column, $mat_rows.try_into().unwrap());
+        for i in 0..$mat_rows {
+            safe_inner_product(&mut result[i], &$matrix[i*$mat_cols..], $array, $mat_cols.try_into().unwrap());
         }
+
         result
     }};
 }
@@ -169,19 +159,6 @@ macro_rules! transpose_matrix_array_single {
 
 
 
-#[macro_export]
-macro_rules! matrix_vec_mul {
-    ($matrix:expr, $array:expr, $MAT_ROWS:expr, $MAT_COLS:expr) => {{
-        let mut result = [0u8; $MAT_ROWS]; 
-
-        for i in 0..$MAT_ROWS {
-            safe_inner_product(&mut result[i], &$matrix[i*$MAT_COLS..], $array, $MAT_COLS.try_into().unwrap());
-        }
-
-        result
-    }};
-}
-
 
 
 #[macro_export]
@@ -193,22 +170,54 @@ macro_rules! vec_add {
     }};
 }
 
+#[macro_export]
+macro_rules! matrix_mul {
+    ($mat_a:expr, $mat_b:expr, $mat_a_rows:expr, $mat_a_cols:expr, $mat_b_cols:expr) => {{
 
-pub fn calculate_p3(o: [u8; O * V], p1: [u8; V*V*M], p2: [u8; V*O*M]) -> [u8; O*O*M] {
+        let mut result = [0u8; $mat_a_rows * $mat_b_cols];
 
-    let mut res = [0u8; O * O * M];
+        // Iterate over each row of mat_a (which represents a transposed row in this macro context)
+        for r in 0..$mat_a_rows {
+            for c in 0..$mat_b_cols {
 
-    safe_calculate_p3(
-        &mut res,
-        &o,
-        &p1,
-        &p2,
-        V.try_into().unwrap(),
-        O.try_into().unwrap(),
-        M.try_into().unwrap());
+                // Extract column vec from mat_b
+                let mut mat_b_col = [0u8; $mat_a_cols];
+                for i in 0..$mat_a_cols {
+                    mat_b_col[i] = $mat_b[i * $mat_b_cols + c];
+                }
+                safe_inner_product(
+                    &mut result[r * $mat_b_cols + c],
+                    &$mat_a[r * $mat_a_cols..(r + 1) * $mat_a_cols],
+                    &mat_b_col,
+                    $mat_a_cols.try_into().unwrap()
+                ); 
+            }
+        }
+        result
+    }};
+}
 
-        return res;
 
+
+#[macro_export]
+macro_rules! matrix_matrix_transposed_mul {
+    ($mat_a:expr, $mat_b:expr, $rows_a:expr, $cols_a:expr, $cols_b:expr) => {{
+        
+        let mut result = [0u8; $rows_a * $cols_b];
+
+        for r in 0..$rows_a {
+            for k in 0..$cols_b {
+
+                safe_inner_product(
+                    &mut result[r * $cols_b + k],
+                    &$mat_a[r * $rows_a..],
+                    &$mat_b[k * $rows_a..],
+                    $rows_a.try_into().unwrap()
+                );
+            }
+        }
+        result
+    }};
 }
 
 
