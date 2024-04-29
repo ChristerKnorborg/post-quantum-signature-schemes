@@ -49,7 +49,6 @@ void inner_product(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
         // Load 8 elements from array a and b respectively
         uint8x8_t va = vld1_u8(&a[i]); 
         uint8x8_t vb = vld1_u8(&b[i]); 
-
         // Change to polynomial multiplication
         poly8x8_t poly_va = vreinterpret_u8_p8(va); 
         poly8x8_t poly_vb = vreinterpret_u8_p8(vb);
