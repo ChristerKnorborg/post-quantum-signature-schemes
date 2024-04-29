@@ -8,7 +8,7 @@ use crate::constants::{
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, transpose_matrix_array, transpose_matrix_array_single, vec_matrix_mul, vector_matrix_mul, vector_mul,
+    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, transpose_matrix_array, vec_matrix_mul, vector_matrix_mul, vector_mul,
     matrix_matrix_transposed_mul
 };
 
@@ -56,7 +56,7 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
 
     // Make O from o_bytes
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_bytestring_to_matrix!(o_bytes, V, O);
+    let o = decode_bytestring_to_array!(o_bytes, V * O);
 
     // Derive P1_i and P2_i from pk_seed
     let mut p = [0u8; P1_BYTES + P2_BYTES];
@@ -73,8 +73,7 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     let p1 = decode_bit_sliced_matrices!(p1_bytes, V, V, M, true);    // m p1 matrices are of size (n−o) × (n−o)
     let p2 = decode_bit_sliced_matrices!(p2_bytes, V, O, M, false);    // m p2 matrices are of size (n−o) × o (not upper triangular matrices)                              // Allocate space for P_{i}^(3). Size is o × o
 
-    let transposed_o = transpose_matrix_array!(o, V, O);
-    let transposed_o_flat = transform_transposed_o_array(transposed_o);
+    let transposed_o_flat = transpose_matrix_array!(o, V, O);
 
     let mut p3 = [0u8; O * O * M];
 
@@ -133,10 +132,10 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
 
     // Make O from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
-    let o = decode_bytestring_to_matrix!(o_bytes, V, O);
+    let o = decode_bytestring_to_array!(o_bytes, V * O);
 
-    let transposed_o = transpose_matrix_array!(o, V, O);
-    let transposed_o_flat = transform_transposed_o_array(transposed_o);
+    let transposed_o_flat = transpose_matrix_array!(o, V, O);
+
 
 
     //Derive P1 and P2 from pk_seed
@@ -160,7 +159,7 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
     for i in 0..M {
 
         // P1^T + P1
-        let mut added_p1 = transpose_matrix_array_single!(&p1[i * (V*V)..(i+1)*V*V], V, V);
+        let mut added_p1 = transpose_matrix_array!(&p1[i * (V*V)..(i+1)*V*V], V, V);
         added_p1 = matrix_add!(&added_p1, &p1[i*(V*V)..(i+1)*V*V], V, V); 
         
 

@@ -102,8 +102,8 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     name = my_bench;
-    //config = Criterion::default(); //.with_measurement(CyclesPerByte)
-    config = Criterion::default().measurement_time(Duration::from_secs(15)).sample_size(500);
+    config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    //config = Criterion::default().measurement_time(Duration::from_secs(25)).sample_size(500);
     targets = criterion_benchmark
     
 );

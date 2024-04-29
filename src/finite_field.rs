@@ -128,21 +128,6 @@ macro_rules! vector_mul {
 #[macro_export]
 macro_rules! transpose_matrix_array {
     ($matrix:expr, $rows:expr, $cols:expr) => {{
-        // Initialize the transposed matrix with zeroes. The dimensions are swapped.
-        let mut transposed = [[0u8; $rows]; $cols];
-
-        for i in 0..$rows {
-            for j in 0..$cols {
-                transposed[j][i] = $matrix[i][j]; // Swap elements
-            }
-        }
-        transposed
-    }};
-}
-
-#[macro_export]
-macro_rules! transpose_matrix_array_single {
-    ($matrix:expr, $rows:expr, $cols:expr) => {{
         let mut output = [0u8; $rows * $cols]; // Initialize the output array
 
         for y in 0..$rows {
