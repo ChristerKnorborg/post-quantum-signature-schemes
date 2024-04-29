@@ -7,6 +7,12 @@
 
 #define __STDC_FORMAT_MACROS
 
+
+
+void bitsliced_64_vec_muk_add(const uint32_t *_in, unsigned char a, uint32_t *_acc){
+        
+}
+
  
 void mul_add_bitsliced_m_vec_mayo5(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
     
