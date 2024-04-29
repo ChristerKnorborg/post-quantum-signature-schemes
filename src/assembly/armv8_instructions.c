@@ -9,8 +9,12 @@
 
 
 
-void bitsliced_64_vec_muk_add(const uint32_t *_in, unsigned char a, uint32_t *_acc){
-        
+void bitsliced_64_vec_mul_add(const uint32_t *_in, unsigned char a, uint32_t *_acc) {
+
+
+
+        // The lookup vector to be used for the multiplications
+        uint16x8_t mul_tbl = (0x0, 0x13, 0x26, 0x35, 0x4c, 0x5f, 0x6a, 0x79, 0x98, 0x8b, 0xbe, 0xad, 0xd4, 0xc7, 0xf2, 0xe1);
 }
 
  
