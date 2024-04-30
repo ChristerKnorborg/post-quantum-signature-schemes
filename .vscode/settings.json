@@ -16,8 +16,11 @@
     ],
 
     "files.associations": {
+        "*.sage": "python",
         "rng.h": "c",
-        "ctype.h": "c"
+        "ctype.h": "c",
+        "__locale": "c",
+        "ios": "c"
     },
     "rust-analyzer.showUnlinkedFileNotification": false
 
