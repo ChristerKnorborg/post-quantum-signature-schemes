@@ -1,9 +1,9 @@
 use std::vec;
 
-use crate::crypto_primitives::{safe_aes_128_ctr, safe_mayo_12_P1_times_O, safe_random_bytes, safe_shake256}; 
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_mayo_P1_times_O_mayo1, safe_mayo_P1_times_Vt_mayo1, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo1};
+use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec};
 use crate::bitsliced_arithmetic::{create_big_p_bitsliced, p1_add_p1t};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
@@ -84,8 +84,16 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
 
     // Compute P3 = (−O^T * P1 * O ) − (−O^T * P2) as P3 = O^t * (P1*O + P2)
     // Compute (P1*O + P2) stored in p2
-    // bitsliced_mat_mul_mat_add!(&p1, o, &mut p2, V, V, O, true); // upper_triangular = true
-    safe_mayo_12_P1_times_O(&p1, &o_flat, & mut p2);
+    //bitsliced_mat_mul_mat_add!(&p1, o, &mut p2, V, V, O, true); // upper_triangular = true
+    #[cfg(feature = "mayo1")]
+    {
+        safe_mayo_P1_times_O_mayo1(&p1, &o_flat, & mut p2);
+    }
+
+    #[cfg(feature = "mayo2")]
+    {
+        safe_mayo_P1_times_O_mayo2(&p1, &o_flat, & mut p2);
+    }
 
     // Compute P3 = O^t * (P1*O + P2) stored in p3
     let mut p3 = [0u32 ; O*O*M/8]; // m matrices of size o × o ( divide by 8 from bytes to u32 and 2 nibbles per byte)
@@ -282,6 +290,11 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
             let v_bytestring_slice = &v_bytestring[i * V_BYTES..(i + 1) * V_BYTES];
             v[i] = decode_bytestring_to_array!(v_bytestring_slice, V)
         }
+        //let mut v_flat = [0u8 ; K*V];
+        /*for i in 0..K {
+            v[i*V..(i+1)*V].copy_from_slice(decode_bytestring_to_array!(&v_bytestring[..V_BYTES], V));
+        } */
+        let v_flat = decode_bytestring_to_array!(&v_bytestring[..V_BYTES*K], K*V);
 
         // Derive r (Notice r is redefined and have nothing to do with previous r)
         let v_bytestring_remainder = &v_bytestring[K * V_BYTES..];
@@ -316,8 +329,8 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
 
         // v^t * P1
         let mut vt_p1 = [0u32 ; V*K*M/ 8]; 
-        upper_triangular_bitsliced_mat_mul_transposed_mat_add!(p1, v, &mut vt_p1, V, V, K);
-
+        //upper_triangular_bitsliced_mat_mul_transposed_mat_add!(p1, v, &mut vt_p1, V, V, K);
+        safe_mayo_P1_times_Vt_mayo1(&p1, &v_flat, &mut vt_p1);
         // v^t * P1 * v
         let mut vt_p1_v = [0u32 ; K*K*M / 8]; 
         mat_mul_bitsliced_mat_add!(v, vt_p1, &mut vt_p1_v, K, V, K);

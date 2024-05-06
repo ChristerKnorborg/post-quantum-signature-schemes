@@ -35,7 +35,25 @@ extern "C" {
         acc_start: ccty::c_int  // Using c_ulong for size compatibility
     );
 
-    pub fn mayo_12_P1_times_O(
+    pub fn mayo_12_P1_times_O_mayo1(
+        P1:  *const ccty::c_uint,    // Pointer to const u32 for C compatibility
+        O: *const ccty::c_uchar,       // u8 in C is generally an unsigned char
+        acc: *mut ccty::c_uint,         // Pointer to mutable u32 for C compatibility
+    );
+
+    pub fn mayo_P1_times_O_mayo1(
+        P1:  *const ccty::c_uint,    // Pointer to const u32 for C compatibility
+        O: *const ccty::c_uchar,       // u8 in C is generally an unsigned char
+        acc: *mut ccty::c_uint,         // Pointer to mutable u32 for C compatibility
+    );
+
+    pub fn mayo_P1_times_Vt_mayo1(
+        P1:  *const ccty::c_uint,    // Pointer to const u32 for C compatibility
+        V: *const ccty::c_uchar,       // u8 in C is generally an unsigned char
+        acc: *mut ccty::c_uint,         // Pointer to mutable u32 for C compatibility
+    );
+
+    pub fn mayo_P1_times_O_mayo2(
         P1:  *const ccty::c_uint,    // Pointer to const u32 for C compatibility
         O: *const ccty::c_uchar,       // u8 in C is generally an unsigned char
         acc: *mut ccty::c_uint,         // Pointer to mutable u32 for C compatibility

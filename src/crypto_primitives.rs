@@ -1,4 +1,4 @@
-use crate::assembly::arm_instructions::{encode_bit_sliced_array_mayo12, mayo_12_P1_times_O, mul_add_64_bitsliced_m_vec, mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
+use crate::assembly::arm_instructions::{encode_bit_sliced_array_mayo12, mayo_P1_times_O_mayo1, mayo_P1_times_O_mayo2, mayo_P1_times_Vt_mayo1, mul_add_64_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
 use crate::genkat::bindings;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
@@ -128,8 +128,17 @@ pub fn safe_mul_add_bitsliced_m_vec_mayo3(input: &[u32], input_start: i32, nibbl
 pub fn safe_mul_add_bitsliced_m_vec_mayo5(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
     unsafe { mul_add_bitsliced_m_vec_mayo5(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
 }
-pub fn safe_mayo_12_P1_times_O(input: &[u32], O: &[u8], acc: &mut [u32]) {
-    unsafe { mayo_12_P1_times_O(input.as_ptr(), O.as_ptr(), acc.as_mut_ptr()) }
+
+pub fn safe_mayo_P1_times_O_mayo1(input: &[u32], O: &[u8], acc: &mut [u32]) {
+    unsafe { mayo_P1_times_O_mayo1(input.as_ptr(), O.as_ptr(), acc.as_mut_ptr()) }
+}
+
+pub fn safe_mayo_P1_times_Vt_mayo1(input: &[u32], V: &[u8], acc: &mut [u32]) {
+    unsafe { mayo_P1_times_Vt_mayo1(input.as_ptr(), V.as_ptr(), acc.as_mut_ptr()) }
+}
+
+pub fn safe_mayo_P1_times_O_mayo2(input: &[u32], O: &[u8], acc: &mut [u32]) {
+    unsafe { mayo_P1_times_O_mayo2(input.as_ptr(), O.as_ptr(), acc.as_mut_ptr()) }
 }
 
 
