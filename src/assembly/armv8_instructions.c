@@ -48,8 +48,8 @@ void mul_add_64_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
         const uint64x2_t mask4_1 = {32, 8};
         const uint64x2_t mask4_2 = {32, 128};
 
-
-        uint8x8_t aaaa = vqtbl1q_u8(mul_tbl, vdup_n_u8(nibble));
+        
+        uint8x16_t aaaa = vqtbl1q_u8(mul_tbl, vdupq_n_u8(nibble));
 
         acc0 ^= in0 & vceqq_u64(aaaa & mask1_1, mask1_1);
         acc1 ^= in1 & vceqq_u64(aaaa & mask1_2, mask1_2);

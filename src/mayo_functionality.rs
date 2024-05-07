@@ -1,9 +1,9 @@
 use std::vec;
 
-use crate::crypto_primitives::{safe_aes_128_ctr, safe_mayo_P1_times_O_mayo1, safe_mayo_P1_times_Vt_mayo1, safe_random_bytes, safe_shake256}; 
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec};
+use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo3};
 use crate::bitsliced_arithmetic::{create_big_p_bitsliced, p1_add_p1t};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
