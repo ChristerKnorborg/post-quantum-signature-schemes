@@ -75,6 +75,14 @@ extern "C" {
         acc_start: ccty::c_int  // Using c_ulong for size compatibility
     );
 
+    pub fn mul_add_128_bitsliced_m_vec(
+        input:  *const ccty::c_uint,    // Pointer to const u32 for C compatibility
+        input_start: ccty::c_int,  // Using c_ulong for size compatibility
+        nibble: ccty::c_uchar,       // u8 in C is generally an unsigned char
+        acc: *mut ccty::c_uint,         // Pointer to mutable u32 for C compatibility
+        acc_start: ccty::c_int  // Using c_ulong for size compatibility
+    );
+
 
     pub fn encode_bit_sliced_array_mayo12
     (

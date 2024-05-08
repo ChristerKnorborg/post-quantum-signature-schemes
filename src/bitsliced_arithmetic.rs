@@ -106,8 +106,7 @@ macro_rules! transposed_mat_mul_bitsliced_mat_addxD {
                     #[cfg(feature = "mayo5")]{
                     //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx);
                     safe_mul_add_bitsliced_m_vec_mayo5(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[c][r], $acc, acc_start_idx.try_into().unwrap());
-               
-               
+            
                     }
                     #[cfg(feature = "mayo3")]{
                         //mul_add_bitsliced_m_vec($bs_mat, bs_mat_start_idx, $mat[c][r], $acc, acc_start_idx);

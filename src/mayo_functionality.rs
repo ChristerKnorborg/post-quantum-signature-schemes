@@ -3,13 +3,14 @@ use std::vec;
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
-use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo3};
+use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo3, safe_mul_add_bitsliced_m_vec_mayo5};
 use crate::bitsliced_arithmetic::{create_big_p_bitsliced, p1_add_p1t};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 
+use crate::utils::write_u32_array_to_file_byte;
 use crate::{
     bitsliced_mat_mul_mat_add, decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, mat_mul_bitsliced_mat_add, matrix_vec_mul, transposed_mat_mul_bitsliced_mat_add, upper, upper_triangular_bitsliced_mat_mul_transposed_mat_add, vec_add
 };
@@ -85,6 +86,8 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
     // Compute P3 = (−O^T * P1 * O ) − (−O^T * P2) as P3 = O^t * (P1*O + P2)
     // Compute (P1*O + P2) stored in p2
     bitsliced_mat_mul_mat_add!(&p1, o, &mut p2, V, V, O, true); // upper_triangular = true
+
+    write_u32_array_to_file_byte("testertester", &p2);
     /*#[cfg(feature = "mayo1")]
     {
         safe_mayo_P1_times_O_mayo1(&p1, &o_flat, & mut p2);
