@@ -147,22 +147,6 @@ pub fn safe_encode_bit_sliced_array_mayo12(input: &mut [u8], output: &mut [u8], 
 }
 
 
-
-
-
-// pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
-//     unsafe {
-//         bindings::shake256(
-//             output.as_mut_ptr(),
-//             output_byte_len,
-//             input.as_ptr(),
-//             input_byte_len,
-//         );
-//     }
-// }
-
-
-
 #[cfg(test)]
 mod tests {
     use crate::utils::print_matrix;
