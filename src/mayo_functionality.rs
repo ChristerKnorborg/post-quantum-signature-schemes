@@ -86,8 +86,6 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
     // Compute P3 = (−O^T * P1 * O ) − (−O^T * P2) as P3 = O^t * (P1*O + P2)
     // Compute (P1*O + P2) stored in p2
     bitsliced_mat_mul_mat_add!(&p1, o, &mut p2, V, V, O, true); // upper_triangular = true
-
-    write_u32_array_to_file_byte("testertester", &p2);
     /*#[cfg(feature = "mayo1")]
     {
         safe_mayo_P1_times_O_mayo1(&p1, &o_flat, & mut p2);

@@ -6,12 +6,6 @@
 #endif /* __ARM_NEON */
 
 #define __STDC_FORMAT_MACROS
-#define O_MAYO_1 8
-#define V_MAYO_1 58
-#define K_MAYO_1 9
-
-#define O_MAYO_2 18
-#define V_MAYO_2 60
 
 
 void mul_add_64_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
