@@ -42,7 +42,6 @@ void mul_add_64_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
         const uint64x2_t mask4_1 = {32, 8};
         const uint64x2_t mask4_2 = {32, 128};
 
-        
         uint8x16_t aaaa = vqtbl1q_u8(mul_tbl, vdupq_n_u8(nibble));
 
         acc0 ^= in0 & vceqq_u64(aaaa & mask1_1, mask1_1);
@@ -83,19 +82,19 @@ void mul_add_96_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
         uint8x16_t a3 = vqtbl1q_u8(tbl_a3, aa);
 
         uint8x16_t inrot[3];
-        inrot[0] = vextq_u8(vreinterpretq_u8_u32(in0), vreinterpretq_u8_u32(in1), 12);
-        inrot[1] = vextq_u8(vreinterpretq_u8_u32(in1), vreinterpretq_u8_u32(in2), 12);
-        inrot[2] = vextq_u8(vreinterpretq_u8_u32(in2), vreinterpretq_u8_u32(in0), 12);
+        inrot[0] = vextq_u32(in0, in1, 3);
+        inrot[1] = vextq_u32(in1, in2, 3);
+        inrot[2] = vextq_u32(in2, in0, 3);
 
         uint8x16_t inrot2[3];
-        inrot2[0] = vextq_u8(vreinterpretq_u8_u32(in1), vreinterpretq_u8_u32(in2), 8);
-        inrot2[1] = vextq_u8(vreinterpretq_u8_u32(in2), vreinterpretq_u8_u32(in0), 8);
-        inrot2[2] = vextq_u8(vreinterpretq_u8_u32(in0), vreinterpretq_u8_u32(in1), 8);
+        inrot2[0] = vextq_u32(in1, in2, 2);
+        inrot2[1] = vextq_u32(in2, in0, 2);
+        inrot2[2] = vextq_u32(in0, in1, 2);
 
         uint8x16_t inrot3[3];
-        inrot3[0] = vextq_u8(vreinterpretq_u8_u32(in2), vreinterpretq_u8_u32(in0), 4);
-        inrot3[1] = vextq_u8(vreinterpretq_u8_u32(in0), vreinterpretq_u8_u32(in1), 4);
-        inrot3[2] = vextq_u8(vreinterpretq_u8_u32(in1), vreinterpretq_u8_u32(in2), 4);
+        inrot3[0] = vextq_u32(in2, in0, 1);
+        inrot3[1] = vextq_u32(in0, in1, 1);
+        inrot3[2] = vextq_u32(in1, in2, 1);
 
         acc0 ^= a0 & in0;
         acc1 ^= a0 & in1;
