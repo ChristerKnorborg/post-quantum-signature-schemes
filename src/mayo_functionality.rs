@@ -63,7 +63,7 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
     // Make Oil space from o_bytes. Only a single is yielded from decode_bit_sliced_matrices in this case
     let o_bytes = &s[PK_SEED_BYTES..PK_SEED_BYTES+O_BYTES];
     let o = decode_bytestring_matrix_array!(o_bytes, V, O);
-    let o_flat = decode_bytestring_to_array!(o_bytes, V * O);
+    //let o_flat = decode_bytestring_to_array!(o_bytes, V * O);
 
     // Derive P1_i and P2_i from pk_seed
     let mut p = [0u32; (P1_BYTES + P2_BYTES)/4];
@@ -291,11 +291,10 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
             let v_bytestring_slice = &v_bytestring[i * V_BYTES..(i + 1) * V_BYTES];
             v[i] = decode_bytestring_to_array!(v_bytestring_slice, V)
         }
+
+
         //let mut v_flat = [0u8 ; K*V];
-        /*for i in 0..K {
-            v[i*V..(i+1)*V].copy_from_slice(decode_bytestring_to_array!(&v_bytestring[..V_BYTES], V));
-        } */
-        let v_flat = decode_bytestring_to_array!(&v_bytestring[..V_BYTES*K], K*V);
+        //let v_flat = decode_bytestring_to_array!(&v_bytestring[..V_BYTES*K], K*V);
 
         // Derive r (Notice r is redefined and have nothing to do with previous r)
         let v_bytestring_remainder = &v_bytestring[K * V_BYTES..];
