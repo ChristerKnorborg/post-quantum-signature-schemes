@@ -170,8 +170,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
 
 
 
-
-
 // Mayo algorithm 7
 // Expands a public key from its compact representation
 pub fn expand_pk(cpk: CompactPublicKey) -> ExpandedPublicKey {

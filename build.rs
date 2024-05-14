@@ -14,7 +14,7 @@ fn main() {
     build.file("src/genkat/mem.c")
         .file("src/genkat/aes_c.c")
         .file("src/genkat/fips202.c")
-        .file("src/assembly/armv8_instructions.c")
+        .file("src/arm_neon_intrinsic/armv8_intrinsic.c")
         .flag("-O3")
         .flag("-mcpu=apple-m1")
         .compile("randombytes_nist");
