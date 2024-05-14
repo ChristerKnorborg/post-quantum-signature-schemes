@@ -1,4 +1,4 @@
-use crate::assembly::arm_instructions::{encode_bit_sliced_array_mayo12, mayo_P1_times_O_mayo1, mayo_P1_times_O_mayo2, mayo_P1_times_Vt_mayo1, mul_add_128_bitsliced_m_vec, mul_add_64_bitsliced_m_vec, mul_add_96_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
+use crate::arm_neon_intrinsic::arm_intrinsic::{encode_bit_sliced_array_mayo12, mayo_P1_times_O_mayo1, mayo_P1_times_O_mayo2, mayo_P1_times_Vt_mayo1, mul_add_128_bitsliced_m_vec, mul_add_64_bitsliced_m_vec, mul_add_96_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
 use crate::genkat::bindings;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
