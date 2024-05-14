@@ -1,11 +1,13 @@
+use std::time::Duration;
+
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-//use criterion_cycles_per_byte::CyclesPerByte;
+// use criterion_cycles_per_byte::CyclesPerByte;
 use gnuplot::{Caption, Color, Figure};
 
 
 use lib::constants::VERSION;
 use lib::crypto_primitives::{
-    safe_aes_128_ctr, safe_randombytes, safe_randombytes_init, safe_shake256,
+    safe_aes_128_ctr, safe_random_bytes, safe_random_bytes_init, safe_shake256,
 };
 use lib::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
 
@@ -23,10 +25,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     let nbytes: u64 = entropy_input.len() as u64;
 
     // Init the randombytes like NIST correctly
-    safe_randombytes_init(&mut entropy_input, &personalization_string, 256);
-    safe_randombytes(&mut entropy_input, nbytes);
+    safe_random_bytes_init(&mut entropy_input, &personalization_string, 256);
+    safe_random_bytes(&mut entropy_input, nbytes);
 
-    safe_randombytes_init(&mut seed_bytes, &personalization_string, 256);
+    safe_random_bytes_init(&mut seed_bytes, &personalization_string, 256);
 
 
     c.bench_function("KeyGen", |bencher| {
@@ -43,7 +45,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bencher.iter_batched(
             || compact_key_gen(),
             |(_, csk)| {
-                expand_sk(&csk)
+                expand_sk(csk)
             },
             BatchSize::LargeInput,
         );
@@ -64,7 +66,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             || {
                 let (_, csk) = compact_key_gen();
                 let mut message = [0u8; 32];
-                safe_randombytes(&mut message, 32);
+                safe_random_bytes(&mut message, 32);
                 let message_vec = message.to_vec();
 
                 (message_vec, csk)
@@ -81,7 +83,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             || {
                 let (cpk, csk) = compact_key_gen();      
                 let mut message = [0u8; 32];
-                safe_randombytes(&mut message, 32);
+                safe_random_bytes(&mut message, 32);
                 let message_vec = message.to_vec();
 
                 let signature = api_sign(message_vec, csk);
@@ -95,11 +97,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         );
     });
 
+    //c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
 
 criterion_group!(
     name = my_bench;
-    config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    // config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    config = Criterion::default().measurement_time(Duration::from_secs(60)).sample_size(5000);
     targets = criterion_benchmark
     
 );
