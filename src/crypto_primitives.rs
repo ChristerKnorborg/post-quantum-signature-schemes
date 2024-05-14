@@ -1,5 +1,5 @@
 use crate::genkat::bindings;
-use crate::assembly::arm_instructions;
+use crate::arm_neon_intrinsic::arm_intrinsic;
 use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{ByteOrder, LittleEndian};
 use sha3::digest::{ExtendableOutput, Update, XofReader};
@@ -118,11 +118,11 @@ pub fn shake256(bytestring: &Vec<u8>, output_length: usize) -> Vec<u8> {
 
 
 pub fn safe_matrix_add(res: &mut [u8], a: &[u8], b: &[u8],  n: i32) {
-    unsafe { arm_instructions::matrix_add(res.as_mut_ptr(), a.as_ptr(), b.as_ptr(), n)}
+    unsafe { arm_intrinsic::matrix_add(res.as_mut_ptr(), a.as_ptr(), b.as_ptr(), n)}
 }
 
 pub fn safe_inner_product(res: &mut u8, a: &[u8], b: &[u8],  n: i32) {
-    unsafe { arm_instructions::inner_product(res, a.as_ptr(), b.as_ptr(), n)}
+    unsafe { arm_intrinsic::inner_product(res, a.as_ptr(), b.as_ptr(), n)}
 }
 
 

@@ -1,15 +1,21 @@
+// build.rs
 fn main() {
-    // Compile C-files file into a separate static library
-    cc::Build::new()
-        .file("src/genkat/randombytes_ctrdrbg.c")
-        .file("src/genkat/mem.c")
+    let mut build = cc::Build::new();
+
+    // Use conditional compilation based on the feature
+    if std::env::var("CARGO_FEATURE_SYSTEM_AES").is_ok() {
+        println!("cargo:info=Using system AES");
+        build.file("src/genkat/randombytes_system.c");
+    } else {
+        println!("cargo:info=Using default AES");
+        build.file("src/genkat/randombytes_ctrdrbg.c");
+    }
+
+    build.file("src/genkat/mem.c")
         .file("src/genkat/aes_c.c")
         .file("src/genkat/fips202.c")
-        .file("src/assembly/vmull.c")
-        .flag("-O3")  // Apply optimization level O3
+        .file("src/arm_neon_intrinsic/armv8_intrinsic.c")
+        .flag("-O3")
+        .flag("-mcpu=apple-m1")
         .compile("randombytes_nist");
-
-
-    // Compile Assembly file into a separate static library
-
 }
