@@ -20,7 +20,8 @@
         "rng.h": "c",
         "ctype.h": "c",
         "__locale": "c",
-        "ios": "c"
+        "ios": "c",
+        "wmmintrin.h": "c"
     },
     "rust-analyzer.showUnlinkedFileNotification": false
 

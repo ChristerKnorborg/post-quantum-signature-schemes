@@ -1,13 +1,13 @@
 [alias]
-mayo1 = "run --no-default-features --features mayo1 --release"
-mayo2 = "run --no-default-features --features mayo2 --release"
-mayo3 = "run --no-default-features --features mayo3 --release"
-mayo5 = "run --no-default-features --features mayo5 --release"
+mayo1 = "run --no-default-features --features mayo1,custom_stack --release"
+mayo2 = "run --no-default-features --features mayo2,custom_stack --release"
+mayo3 = "run --no-default-features --features mayo3,custom_stack --release"
+mayo5 = "run --no-default-features --features mayo5,custom_stack --release"
 
-mayo1_aes = "run --no-default-features --features mayo1,system_aes --release"
-mayo2_aes = "run --no-default-features --features mayo2,system_aes --release"
-mayo3_aes = "run --no-default-features --features mayo3,system_aes --release"
-mayo5_aes = "run --no-default-features --features mayo5,system_aes --release"
+mayo1_aes = "run --no-default-features --features mayo1,custom_stack, system_aes --release"
+mayo2_aes = "run --no-default-features --features mayo2,custom_stack, system_aes --release"
+mayo3_aes = "run --no-default-features --features mayo3,custom_stack, system_aes --release"
+mayo5_aes = "run --no-default-features --features mayo5,custom_stack, system_aes --release"
 
 bench_mayo1 = "bench --no-default-features --features mayo1 --bench benchmark -- --verbose"
 bench_mayo2 = "bench --no-default-features --features mayo2 --bench benchmark -- --verbose"
@@ -19,11 +19,8 @@ bench_mayo2_aes = "bench --no-default-features --features mayo2,system_aes --ben
 bench_mayo3_aes = "bench --no-default-features --features mayo3,system_aes --bench benchmark -- --verbose"
 bench_mayo5_aes = "bench --no-default-features --features mayo5,system_aes --bench benchmark -- --verbose"
 
+[target.'cfg(all(target_os = "windows", feature = "custom_stack"))']
+rustflags = ["-C", "link-args=/STACK:4194304"] # 4MB
 
-
-
-[target.'cfg(target_os = "windows")']
-rustflags = ["-C", "link-args=/STACK:4194304"] #4MB
-
-#[target.'cfg(target_os = "macos")']
-#rustflags = ["-C", "link-arg=-Wl,-stack_size,0x400000"] #4MB
+[target.'cfg(all(target_os = "macos", feature = "custom_stack"))']
+rustflags = ["-C", "link-arg=-Wl,-stack_size,0x400000"] # 4MB
