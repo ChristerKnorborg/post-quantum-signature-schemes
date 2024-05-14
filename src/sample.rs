@@ -60,8 +60,8 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, y: Vec<u8>, r: Vec<u8>) -> Result<Ve
     
     let rows = M;
 
-    let mut x: Vec<u8> = r.clone();
-    let ar = matrix_vector_mul(&a, &r);
+    let mut x: Vec<u8> = r;
+    let ar = matrix_vector_mul(&a, &x);
     let y_sub_ar = vector_sub(&y, &ar);
 
     // Append the first element of y to the first row of A, the second element of y to the second row of A etc.

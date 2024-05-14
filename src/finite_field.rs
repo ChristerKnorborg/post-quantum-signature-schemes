@@ -31,7 +31,7 @@ pub fn mul(x: u8, y: u8) -> u8 {
     res ^= (x & 8)*y; // Multiply by x^3
 
     // Reduce modulo by the irreducible polynomial x^4 + x + 1 
-    let first_4_bits: u8 = res & 0xf0; // First 4 bits of res (x^7 to x^4. Notice, the first bit (x^7) is always 0, cause we can't get more than x^6)
+    let first_4_bits: u8 = res & 0x70; // First 4 bits of res (x^7 to x^4. Notice, the first bit (x^7) is always 0, cause we can't get more than x^6)
 
     // Replace x^4 with x + 1 as x^4 = x + 1 (under the irreducible polynomial).
     // Replace x^5 with x^2 + x as x^5 = x^2 + x (under the irreducible polynomial).
@@ -148,6 +148,27 @@ pub fn vector_matrix_mul(vec: &Vec<u8>, matrix: &Vec<Vec<u8>>) -> Vec<u8> {
     return result;
 }
 
+// Vector-matrix multiplication over GF(16) with a transposed vector.
+// Returns a vector of size equal to the number of columns in the matrix.
+pub fn vector_transposed_matrix_mul(a: &Vec<u8>, b: &Vec<Vec<u8>>) -> Vec<u8> {
+    let b_cols = b.len();
+    let b_rows = if b_cols > 0 { b[0].len() } else { 0 };
+
+    let mut result = vec![0u8; b_cols];
+
+    for j in 0..b_cols {
+        for k in 0..b_rows {
+            result[j] = add(result[j], mul(a[k], b[j][k]));
+        }
+    }
+
+    return result
+}
+
+
+
+
+
 
 // Matrix-vector multiplication over GF(16)
 // Returns a vector of size equal to the number of rows in the matrix.
@@ -167,6 +188,25 @@ pub fn matrix_vector_mul(matrix: &Vec<Vec<u8>>, vec: &Vec<u8>) -> Vec<u8> {
     }
 
     return result;
+}
+
+
+
+
+
+// Vector multiplication over GF(16) returning a scalar result.
+pub fn vector_mul(vec1: &Vec<u8>, vec2: &Vec<u8>) -> u8 {
+    assert_eq!(vec1.len(), vec2.len(), "Both vectors must be of the same length");
+
+    let len = vec1.len();
+    let mut result = 0u8;
+
+    for i in 0..len {
+        // Multiply each element of vec1 by the corresponding element of vec2 and sum up the results
+        result = add(result, mul(vec1[i], vec2[i]));
+    }
+
+    return result
 }
 
 
