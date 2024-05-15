@@ -4,7 +4,7 @@ use crate::bitsliced_functionality::{
     decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_vector,
     encode_bit_sliced_matrices, encode_vector_to_bytestring,
 };
-use crate::crypto_primitives::{safe_aes_128_ctr, safe_randombytes, safe_shake256};
+use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256};
 use crate::finite_field::{add, matrix_add, matrix_mul, matrix_sub, matrix_vector_mul, mul, sub, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul};
 use crate::sample::sample_solution;
 use crate::utils::transpose_matrix;
@@ -21,7 +21,7 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
 
     // Pick seed_sk at random (using NIST API for randomness)
     let mut sk_seed: Vec<u8> = vec![0u8; SK_SEED_BYTES];
-    safe_randombytes(&mut sk_seed, SK_SEED_BYTES as u64);
+    safe_random_bytes(&mut sk_seed, SK_SEED_BYTES as u64);
 
     // Derive pk_seed and O from sk_seed
     let mut s: Vec<u8> = vec![0u8; PK_SEED_BYTES + O_BYTES];
@@ -228,7 +228,7 @@ pub fn sign(compact_secret_key: &Vec<u8>, message: &Vec<u8>) -> Vec<u8> {
 
     // Assign randomness to r using NIST API randomness
     let mut r: Vec<u8> = vec![0x0; R_BYTES];
-    safe_randombytes(&mut r, R_BYTES as u64);
+    safe_random_bytes(&mut r, R_BYTES as u64);
 
 
     // Derive salt

@@ -11,7 +11,7 @@ use sha3::Shake256;
    - ALSO USED BY MAYO AUTHERS 
 */
 
-pub fn safe_randombytes_init(
+pub fn safe_random_bytes_init(
     entropy_input: &mut [u8],
     personalization_string: &[u8],
     security_strength: i32,
@@ -25,7 +25,7 @@ pub fn safe_randombytes_init(
     }
 }
 
-pub fn safe_randombytes(random_arrays: &mut [u8], nbytes: u64) {
+pub fn safe_random_bytes(random_arrays: &mut [u8], nbytes: u64) {
     unsafe {
         bindings::randombytes(random_arrays.as_mut_ptr(), nbytes);
     }

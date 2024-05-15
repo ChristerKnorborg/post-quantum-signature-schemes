@@ -7,7 +7,7 @@ use std::io::Write;
 use crate::constants::{COMPARE_FILE_NAME, SIG_BYTES, VERSION};
 use crate::utils::bytes_to_hex_string;
 use crate::mayo_functionality::{api_sign, api_sign_open, compact_key_gen};
-use crate::crypto_primitives::{safe_randombytes_init, safe_randombytes};
+use crate::crypto_primitives::{safe_random_bytes_init, safe_random_bytes};
 
 
 pub fn write_and_compare_kat_file() {
@@ -16,7 +16,7 @@ pub fn write_and_compare_kat_file() {
     let mut messages = vec![Vec::new(); 100];
     let mut entropy_input: Vec<u8> = (0..=47).collect();
     let mut personalization_string: Vec<u8> = vec![0u8; 48]; // Example, adjust as necessary
-    safe_randombytes_init(&mut entropy_input, &mut personalization_string, 256);
+    safe_random_bytes_init(&mut entropy_input, &mut personalization_string, 256);
     let nbytes: u64 = entropy_input.len() as u64; // seed fixed to 48 bytes
 
 
@@ -38,13 +38,13 @@ pub fn write_and_compare_kat_file() {
     for count in 0..100 {
         //fprintf(fp_req, "count = %d\n", i);
         let mut seed: Vec<u8> = vec![0u8 ; 48];
-        safe_randombytes(&mut seed, nbytes);
+        safe_random_bytes(&mut seed, nbytes);
         seeds[count] = seed;
 
         let mlen = 33 * (count + 1);
         let mut msg = vec![0u8 ; mlen];
 
-        safe_randombytes(&mut msg, mlen as u64);
+        safe_random_bytes(&mut msg, mlen as u64);
         messages[count] = msg;
     }
     
@@ -59,7 +59,7 @@ pub fn write_and_compare_kat_file() {
 
     // Randomness generated in same order as the mayo NIST KAT file
     let cur_seed = &mut seeds[count];
-    safe_randombytes_init(cur_seed, &mut personalization_string, 256);
+    safe_random_bytes_init(cur_seed, &mut personalization_string, 256);
     let mlen = 33 * (count + 1);
     let smlen = mlen + SIG_BYTES;
 

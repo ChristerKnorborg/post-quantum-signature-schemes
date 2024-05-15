@@ -3,7 +3,7 @@ use std::io::{Write, Result};
 use std::io::{self, Read};
 use std::path::Path;
 
-use crate::crypto_primitives::safe_randombytes_init;
+use crate::crypto_primitives::safe_random_bytes_init;
 
 
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
@@ -26,7 +26,7 @@ pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
 pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Seed always 47 bytes
 
-    safe_randombytes_init(
+    safe_random_bytes_init(
         &mut entropy_input,
         &personalization_string,
         256,
