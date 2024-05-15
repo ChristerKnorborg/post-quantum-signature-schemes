@@ -40,7 +40,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     let mut wtr = Writer::from_writer(file);
     
     // Write the CSV headers
-    wtr.write_record(&["keygen", "expand_sk", "expand_pk", "sign", "verify"])?;
+    wtr.write_record(&["keygen", "expand_sk", "expand_pk", "sign+expand_sk", "verify+expand_pk"])?;
 
     // Here you would include your benchmarking logic and write the data like so:
     // wtr.write_record(&[keygen_result, expand_sk_result, expand_pk_result, sign_result, verify_result])?;
@@ -114,7 +114,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
 
         
-        //this loop runs the benchmark for the keygen function
+        //this loop runs the benchmark for the expand_pk function
         let mut total_duration_expand_pk = Duration::new(0, 0);
         for i in 0..amount_of_iterations{
 
@@ -139,7 +139,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
         let final_average_duration_expand_pk = total_duration_expand_pk / amount_of_iterations.try_into().unwrap();
 
 
-                //this loop runs the benchmark for the keygen function
+        //this loop runs the benchmark for the sign function
         let mut total_duration_sign = Duration::new(0, 0);
         for i in 0..amount_of_iterations{
 
@@ -163,7 +163,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
         let final_average_duration_sign = total_duration_sign / amount_of_iterations.try_into().unwrap();
 
 
-                        //this loop runs the benchmark for the keygen function
+        //this loop runs the benchmark for the verify function
         let mut total_duration_verify = Duration::new(0, 0);
         for i in 0..amount_of_iterations{
 
