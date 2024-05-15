@@ -15,6 +15,5 @@ fn main() {
         .file("src/genkat/aes_c.c")
         .file("src/genkat/fips202.c")
         .flag("-O3")
-        .flag("-mcpu=apple-m1")
         .compile("randombytes_nist");
 }
