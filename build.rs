@@ -16,6 +16,5 @@ fn main() {
         .file("src/genkat/fips202.c")
         .file("src/arm_neon_intrinsic/armv8_intrinsic.c")
         .flag("-O3")
-        .flag("-mcpu=apple-m1")
         .compile("randombytes_nist");
 }
