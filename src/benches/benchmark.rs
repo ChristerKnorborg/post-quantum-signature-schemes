@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 // use criterion_cycles_per_byte::CyclesPerByte;
 use gnuplot::{Caption, Color, Figure};
@@ -35,7 +37,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             |_| {
                 compact_key_gen()
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
 
@@ -45,7 +47,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             |(_, csk)| {
                 expand_sk(csk)
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
 
@@ -55,7 +57,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             |(cpk, _)| {
                 expand_pk(cpk)
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
 
@@ -69,10 +71,10 @@ fn criterion_benchmark(c: &mut Criterion) {
 
                 (message_vec, csk)
             },
-            |(message, csk)| {
-                api_sign(message, csk)
+            |(message_vec, csk)| {
+                api_sign(message_vec, csk)
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
 
@@ -88,10 +90,11 @@ fn criterion_benchmark(c: &mut Criterion) {
 
                 (signature, cpk)
             },
-            |(message, cpk)| {
-                api_sign_open(message, cpk)
+            |(signature, cpk)| {
+                api_sign_open(signature, cpk);
+
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
 
@@ -100,7 +103,8 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     name = my_bench;
-    config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    //config = Criterion::default(); //.with_measurement(CyclesPerByte)
+    config = Criterion::default().measurement_time(Duration::from_secs(60)).sample_size(1000);
     targets = criterion_benchmark
     
 );
