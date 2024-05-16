@@ -4,10 +4,16 @@ mayo2 = "run --no-default-features --features mayo2 --release"
 mayo3 = "run --no-default-features --features mayo3 --release"
 mayo5 = "run --no-default-features --features mayo5 --release"
 
-bench_mayo1 = "bench --no-default-features --features mayo1 --bench benchmark -- --verbose"
-bench_mayo2 = "bench --no-default-features --features mayo2 --bench benchmark -- --verbose"
-bench_mayo3 = "bench --no-default-features --features mayo3 --bench benchmark -- --verbose"
-bench_mayo5 = "bench --no-default-features --features mayo5 --bench benchmark -- --verbose"
+bench_mayo1 = "run --no-default-features --features mayo1,bench --release"
+bench_mayo2 = "run --no-default-features --features mayo2,bench --release"
+bench_mayo3 = "run --no-default-features --features mayo3,bench --release"
+bench_mayo5 = "run --no-default-features --features mayo5,bench --release"
+
+
+#bench_mayo1 = "run --no-default-features --features mayo1 --bench benchmark -- --verbose"
+#bench_mayo2 = "run --no-default-features --features mayo2 --bench benchmark -- --verbose"
+#bench_mayo3 = "run --no-default-features --features mayo3 --bench benchmark -- --verbose"
+#bench_mayo5 = "run --no-default-features --features mayo5 --bench benchmark -- --verbose"
 
 
 [target.'cfg(target_os = "windows")']

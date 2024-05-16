@@ -2,7 +2,7 @@
 use std::time::{Duration, Instant};
 
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -27,7 +27,20 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
 
-    let file_path = "benchmark-".to_owned()+&VERSION.to_string()+".csv";
+    let dir_path = "benchmark_result";
+    if !std::path::Path::new(dir_path).exists() {
+        fs::create_dir(dir_path)?;
+    }
+
+    
+
+    // Construct the file name with the specified pattern
+    let file_name = format!("benchmark-{}ArrayImpl.csv", VERSION);
+    
+    // Combine the directory path and file name to get the full file path
+    let file_path = format!("{}/{}", dir_path, file_name);
+
+    
 
     // Open a file in write mode, this will create or truncate the file if it exists.
     let file = OpenOptions::new()
@@ -40,7 +53,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     let mut wtr = Writer::from_writer(file);
     
     // Write the CSV headers
-    wtr.write_record(&["keygen", "expand_sk", "expand_pk", "sign+expand_sk", "verify+expand_pk"])?;
+    wtr.write_record(&["Version","keygen", "expand_sk", "expand_pk", "sign+expand_sk", "verify+expand_pk"])?;
 
     // Here you would include your benchmarking logic and write the data like so:
     // wtr.write_record(&[keygen_result, expand_sk_result, expand_pk_result, sign_result, verify_result])?;
@@ -150,11 +163,8 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     
         let start_sign = Instant::now();
     
-
-            
-    
         api_sign(message_vec, csk);
-        
+    
         let duration_sign = start_sign.elapsed();
 
         total_duration_sign += duration_sign;
@@ -193,6 +203,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
         let final_average_duration_verify_plus_expand_pk = final_average_duration_verify + final_average_duration_expand_pk;
 
     wtr.write_record(&[
+        &VERSION.to_string(),
         &format_duration_as_nanos(final_average_duration_keygen),
         &format_duration_as_nanos(final_average_duration_expand_sk), // Replace with format_duration(duration_expand_sk) when enabled
         &format_duration_as_nanos(final_average_duration_expand_pk),

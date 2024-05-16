@@ -19,6 +19,7 @@ use crate::{
 
 // MAYO algorithm 5: Generate a compact key pair (cpk, csk)
 pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
+
     
     // Pick random seed_sk at random (using NIST randomness source)
     let mut sk_seed = [0u8; SK_SEED_BYTES];
