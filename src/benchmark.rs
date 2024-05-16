@@ -34,7 +34,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     
 
     // Construct the file name with the specified pattern
-    let file_name = format!("benchmark-{}ArrayImpl.csv", VERSION);
+    let file_name = format!("benchmark-{}avx_adaption.csv", VERSION);
     
     // Combine the directory path and file name to get the full file path
     let file_path = format!("{}/{}", dir_path, file_name);
