@@ -1,5 +1,23 @@
-use lib::{crypto_primitives::safe_encode_bit_sliced_array_mayo12, encode_bit_sliced_array, write_and_compare_kat_file::write_and_compare_kat_file};
+use lib::constants::{M, VERSION};
+use lib::write_and_compare_kat_file::write_and_compare_kat_file;
+
+use lib::own_benchmark::benchmark;
 
 fn main() {
-    write_and_compare_kat_file();
+
+
+
+    #[cfg(not(feature = "bench"))]
+    {
+        write_and_compare_kat_file();
+    }
+
+
+    #[cfg(feature = "bench")]
+    {
+
+        benchmark(1000);
+    }
+
+
 }
