@@ -5,8 +5,6 @@ use lib::own_benchmark::benchmark;
 
 fn main() {
 
-    println!("{}" , M);
-    println!("{}" , VERSION);
 
     #[cfg(not(feature = "bench"))]
     {
@@ -16,7 +14,6 @@ fn main() {
 
     #[cfg(feature = "bench")]
     {
-        println!("bench");
         benchmark(1000);
     }
 
