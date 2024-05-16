@@ -196,19 +196,13 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
         let final_average_duration_verify = total_duration_verify / amount_of_iterations.try_into().unwrap();
 
 
-
-
-
-        let final_average_duration_sign_plus_expand_sk = final_average_duration_sign + final_average_duration_expand_sk;
-        let final_average_duration_verify_plus_expand_pk = final_average_duration_verify + final_average_duration_expand_pk;
-
     wtr.write_record(&[
         &VERSION.to_string(),
         &format_duration_as_nanos(final_average_duration_keygen),
         &format_duration_as_nanos(final_average_duration_expand_sk), // Replace with format_duration(duration_expand_sk) when enabled
         &format_duration_as_nanos(final_average_duration_expand_pk),
-        &format_duration_as_nanos(final_average_duration_sign_plus_expand_sk),
-        &format_duration_as_nanos(final_average_duration_verify_plus_expand_pk),
+        &format_duration_as_nanos(final_average_duration_sign),
+        &format_duration_as_nanos(final_average_duration_verify),
     ])?;
 
 
