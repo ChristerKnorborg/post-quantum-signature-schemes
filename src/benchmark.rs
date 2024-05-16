@@ -1,7 +1,4 @@
-
 use std::time::{Duration, Instant};
-
-
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::Path;
@@ -26,19 +23,21 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
 
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
+    
+let implementation_variant = "Array_implementation";
 
-    let dir_path = "benchmark_result";
-    if !std::path::Path::new(dir_path).exists() {
-        fs::create_dir(dir_path)?;
+    let base_dir = "benchmark_result";
+    if !std::path::Path::new(base_dir).exists() {
+        fs::create_dir(base_dir)?;
     }
 
     
 
-    // Construct the file name with the specified pattern
-    let file_name = format!("benchmark-{}ArrayImpl.csv", VERSION);
-    
-    // Combine the directory path and file name to get the full file path
-    let file_path = format!("{}/{}", dir_path, file_name);
+            // Construct the file name with the specified pattern including the implementation variant
+            let file_name = format!("benchmark-{}-{}.csv", VERSION, implementation_variant);
+
+            // Combine the directory path and file name to get the full file path
+            let file_path = format!("{}/{}", base_dir, file_name);
 
     
 
@@ -79,22 +78,16 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
     //this loop runs the benchmark for the keygen function
     let mut total_duration_keygen = Duration::new(0, 0);
-    for i in 0..amount_of_iterations{
+    for _ in 0..amount_of_iterations{
 
 
-    let start_keygen = Instant::now();
+        let start_keygen = Instant::now();
 
-    compact_key_gen();
-    //  expand_sk(csk);
-    //  expand_pk(cpk);
+        compact_key_gen();
+        
+        let duration_keygen = start_keygen.elapsed();
 
-    //  let signature = api_sign(message_vec, csk);
-
-    // api_sign_open(signature, cpk);
-    
-    let duration_keygen = start_keygen.elapsed();
-
-    total_duration_keygen += duration_keygen;
+        total_duration_keygen += duration_keygen;
     }
 
     let final_average_duration_keygen = total_duration_keygen / amount_of_iterations.try_into().unwrap();
@@ -215,6 +208,3 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 fn format_duration_as_nanos(dur: Duration) -> String {
     format!("{:.5?}", dur.as_nanos())
 }
-
-
-
