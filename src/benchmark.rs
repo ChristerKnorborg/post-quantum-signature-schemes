@@ -31,18 +31,13 @@ let implementation_variant = "AVX_ADAPTION";
         fs::create_dir(base_dir)?;
     }
 
-    let nested_dir = format!("{}/{}", base_dir, implementation_variant);
-    if !Path::new(&nested_dir).exists() {
-        fs::create_dir_all(&nested_dir)?;
-    }
-
     
 
             // Construct the file name with the specified pattern including the implementation variant
             let file_name = format!("benchmark-{}-{}.csv", VERSION, implementation_variant);
 
             // Combine the directory path and file name to get the full file path
-            let file_path = format!("{}/{}", nested_dir, file_name);
+            let file_path = format!("{}/{}", base_dir, file_name);
 
     
 
