@@ -51,4 +51,6 @@ aes-prng = "0.2.1"
 byteorder = "1.4.3"
 libc = "0.2"
 gnuplot = "0.0.42"
+chrono = "0.4.38"
+csv= "1.1"
 

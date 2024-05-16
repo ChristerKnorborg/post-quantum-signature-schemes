@@ -7,6 +7,7 @@ pub mod mayo_functionality;
 pub mod write_and_compare_kat_file;
 pub mod sample;
 pub mod utils;
+pub mod benchmark;
 pub mod genkat {
     pub mod bindings;
 }
