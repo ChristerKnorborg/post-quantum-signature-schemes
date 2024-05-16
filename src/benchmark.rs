@@ -25,19 +25,26 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
 
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
+    
+let implementation_variant = "AVX_ADAPTION";
 
-    let dir_path = "benchmark_result";
-    if !std::path::Path::new(dir_path).exists() {
-        fs::create_dir(dir_path)?;
+    let base_dir = "benchmark_result";
+    if !std::path::Path::new(base_dir).exists() {
+        fs::create_dir(base_dir)?;
+    }
+
+    let nested_dir = format!("{}/{}", base_dir, implementation_variant);
+    if !Path::new(&nested_dir).exists() {
+        fs::create_dir_all(&nested_dir)?;
     }
 
     
 
-    // Construct the file name with the specified pattern
-    let file_name = format!("benchmark-{}avx_adaption.csv", VERSION);
-    
-    // Combine the directory path and file name to get the full file path
-    let file_path = format!("{}/{}", dir_path, file_name);
+            // Construct the file name with the specified pattern including the implementation variant
+            let file_name = format!("benchmark-{}-{}.csv", VERSION, implementation_variant);
+
+            // Combine the directory path and file name to get the full file path
+            let file_path = format!("{}/{}", nested_dir, file_name);
 
     
 
