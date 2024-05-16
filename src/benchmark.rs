@@ -24,7 +24,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
     
-let implementation_variant = "bitsliced";
+let implementation_variant = "ARMv8_bitsliced";
 
     let base_dir = "benchmark_result";
     if !std::path::Path::new(base_dir).exists() {
