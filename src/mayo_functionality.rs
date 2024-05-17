@@ -1,3 +1,4 @@
+use std::time::Instant;
 use std::vec;
 
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
@@ -453,9 +454,11 @@ pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &[u8]) 
     let mut ell = 0;
 
     let mut big_p = [0u32 ; (P1_BYTES + P2_BYTES + P3_BYTES)/4];
+    let mut big_p2 = [0u32 ; (P1_BYTES + P2_BYTES + P3_BYTES)/4];
 
     // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                   (0     P^3_a)
+    
     create_big_p_bitsliced(&p1, &p2, &p3, &mut big_p); // OPTIMIZE THIS!
 
 

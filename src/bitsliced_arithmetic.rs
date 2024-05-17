@@ -385,7 +385,29 @@ pub fn p1_add_p1t(p1: &[u32], p1_p1t_added: &mut [u32]) {
 
 
 
+/* pub fn bitsliced_m_vec_mul_add_x(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
+    const U32_PER_TERM: usize = M/32;
 
+    for i in 0..U32_PER_TERM {
+        let in0 = input_start + i;
+        let in1 = input_start + U32_PER_TERM + i;
+        let in2 = input_start + 2 * U32_PER_TERM + i;
+        let in3 = input_start + 3 * U32_PER_TERM + i;
+
+
+        let acc0 = acc_start + i;
+        let acc1 = acc_start + U32_PER_TERM + i;
+        let acc2 = acc_start + 2 * U32_PER_TERM + i;
+        let acc3 = acc_start + 3 * U32_PER_TERM + i;
+
+        // deg 1 term of a;
+        let x = in0[i] ^ in3[i];
+        acc[acc0] ^= in3[i];
+        acc[acc1] ^= x;
+        acc[acc2] ^= in1[i];
+        acc[acc3] ^= in2[i];
+    } 
+} */
 
 
 // Construct the m matrices of (P_1 P_2)

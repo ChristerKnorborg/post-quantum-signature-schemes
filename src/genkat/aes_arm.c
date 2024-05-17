@@ -20,6 +20,11 @@
 # endif
 #endif  /* ARM Headers */
 
+
+void aes_set_roundkeys() {
+	return;
+}
+
 void aes_process_arm(const uint8_t key[], const uint8_t subkeys[], uint32_t rounds,
                      const uint8_t input[], uint8_t output[], uint32_t length)
 {
@@ -56,6 +61,12 @@ void aes_process_arm(const uint8_t key[], const uint8_t subkeys[], uint32_t roun
 		length -= 16;
 	}
 }
+
+int AES_128_CTR(unsigned char *output, uint32_t outputByteLen,
+                const unsigned char *input, uint32_t inputByteLen) {
+			return;
+}
+
 
 #if defined(TEST_MAIN)
 
