@@ -9,7 +9,7 @@ use crate::constants::{
 };
 use crate::{
     decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_to_array, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, transpose_matrix_array, vec_matrix_mul, vector_matrix_mul, vector_mul,
-    matrix_matrix_transposed_mul
+    matrix_matrix_transposed_mul, decode_and_concatenate_matrices
 };
 
 
@@ -505,10 +505,9 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let p2_bytestring = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
     let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
-    // Decode the public information into matrices
-    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
-    let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
+    // Decode p1, p2, p3 at once to save memory and construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
+    // for every matrix a ∈ [m]                                                                (0     P^3_a) 
+    let big_p: [[[u8; N]; N]; M] = decode_and_concatenate_matrices!(p1_bytestring, p2_bytestring, p3_bytestring, V, O, M);
 
     // Decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
@@ -548,17 +547,8 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
     let t = decode_bytestring_to_array!(t_output, M);
 
 
-    // Compute P*(s)
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
-
-    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
-    // for every matrix a ∈ [m]                   (0     P^3_a)
-    let big_p = create_big_p(&p1, &p2, &p3);
-
-        // for every matrix a ∈ [m]                   (0     P^3_a)
-
-
 
     for i in 0..K {
 
