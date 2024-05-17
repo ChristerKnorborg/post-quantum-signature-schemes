@@ -415,11 +415,6 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &[u8]) -
     let p2_bytestring = &expanded_pk[P1_BYTES..P1_BYTES + P2_BYTES];
     let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
-    // Decode the public information into matrices
-    // let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    // let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
-    // let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
-
     // Decode p1, p2, p3 at once to save memory and construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                                                                (0     P^3_a) 
     let big_p: [[[u8; N]; N]; M] = decode_and_concatenate_matrices!(p1_bytestring, p2_bytestring, p3_bytestring, V, O, M);
