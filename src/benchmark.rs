@@ -189,6 +189,17 @@ let implementation_variant = "Array_implementation";
         let final_average_duration_verify = total_duration_verify / amount_of_iterations.try_into().unwrap();
 
 
+        #[cfg(feature = "CCM1")]
+        {
+            println!("CCM1 is enabled")
+        }
+
+        #[cfg(feature = "CCODROID-C4")]
+        {
+            println!("CCODROID-C4 is enabled")
+        }
+
+
     wtr.write_record(&[
         &VERSION.to_string(),
         &format_duration_as_nanos(final_average_duration_keygen),
