@@ -1,4 +1,4 @@
-
+use crate::constants::N;
 
 
 
@@ -180,8 +180,8 @@ macro_rules! encode_bit_sliced_matrices {
 #[macro_export]
 macro_rules! decode_and_concatenate_matrices {
     ($p1_bytestring:expr, $p2_bytestring:expr, $p3_bytestring:expr, $V:expr, $O:expr, $M:expr) => {{
-        const N: usize = $V + $O;
-        let mut result = [[[0u8; N]; N]; $M];
+        let mut result = [0u8; $M * N * N];
+
         let sub_byte_end = $M / 2;
 
         let mut p1_curr_byte_idx = 0;
@@ -190,19 +190,18 @@ macro_rules! decode_and_concatenate_matrices {
 
         // One row of P1 and P2 at a time
         for i in 0..$V {
-
             // Decode P1 (Upper Triangular) into the top-left corner
-            for j in (i..$V){
+            for j in i..$V {
                 let slice_end = p1_curr_byte_idx + sub_byte_end;
                 let encoded_bits = &$p1_bytestring[p1_curr_byte_idx..slice_end];
                 let indices_array = decode_bit_sliced_array!(encoded_bits, $M);
 
                 for (mat_index, &value) in indices_array.iter().enumerate() {
-                    result[mat_index][i][j] = value;
+                    let index = mat_index * (N * N) + i * N + j;
+                    result[index] = value;
                 }
                 p1_curr_byte_idx = slice_end;
             }
-
 
             // Decode P2 into the top-right corner
             for j in 0..$O {
@@ -211,7 +210,8 @@ macro_rules! decode_and_concatenate_matrices {
                 let indices_array = decode_bit_sliced_array!(encoded_bits, $M);
 
                 for (mat_index, &value) in indices_array.iter().enumerate() {
-                    result[mat_index][i][$V + j] = value;
+                    let index = mat_index * (N * N) + i * N + ($V + j);
+                    result[index] = value;
                 }
                 p2_curr_byte_idx = slice_end;
             }
@@ -219,13 +219,14 @@ macro_rules! decode_and_concatenate_matrices {
 
         // Decode P3 (upper triangular) into the bottom-right corner
         for i in 0..$O {
-            for j in (i..$O) {
+            for j in i..$O {
                 let slice_end = p3_curr_byte_idx + sub_byte_end;
                 let encoded_bits = &$p3_bytestring[p3_curr_byte_idx..slice_end];
                 let indices_array = decode_bit_sliced_array!(encoded_bits, $M);
 
                 for (mat_index, &value) in indices_array.iter().enumerate() {
-                    result[mat_index][$V + i][$V + j] = value;
+                    let index = mat_index * (N * N) + ($V + i) * N + ($V + j);
+                    result[index] = value;
                 }
                 p3_curr_byte_idx = slice_end;
             }

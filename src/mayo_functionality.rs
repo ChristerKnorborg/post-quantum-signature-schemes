@@ -507,7 +507,7 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &Vec<u8>
 
     // Decode p1, p2, p3 at once to save memory and construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
     // for every matrix a ∈ [m]                                                                (0     P^3_a) 
-    let big_p: [[[u8; N]; N]; M] = decode_and_concatenate_matrices!(p1_bytestring, p2_bytestring, p3_bytestring, V, O, M);
+    let big_p: [u8; N * N * M] = decode_and_concatenate_matrices!(p1_bytestring, p2_bytestring, p3_bytestring, V, O, M);
 
     // Decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
