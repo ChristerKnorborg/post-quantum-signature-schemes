@@ -8,9 +8,7 @@ use crate::constants::{
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 use crate::{
-    decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_to_matrix, decode_bytestring_to_array, 
-    encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul,
-    transpose_matrix, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
+    decode_and_concatenate_matrices, decode_bit_sliced_array, decode_bit_sliced_matrices, decode_bytestring_to_array, decode_bytestring_to_matrix, encode_bit_sliced_array, encode_bit_sliced_matrices, encode_to_bytestring_array, matrix_add, matrix_mul, matrix_vec_mul, transpose_matrix, vector_matrix_mul, vector_mul, vector_transposed_matrix_mul
 };
 
 
@@ -418,9 +416,13 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &[u8]) -
     let p3_bytestring = &expanded_pk[P1_BYTES + P2_BYTES..];
 
     // Decode the public information into matrices
-    let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
-    let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
-    let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
+    // let p1 = decode_bit_sliced_matrices!(p1_bytestring, V, V, M, true);
+    // let p2 = decode_bit_sliced_matrices!(p2_bytestring, V, O, M, false);
+    // let p3 = decode_bit_sliced_matrices!(p3_bytestring, O, O, M, true);
+
+    // Decode p1, p2, p3 at once to save memory and construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
+    // for every matrix a ∈ [m]                                                                (0     P^3_a) 
+    let big_p: [[[u8; N]; N]; M] = decode_and_concatenate_matrices!(p1_bytestring, p2_bytestring, p3_bytestring, V, O, M);
 
     // Decode signature and derive salt
     let salt = &signature[SIG_BYTES - SALT_BYTES..SIG_BYTES];
@@ -463,10 +465,6 @@ pub fn verify(expanded_pk: [u8 ; EPK_BYTES], signature: &[u8], message: &[u8]) -
     // Compute P*(s)
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
-
-    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
-    // for every matrix a ∈ [m]                   (0     P^3_a)
-    let big_p = create_big_p_matrices(p1, p2, p3);
 
     for i in 0..K {
 
