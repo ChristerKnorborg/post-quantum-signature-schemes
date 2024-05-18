@@ -189,24 +189,52 @@ let implementation_variant = "Array_implementation";
         let final_average_duration_verify = total_duration_verify / amount_of_iterations.try_into().unwrap();
 
 
+       let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
+       let mut res_average_duration_expand_sk =format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
+       let mut res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
+       let mut res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
+       let mut res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
+        
         #[cfg(feature = "CCM1")]
         {
-            println!("CCM1 is enabled")
+            println!("CCM1 is enabled");
+
+            let cpu_speed_hz = 3.2*1e9;
+
+
+
+            res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+
+
+
         }
 
         #[cfg(feature = "CCODROID-C4")]
         {
-            println!("CCODROID-C4 is enabled")
+            println!("CCODROID-C4 is enabled");
+
+            
+            let cpu_speed_hz = 1.91*1e9;
+
+            res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
+            res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
         }
 
 
     wtr.write_record(&[
         &VERSION.to_string(),
-        &format_duration_as_nanos(final_average_duration_keygen),
-        &format_duration_as_nanos(final_average_duration_expand_sk), // Replace with format_duration(duration_expand_sk) when enabled
-        &format_duration_as_nanos(final_average_duration_expand_pk),
-        &format_duration_as_nanos(final_average_duration_sign),
-        &format_duration_as_nanos(final_average_duration_verify),
+        &res_average_duration_keygen,
+        &res_average_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
+        &res_average_duration_expand_pk,
+        &res_average_duration_sign,
+        &res_average_duration_verify,
     ])?;
 
 
@@ -216,6 +244,10 @@ let implementation_variant = "Array_implementation";
 
 }
 
-fn format_duration_as_nanos(dur: Duration) -> String {
+fn format_duration_as_nanos(dur: &Duration) -> String {
     format!("{:.5?}", dur.as_nanos())
+}
+
+fn format_duration_as_string(dur: &f64) -> String {
+    format!("{:.0?}", dur)
 }
