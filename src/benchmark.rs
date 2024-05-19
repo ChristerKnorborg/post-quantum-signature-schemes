@@ -6,13 +6,14 @@ use std::path::Path;
 use std::fs::OpenOptions;
 use std::io::Write;
 use crate::constants::{COMPARE_FILE_NAME, SIG_BYTES, VERSION};
-use crate::utils::bytes_to_hex_string;
 
 
 use crate::crypto_primitives::{
-    safe_aes_128_ctr, safe_random_bytes, safe_random_bytes_init, safe_shake256,
+    safe_random_bytes, safe_random_bytes_init
 };
-use crate::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
+use crate::mayo_functionality::{
+    api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk
+};
 
 
 use csv::Writer;
@@ -96,7 +97,7 @@ let implementation_variant = "bitsliced";
 
         //this loop runs the benchmark for the expand sk function
         let mut total_duration_expand_sk = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _ in 0..amount_of_iterations{
 
         let (_ , csk) = compact_key_gen();
     
@@ -104,7 +105,7 @@ let implementation_variant = "bitsliced";
         let start_expand_sk = Instant::now();
     
 
-            expand_sk(csk);
+        expand_sk(csk);
         //  expand_pk(cpk);
     
         //  let signature = api_sign(message_vec, csk);
@@ -122,7 +123,7 @@ let implementation_variant = "bitsliced";
         
         //this loop runs the benchmark for the expand_pk function
         let mut total_duration_expand_pk = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _ in 0..amount_of_iterations{
 
         let (cpk , _) = compact_key_gen();
     
@@ -147,7 +148,7 @@ let implementation_variant = "bitsliced";
 
         //this loop runs the benchmark for the sign function
         let mut total_duration_sign = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _ in 0..amount_of_iterations{
 
             let (_, csk) = compact_key_gen();
             let mut message = [0u8; 32];
@@ -168,7 +169,7 @@ let implementation_variant = "bitsliced";
 
         //this loop runs the benchmark for the verify function
         let mut total_duration_verify = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _ in 0..amount_of_iterations{
 
             let (cpk, csk) = compact_key_gen();      
             let mut message = [0u8; 32];

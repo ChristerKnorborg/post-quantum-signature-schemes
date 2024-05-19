@@ -8,11 +8,11 @@
 
 
 
-use crate::constants::{M, O, V};
+use crate::constants::{K, M, N, O, P1_BYTES, P2_BYTES, P3_BYTES, V};
 
 
-
-const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
+const U32_PER_TERM: usize = M/32; // Number of u32 to represent a term in the bitsliced polynomials.
+const U32_PER_IDX: usize = U32_PER_TERM * 4; // number of u32 to represent a single index for all m matrices
 
 
 
@@ -62,15 +62,16 @@ macro_rules! transposed_mat_mul_bitsliced_mat_add {
 }
 
 #[macro_export]
-macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
-    ($bs_mat:expr, $mat:expr, $acc:expr, $bs_mat_rows:expr, $bs_mat_cols:expr, $mat_rows:expr) => {{
+macro_rules! bitsliced_mat_mul_transposed_mat_add {
+    ($bs_mat:expr, $mat:expr, $acc:expr, $bs_mat_rows:expr, $bs_mat_cols:expr, $mat_rows:expr, $acc_offset:expr, $upper_triangular:expr) => {{
 
         let mut entries_used = 0;
         for r in 0..$bs_mat_rows {
-            for c in r..$bs_mat_cols { // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
+            let c_start = if $upper_triangular { r } else { 0 }; 
+            for c in c_start..$bs_mat_cols { // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
                 for k in 0..$mat_rows {
                     let bs_mat_start_idx = entries_used * U32_PER_IDX;
-                    let acc_start_idx = (r * $mat_rows + k ) * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_rows + k) * U32_PER_IDX + $acc_offset;
 
                     mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx, $mat[k][c], $acc, acc_start_idx);
                 }
@@ -166,49 +167,31 @@ pub fn p1_add_p1t(p1: &[u32], p1_p1t_added: &mut [u32]) {
 
 
 
+pub fn calculate_st_p(p1: [u32 ; P1_BYTES/4], p2: [u32 ; P2_BYTES/4], p3: [u32 ; P3_BYTES/4], s: [[u8 ; N] ; K]) -> [u32 ; N * K * M/8]{
+    
+    let mut st_p = [0u32; N * K * M/8];
 
+    // Define s1 and s2 as 2D arrays
+    let mut s1 = [[0; V]; K];
+    let mut s2  = [[0; O]; K];
 
+    for r in 0..K {
+        for c in 0..V {
+            s1[r][c] = s[r][c];
+        }
 
-// Construct the m matrices of (P_1 P_2)
-//                             (0   P_3)
-// in bitsliced format
-pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u32]) {
-
-    // Entries exhausted in p1, p2, p3 and big_p respectively
-    let mut big_used = 0;
-    let mut p1_used = 0;
-    let mut p2_used = 0;
-
-    const P2_ROW_SIZE: usize = O * U32_PER_IDX;
-
-    // Set the first V rows to be p1 concatenated with p2
-    for r in 0..V {
-
-        // Assign V columns of p1 to the first V columns of the first big_p row 
-        // Then V-1 columns of p1 to the next V-1 columns of the big_p etc.
-        let p1_row_size = (V - r) * U32_PER_IDX;
-        let p1_row = &p1[p1_used..p1_used + p1_row_size];
-
-        big_p[big_used..big_used + p1_row_size].copy_from_slice(p1_row);
-
-        p1_used += p1_row_size;
-        big_used += p1_row_size;
-
-
-
-        // Assign O columns of p2 to the second O columns of the current big_p row
-        let p2_row = &p2[p2_used..p2_used + P2_ROW_SIZE];
-        big_p[big_used..big_used + P2_ROW_SIZE].copy_from_slice(p2_row);
-
-        p2_used += P2_ROW_SIZE;
-        big_used += P2_ROW_SIZE;
+        for c in 0..O {
+            s2[r][c] = s[r][V + c];
+        }
     }
 
-    // Set the last O rows to be p3
-    big_p[big_used..].copy_from_slice(p3);
+    const P3_OFFSET: usize = V * K * U32_PER_TERM * 4;
+
+    bitsliced_mat_mul_transposed_mat_add!(p1, s1, &mut st_p, V, V, K, 0, true);  // P1 * S1
+    bitsliced_mat_mul_transposed_mat_add!(p2, s2, &mut st_p, V, O, K, 0, false); // P2 * S2
+    bitsliced_mat_mul_transposed_mat_add!(p3, s2, &mut st_p, O, O, K, P3_OFFSET, true);  // P3 * S2
+    return st_p;
 }
-
-
 
 
 
@@ -218,9 +201,6 @@ pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u3
 // This function (rewritten to Rust from the MAYO authors' C implementation) multiplies a bitsliced vectors of m field elements
 // with a nibble. A bitsliced vector is has of m/32 * 4 consecutive u32s, where every m/32 u32s represent a term for all m elements.
 pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
-
-
-    const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial.
 
     // Terms of the nibble x^3 + x^2 + x + 1. 
     // Create a mask for the nibble of 32 bits for each of the 4 degrees. E.g. 1001 becomes:
