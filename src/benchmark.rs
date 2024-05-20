@@ -1,16 +1,11 @@
 use std::time::{Duration, Instant};
-use std::fs::{self, File};
-use std::io::{self, Read};
-use std::path::Path;
+use std::fs::{self};
 
 use std::fs::OpenOptions;
-use std::io::Write;
-use crate::constants::{COMPARE_FILE_NAME, SIG_BYTES, VERSION};
-use crate::utils::bytes_to_hex_string;
-
+use crate::constants::VERSION;
 
 use crate::crypto_primitives::{
-    safe_aes_128_ctr, safe_random_bytes, safe_random_bytes_init, safe_shake256,
+    safe_random_bytes, safe_random_bytes_init
 };
 use crate::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
 
@@ -24,7 +19,7 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
     
-let implementation_variant = "Vector_IMPL";
+let implementation_variant = "VEC_impl";
 
     let base_dir = "benchmark_result";
     if !std::path::Path::new(base_dir).exists() {
@@ -72,7 +67,7 @@ let implementation_variant = "Vector_IMPL";
 
     let mut message = [0u8; 32];
     safe_random_bytes(&mut message, 32);
-    let message_vec = message.to_vec();
+    let _message_vec = message.to_vec();
 
 
 
@@ -96,7 +91,7 @@ let implementation_variant = "Vector_IMPL";
 
         //this loop runs the benchmark for the expand sk function
         let mut total_duration_expand_sk = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _i in 0..amount_of_iterations{
 
         let (_ , csk) = compact_key_gen();
     
@@ -122,7 +117,7 @@ let implementation_variant = "Vector_IMPL";
         
         //this loop runs the benchmark for the expand_pk function
         let mut total_duration_expand_pk = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _i in 0..amount_of_iterations{
 
         let (cpk , _) = compact_key_gen();
     
@@ -147,7 +142,7 @@ let implementation_variant = "Vector_IMPL";
 
         //this loop runs the benchmark for the sign function
         let mut total_duration_sign = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _i in 0..amount_of_iterations{
 
             let (_, csk) = compact_key_gen();
             let mut message = [0u8; 32];
@@ -168,7 +163,7 @@ let implementation_variant = "Vector_IMPL";
 
         //this loop runs the benchmark for the verify function
         let mut total_duration_verify = Duration::new(0, 0);
-        for i in 0..amount_of_iterations{
+        for _i in 0..amount_of_iterations{
 
             let (cpk, csk) = compact_key_gen();      
             let mut message = [0u8; 32];
@@ -188,13 +183,25 @@ let implementation_variant = "Vector_IMPL";
     
         let final_average_duration_verify = total_duration_verify / amount_of_iterations.try_into().unwrap();
 
+        let var = 10 as f64;
+        let _ = format_duration_as_string(&var);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut res_average_duration_expand_sk =format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut  res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut  res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
+         
 
-       let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
-       let mut res_average_duration_expand_sk =format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
-       let mut res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
-       let mut res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
-       let mut res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
-        
         #[cfg(feature = "CCM1")]
         {
             println!("CCM1 is enabled");
@@ -203,12 +210,11 @@ let implementation_variant = "Vector_IMPL";
 
 
 
-            res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
-
+             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
 
 
         }
@@ -220,11 +226,13 @@ let implementation_variant = "Vector_IMPL";
             
             let cpu_speed_hz = 1.91*1e9;
 
-            res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-            res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+
+        
         }
 
 
