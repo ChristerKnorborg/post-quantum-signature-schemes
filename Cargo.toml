@@ -18,6 +18,8 @@ mayo3 = []
 mayo5 = []
 bench = []
 custom_stack = []
+CCM1 = []
+CCODROID-C4 = []
 
 
 [lib]
