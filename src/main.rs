@@ -14,7 +14,7 @@ fn main() {
 
     #[cfg(feature = "bench")]
     {
-        benchmark(1000);
+        let _res = benchmark(1000);
     }
 
 
