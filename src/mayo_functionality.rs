@@ -49,7 +49,6 @@ pub fn compact_key_gen() -> (Vec<u8>, Vec<u8>) {
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
     let p1_bytes = p[0..P1_BYTES].to_vec();
     let p2_bytes = p[P1_BYTES..].to_vec();
@@ -124,7 +123,6 @@ pub fn expand_sk(csk: &Vec<u8>) -> Vec<u8> {
         &mut p_bytes,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
 
     let mut p1_bytes = p_bytes[0..P1_BYTES].to_vec();
@@ -179,7 +177,6 @@ pub fn expand_pk(cpk: Vec<u8>) -> Vec<u8> {
         &mut aes_bytes,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
 
     let mut expanded_pk = Vec::with_capacity(EPK_BYTES);
