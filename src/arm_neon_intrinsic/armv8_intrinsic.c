@@ -160,7 +160,7 @@ void mul_add_bitsliced_m_vec_mayo1(u_int32_t *input, u_int32_t input_start, u_in
         uint32x2_t acc3_low = vld1_u32(&acc[acc_start + 3 * u_32_per_term]);
 
         // Convert to uint32x4_t for processing (Only add acc once or it will cancel for XOR)
-        int32x2_t zero = vdup_n_u32(0);
+        uint32x2_t zero = vdup_n_u32(0);
         uint32x4_t acc0 = vcombine_u32(acc0_low, zero);
         uint32x4_t acc1 = vcombine_u32(acc1_low, zero);
         uint32x4_t acc2 = vcombine_u32(acc2_low, zero);
