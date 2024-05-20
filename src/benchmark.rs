@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 use std::fs::{self};
 
 use std::fs::OpenOptions;
-use crate::constants::{VERSION};
+use crate::constants::VERSION;
 
 use crate::crypto_primitives::{
     safe_random_bytes, safe_random_bytes_init
@@ -183,7 +183,24 @@ let implementation_variant = "Array_implementation";
     
         let final_average_duration_verify = total_duration_verify / amount_of_iterations.try_into().unwrap();
 
-
+        let var = 10 as f64;
+        let _ = format_duration_as_string(&var);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut res_average_duration_expand_sk =format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut  res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
+        #[allow(unused_mut)]
+        #[allow(unused_assignments)]
+        let mut  res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
+         
 
         #[cfg(feature = "CCM1")]
         {
@@ -193,26 +210,11 @@ let implementation_variant = "Array_implementation";
 
 
 
-            let res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
-
-
-            wtr.write_record(&[
-                &VERSION.to_string(),
-                &res_average_duration_keygen,
-                &res_average_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
-                &res_average_duration_expand_pk,
-                &res_average_duration_sign,
-                &res_average_duration_verify,
-            ])?;
-        
-        
-            wtr.flush()?;
-        
-            return Ok(());
+             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
 
 
         }
@@ -224,37 +226,14 @@ let implementation_variant = "Array_implementation";
             
             let cpu_speed_hz = 1.91*1e9;
 
-            let res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-            let res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
 
-
-            wtr.write_record(&[
-                &VERSION.to_string(),
-                &res_average_duration_keygen,
-                &res_average_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
-                &res_average_duration_expand_pk,
-                &res_average_duration_sign,
-                &res_average_duration_verify,
-            ])?;
-        
-        
-            wtr.flush()?;
-        
-            return Ok(());
         
         }
-
-
-
-        let  res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
-        let  res_average_duration_expand_sk =format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
-        let  res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
-        let  res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
-        let  res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
-         
 
 
     wtr.write_record(&[
