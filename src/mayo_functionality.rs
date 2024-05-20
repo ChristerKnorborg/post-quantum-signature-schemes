@@ -49,7 +49,6 @@ pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
     let p1_bytes = &p[0..P1_BYTES];
     let p2_bytes = &p[P1_BYTES..];
@@ -120,7 +119,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) -> [u8 ; ESK_BYTES-SK_SEED_BYTES]{
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
     let p1_bytes = &p[0..P1_BYTES];
     let p2_bytes = &p[P1_BYTES..];
@@ -180,7 +178,6 @@ pub fn expand_pk(cpk: [u8 ; CPK_BYTES]) -> [u8 ; EPK_BYTES] {
         &mut aes_bytes,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
 
     let mut expanded_pk = [0u8 ; EPK_BYTES];

@@ -743,7 +743,7 @@ void aes256_ctx_release(aes256ctx *r)
 }
 
 int AES_128_CTR(unsigned char *output, size_t outputByteLen,
-                const unsigned char *input, size_t inputByteLen)
+                const unsigned char *input)
 {
     aes128ctx ctx;
     unsigned char iv[16] = {0};
