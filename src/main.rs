@@ -1,5 +1,6 @@
 use lib::write_and_compare_kat_file::write_and_compare_kat_file;
 
+#[allow(unused_imports)]
 use lib::benchmark::benchmark;
 
 fn main() {
@@ -13,7 +14,7 @@ fn main() {
 
     #[cfg(feature = "bench")]
     {
-        benchmark(1000);
+        let _ = benchmark(1000);
     }
 
 
