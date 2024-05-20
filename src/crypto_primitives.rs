@@ -32,14 +32,12 @@ pub fn safe_aes_128_ctr(
     output: &mut [u8],
     output_byte_len: u64,
     input: &[u8],
-    input_byte_len: u64,
 ) {
     unsafe {
         bindings::AES_128_CTR(
             output.as_mut_ptr(),
             output_byte_len,
             input.as_ptr(),
-            input_byte_len,
         );
     }
 }

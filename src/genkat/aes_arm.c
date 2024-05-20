@@ -63,7 +63,7 @@ void aes_process_arm(const uint8_t key[], const uint8_t subkeys[], uint32_t roun
 }
 
 int AES_128_CTR(unsigned char *output, uint32_t outputByteLen,
-                const unsigned char *input, uint32_t inputByteLen) {
+                const unsigned char *input) {
 			return;
 }
 
