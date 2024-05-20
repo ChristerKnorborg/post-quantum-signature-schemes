@@ -21,7 +21,6 @@ extern "C" {
         output: *mut ccty::c_uint,
         outputByteLen: ccty::c_ulonglong,
         input: *const ccty::c_uchar,
-        inputByteLen: ccty::c_ulonglong,
     );
 
 // }
