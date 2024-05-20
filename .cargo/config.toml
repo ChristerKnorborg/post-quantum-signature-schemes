@@ -35,7 +35,7 @@ bench_mayo5_aes = "bench --no-default-features --features mayo5,system_aes --ben
 
 
 [target.'cfg(target_os = "windows")']
-rustflags = ["-C", "link-args=/STACK:67108864"] # 64 MB in bytes
+rustflags = ["-C", "link-args=/STACK:4194304"] #4MB
 
 [target.'cfg(target_os = "macos")']
-rustflags = ["-C", "link-arg=-Wl,-stack_size,0x10000000"] # 64 MB in hexadecimal
+rustflags = ["-C", "link-arg=-Wl,-stack_size,0x400000"] #4MB

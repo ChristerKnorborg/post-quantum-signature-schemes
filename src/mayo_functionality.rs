@@ -70,7 +70,6 @@ pub fn compact_key_gen() -> (CompactPublicKey, [u8 ; CSK_BYTES]) {
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
     
     let (p1, mut p2) = p.split_at_mut(P1_BYTES/4);
@@ -141,7 +140,6 @@ pub fn expand_sk(csk: [u8 ; CSK_BYTES]) ->  ExpandedSecretKey{
         &mut p,
         (P1_BYTES + P2_BYTES) as u64,
         &pk_seed,
-        PK_SEED_BYTES as u64,
     );
 
     let (p1, p2) = p.split_at_mut(P1_BYTES/4);
@@ -181,7 +179,6 @@ pub fn expand_pk(cpk: CompactPublicKey) -> ExpandedPublicKey {
         &mut aes_output,
         (P1_BYTES + P2_BYTES) as u64,
         &cpk.seed,
-        PK_SEED_BYTES as u64,
     );
 
     let (p1_slice, p2_slice) = aes_output.split_at(P1_BYTES/4);
