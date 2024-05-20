@@ -193,10 +193,10 @@ let implementation_variant = "Rust_bitsliced";
         durations_sign.sort();
         durations_verify.sort();
         
-        println!("Keygen: {:?}", durations_keygen);
+
 
         let final_average_duration_keygen = find_median(&durations_keygen);
-        println!("final_average_duration_keygen: {:?}", final_average_duration_keygen);
+
         let final_average_duration_expand_sk = find_median(&durations_expand_sk);
         let final_average_duration_expand_pk = find_median(&durations_expand_pk);
         let final_average_duration_sign = find_median(&durations_sign);
