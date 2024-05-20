@@ -11,12 +11,13 @@ edition = "2021"
 
 [features]
 default = ["mayo1"]
-system_aes = []  
 mayo1 = []
 mayo2 = []
 mayo3 = []
 mayo5 = []
 bench = []
+CCM1 = []
+CCODROID-C4 = []
 
 
 
