@@ -1,10 +1,20 @@
-// build.rs
 fn main() {
-    cc::Build::new()
-        .file("src/genkat/randombytes_ctrdrbg.c")
+    let mut build = cc::Build::new();
+
+    // Check if aes_neon is enabled
+    if std::env::var("CARGO_FEATURE_AES_NEON").is_ok() {
+        println!("cargo:info=Using AES with NEON intrinsics");
+        build.file("src/genkat/aes_arm.c");
+
+    } else {
+
+        println!("cargo:info=Using default AES");
+        build.file("src/genkat/aes_c.c");
+    }
+
+    build.file("src/genkat/randombytes_ctrdrbg.c")
         .file("src/genkat/mem.c")
-        .file("src/genkat/aes_c.c")
         .file("src/genkat/fips202.c")
-        .flag("-O3")  // Apply optimization level O3
+        .flag("-O3")
         .compile("randombytes_nist");
 }

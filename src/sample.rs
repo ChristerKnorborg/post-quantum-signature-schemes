@@ -1,7 +1,6 @@
 use crate::finite_field::{add, inv, matrix_vector_mul, mul, sub, vector_sub};
 use crate::constants::{M, K, O};
-use rand::rngs::StdRng as rng;
-use rand::{Rng, SeedableRng};
+
 
 
 // MAYO Algorithm 1: Echelon Form
@@ -120,7 +119,8 @@ pub fn sample_solution(mut a: Vec<Vec<u8>>, y: Vec<u8>, r: Vec<u8>) -> Result<Ve
 mod tests {
 
     use crate::constants::M;
-
+    use rand::rngs::StdRng as rng;
+    use rand::{Rng, SeedableRng};
     use super::*;
     use std::vec;
 
