@@ -14,6 +14,18 @@ bench_mayo2 = "run --no-default-features --features mayo2,bench --release"
 bench_mayo3 = "run --no-default-features --features mayo3,bench --release"
 bench_mayo5 = "run --no-default-features --features mayo5,bench --release"
 
+bench_mayo1_M1 = "run --no-default-features --features mayo1,bench,CCM1 --release"
+bench_mayo2_M1 = "run --no-default-features --features mayo2,bench,CCM1 --release"
+bench_mayo3_M1 = "run --no-default-features --features mayo3,bench,CCM1 --release"
+bench_mayo5_M1 = "run --no-default-features --features mayo5,bench,CCM1 --release"
+
+bench_mayo1_OC4 = "run --no-default-features --features mayo1,bench,CCODROID-C4 --release"
+bench_mayo2_OC4 = "run --no-default-features --features mayo2,bench,CCODROID-C4 --release"
+bench_mayo3_OC4 = "run --no-default-features --features mayo3,bench,CCODROID-C4 --release"
+bench_mayo5_OC4 = "run --no-default-features --features mayo5,bench,CCODROID-C4 --release"
+
+
+
 bench_mayo1_aes = "bench --no-default-features --features mayo1,system_aes --bench benchmark -- --verbose"
 bench_mayo2_aes = "bench --no-default-features --features mayo2,system_aes --bench benchmark -- --verbose"
 bench_mayo3_aes = "bench --no-default-features --features mayo3,system_aes --bench benchmark -- --verbose"
