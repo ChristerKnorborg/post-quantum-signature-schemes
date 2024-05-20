@@ -70,9 +70,15 @@ let implementation_variant = "armv8_bitsliced";
     let _message_vec = message.to_vec();
 
 
+    let mut durations_keygen = Vec::with_capacity(1000);
+    let mut durations_expand_sk = Vec::with_capacity(1000);
+    let mut durations_expand_pk = Vec::with_capacity(1000);
+    let mut durations_sign = Vec::with_capacity(1000);
+    let mut durations_verify = Vec::with_capacity(1000);
+
 
     //this loop runs the benchmark for the keygen function
-    let mut total_duration_keygen = Duration::new(0, 0);
+
     for _ in 0..amount_of_iterations{
 
 
@@ -82,15 +88,14 @@ let implementation_variant = "armv8_bitsliced";
         
         let duration_keygen = start_keygen.elapsed();
 
-        total_duration_keygen += duration_keygen;
+        durations_keygen.push(duration_keygen);
     }
 
-    let final_average_duration_keygen = total_duration_keygen / amount_of_iterations.try_into().unwrap();
 
 
 
         //this loop runs the benchmark for the expand sk function
-        let mut total_duration_expand_sk = Duration::new(0, 0);
+
         for _i in 0..amount_of_iterations{
 
         let (_ , csk) = compact_key_gen();
@@ -108,15 +113,14 @@ let implementation_variant = "armv8_bitsliced";
         
         let duration_expand_sk = start_expand_sk.elapsed();
 
-        total_duration_expand_sk += duration_expand_sk;
+        durations_expand_sk.push(duration_expand_sk);
         }
     
-        let final_average_duration_expand_sk = total_duration_expand_sk / amount_of_iterations.try_into().unwrap();
 
 
         
         //this loop runs the benchmark for the expand_pk function
-        let mut total_duration_expand_pk = Duration::new(0, 0);
+
         for _i in 0..amount_of_iterations{
 
         let (cpk , _) = compact_key_gen();
@@ -134,14 +138,13 @@ let implementation_variant = "armv8_bitsliced";
         
         let duration_expand_pk = start_expand_pk.elapsed();
 
-        total_duration_expand_pk += duration_expand_pk;
+        durations_expand_pk.push(duration_expand_pk);
         }
     
-        let final_average_duration_expand_pk = total_duration_expand_pk / amount_of_iterations.try_into().unwrap();
 
 
         //this loop runs the benchmark for the sign function
-        let mut total_duration_sign = Duration::new(0, 0);
+
         for _i in 0..amount_of_iterations{
 
             let (_, csk) = compact_key_gen();
@@ -155,14 +158,13 @@ let implementation_variant = "armv8_bitsliced";
     
         let duration_sign = start_sign.elapsed();
 
-        total_duration_sign += duration_sign;
+         durations_sign.push(duration_sign);
         }
     
-        let final_average_duration_sign = total_duration_sign / amount_of_iterations.try_into().unwrap();
 
 
         //this loop runs the benchmark for the verify function
-        let mut total_duration_verify = Duration::new(0, 0);
+
         for _i in 0..amount_of_iterations{
 
             let (cpk, csk) = compact_key_gen();      
@@ -178,13 +180,30 @@ let implementation_variant = "armv8_bitsliced";
         
         let duration_verify = start_verify.elapsed();
 
-        total_duration_verify += duration_verify;
+         durations_verify.push(duration_verify);
         }
     
-        let final_average_duration_verify = total_duration_verify / amount_of_iterations.try_into().unwrap();
 
         let var = 10 as f64;
         let _ = format_duration_as_string(&var);
+
+        durations_keygen.sort();
+        durations_expand_sk.sort();
+        durations_expand_pk.sort();
+        durations_sign.sort();
+        durations_verify.sort();
+        
+        println!("Keygen: {:?}", durations_keygen);
+
+        let final_average_duration_keygen = find_median(&durations_keygen);
+        println!("final_average_duration_keygen: {:?}", final_average_duration_keygen);
+        let final_average_duration_expand_sk = find_median(&durations_expand_sk);
+        let final_average_duration_expand_pk = find_median(&durations_expand_pk);
+        let final_average_duration_sign = find_median(&durations_sign);
+        let final_average_duration_verify = find_median(&durations_verify);
+
+
+
         #[allow(unused_mut)]
         #[allow(unused_assignments)]
         let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
@@ -258,4 +277,22 @@ fn format_duration_as_nanos(dur: &Duration) -> String {
 
 fn format_duration_as_string(dur: &f64) -> String {
     format!("{:.0?}", dur)
+}
+
+fn average_duration(d1: Duration, d2: Duration) -> Duration {
+    let total_nanos = d1.as_nanos() + d2.as_nanos();
+    Duration::from_nanos((total_nanos / 2) as u64)
+}
+
+fn find_median(durations: &Vec<Duration>) -> Duration {
+    let len = durations.len();
+    if len % 2 == 0 {
+        // Even number of elements, take the average of the two middle elements
+        let mid1 = durations[len / 2 - 1];
+        let mid2 = durations[len / 2];
+        average_duration(mid1, mid2)
+    } else {
+        // Odd number of elements, take the middle element
+        durations[len / 2]
+    }
 }
