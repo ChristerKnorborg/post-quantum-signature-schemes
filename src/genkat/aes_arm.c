@@ -96,10 +96,10 @@ static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 0), temp4, 1);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);           \
-      temp0 = veorq_u32(temp0, temp4);                                       \
-      temp0 = vsetq_lane_u64((uint64_t)(veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), vreinterpretq_u64_u32(temp0), 1);      \
+      temp0 = veorq_u32(temp0, temp4);                                      \
+      temp0 = vreinterpretq_u32_u64(vsetq_lane_u64((uint64_t)(veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), vreinterpretq_u64_u32(temp0), 1));      \
       temp1 = vdupq_n_u32(vgetq_lane_u32(temp1, 3));                        \
-      temp0 = veorq_u32(temp0, temp1);                                       \
+      temp0 = veorq_u32(temp0, temp1);                                      \
 
     BLOCK1(0x01);
     BLOCK1(0x02);
