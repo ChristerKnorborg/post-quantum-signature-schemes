@@ -1,18 +1,18 @@
-use std::time::Instant;
 use std::vec;
 
 use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake256}; 
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
+#[allow(unused_imports)]
 use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo1, safe_mul_add_bitsliced_m_vec_mayo3, safe_mul_add_bitsliced_m_vec_mayo5};
-use crate::bitsliced_arithmetic::{create_big_p_bitsliced, p1_add_p1t};
+use crate::bitsliced_arithmetic::{p1_add_p1t, calculate_st_p};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
     PK_SEED_BYTES, R_BYTES, SALT_BYTES, SIG_BYTES, SK_SEED_BYTES, V_BYTES, SHIFTS
 };
 
 use crate::{
-    bitsliced_mat_mul_mat_add, decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, mat_mul_bitsliced_mat_add, matrix_vec_mul, transposed_mat_mul_bitsliced_mat_add, upper, upper_triangular_bitsliced_mat_mul_transposed_mat_add, vec_add
+    bitsliced_mat_mul_mat_add, decode_bit_sliced_array, decode_bytestring_matrix_array, decode_bytestring_to_array, encode_to_bytestring_array, mat_mul_bitsliced_mat_add, matrix_vec_mul, transposed_mat_mul_bitsliced_mat_add, upper, bitsliced_mat_mul_transposed_mat_add, vec_add
 };
 
 
@@ -310,7 +310,7 @@ pub fn sign(compact_secret_key: [u8 ; CSK_BYTES], message: &Vec<u8>) -> [u8 ; SI
 
         // v^t * P1
         let mut vt_p1 = [0u32 ; V*K*M/ 8]; 
-        upper_triangular_bitsliced_mat_mul_transposed_mat_add!(p1, v, &mut vt_p1, V, V, K);
+        bitsliced_mat_mul_transposed_mat_add!(p1, v, &mut vt_p1, V, V, K, 0, true);
 
         // v^t * P1 * v
         let mut vt_p1_v = [0u32 ; K*K*M / 8]; 
@@ -445,24 +445,13 @@ pub fn verify(expanded_pk: ExpandedPublicKey, signature: &[u8], message: &[u8]) 
     );
     let t = decode_bytestring_to_array!(t_output, M);
 
-
     // Compute P*(s)
     let mut y = [0u8; M + SHIFTS];
     let mut ell = 0;
 
-    let mut big_p = [0u32 ; (P1_BYTES + P2_BYTES + P3_BYTES)/4];
-    let mut big_p2 = [0u32 ; (P1_BYTES + P2_BYTES + P3_BYTES)/4];
-
-    // Construct matrices P*_i of size N x N s.t. (P^1_a P^2_a)
-    // for every matrix a ∈ [m]                   (0     P^3_a)
-    
-    create_big_p_bitsliced(&p1, &p2, &p3, &mut big_p); // OPTIMIZE THIS!
-
-
     // Compute s^t * P
-    let mut st_p = [0u32; K*N*M/8];
-    upper_triangular_bitsliced_mat_mul_transposed_mat_add!(big_p, s_matrix, &mut st_p, N, N, K);
-    
+    let st_p = calculate_st_p(p1,p2,p3, s_matrix);
+
     // Compute s^t * P * s
     let mut st_p_s = [0u32; K*K*M/8];
     mat_mul_bitsliced_mat_add!(s_matrix, st_p, &mut st_p_s, K, N, K);
