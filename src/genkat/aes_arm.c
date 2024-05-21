@@ -64,9 +64,7 @@ void print_uint8x16_t(uint8x16_t value) {
     printf("\n");
 }
 
-uint8x16_t aeskeygenassist(uint8x16_t a, uint8_t rcon) {
-    uint32x4_t a32 = vreinterpretq_u32_u8(a);  // Work with 32-bit words
-
+uint8x16_t aeskeygenassist(uint32x4_t a32, uint8_t rcon) {
     // Extract words X1 and X3
     uint32_t X1 = vgetq_lane_u32(a32, 1);
     uint32_t X3 = vgetq_lane_u32(a32, 3);
@@ -95,22 +93,22 @@ uint8x16_t aeskeygenassist(uint8x16_t a, uint8_t rcon) {
 
 static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys[]) {
     uint8x16_t key0 = vld1q_u8((const uint8_t *)(key));
-    uint8x16_t temp0, temp1, temp4;
+    uint32x4_t temp0, temp1, temp4;
     int idx = 0;
 
     temp0 = key0;
+    temp4 = vdupq_n_u32(0);
 
-    #define BLOCK1(IMM)                                                          \
-      temp1 = aeskeygenassist(temp0, IMM);                                       \
-      rkeys[idx++] = temp0;                                                      \
-      temp4 = vsetq_lane_u32(0, temp4, 0);                                       \
-      temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 0), temp4, 1);                \
-      temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);                \
-      temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);                \
-      temp0 = veorq_u8(temp0, temp4);                                            \
-      temp0 = vsetq_lane_u64(vreinterpret_u64_u8(veor_u8(vget_high_u8(temp0), vget_low_u8(temp0))), temp0, 1);                       \  
-      temp1 = vdupq_n_u32(vgetq_lane_u32(temp1, 3));                             \                                   
-      temp0 = veorq_u8(temp0, temp1);                                            \
+    #define BLOCK1(IMM)                                                     \
+      temp1 = aeskeygenassist(temp0, IMM);                                  \
+      rkeys[idx++] = temp0;                                                 \
+      temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 0), temp4, 1);           \
+      temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);           \
+      temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);           \
+      temp0 = veorq_u8(temp0, temp4);                                       \
+      temp0 = vsetq_lane_u64(vreinterpret_u64_u8(veor_u8(vget_high_u8(temp0), vget_low_u8(temp0))), temp0, 1);      \
+      temp1 = vdupq_n_u32(vgetq_lane_u32(temp1, 3));                        \
+      temp0 = veorq_u8(temp0, temp1);                                       \
 
     BLOCK1(0x01);
     BLOCK1(0x02);
@@ -243,7 +241,7 @@ static void arm_aes128_ctr_enc_sch(const void *schedule, uint8_t *out,
 }
 
 int AES_128_CTR(unsigned char *output, size_t outputByteLen,
-                   const unsigned char *input, size_t inputByteLen) {
+                   const unsigned char *input) {
     void *schedule = NULL;
     arm_aes128_load_schedule(input, &schedule);
     
