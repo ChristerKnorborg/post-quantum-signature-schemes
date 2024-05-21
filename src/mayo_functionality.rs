@@ -572,26 +572,6 @@ pub fn upper(mut matrix: [[u8 ; O] ; O]) -> [[u8 ; O] ; O] {
 
 
 
-// Construct the matrix (P_1 P_2)
-//                      (0   P_3)
-fn create_big_p_matrices(p1: [[[u8 ; V]; V]; M], p2: [[[u8 ; O]; V]; M], p3: [[[u8 ; O]; O]; M]) -> [[[u8 ; N]; N]; M] {
-    let mut result = [[[0u8 ; N]; N]; M];
-
-    for mat in 0..M {
-        for i in 0..V {
-            result[mat][i][..V].copy_from_slice(&p1[mat][i]);
-            result[mat][i][V..].copy_from_slice(&p2[mat][i]);
-        }
-        for i in V..N {
-            result[mat][i][V..].copy_from_slice(&p3[mat][i - V]);
-        }
-    }
-    return result;
-}
-
-
-
-
 // Perform reduction of a polynomial with f(z)
 pub fn reduce_mod_f(mut polynomial: [u8 ; M + SHIFTS]) -> [u8 ; M] {
 

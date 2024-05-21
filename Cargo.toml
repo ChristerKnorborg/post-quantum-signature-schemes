@@ -7,11 +7,9 @@ edition = "2021"
 
 
 
-
-
 [features]
 default = ["mayo1"]
-system_aes = []
+aes_neon = [] 
 mayo1 = []
 mayo2 = []
 mayo3 = []
@@ -42,11 +40,9 @@ harness = false
 path = "src/benches/benchmark.rs"
 
 
+
 [dependencies]
-rand = "0.8.5"
 byteorder = "1.4.3"
 libc = "0.2"
-gnuplot = "0.0.42"
 chrono = "0.4.38"
 csv= "1.1"
-
