@@ -62,13 +62,13 @@ void mul_add_64_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
 
 void mul_add_96_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
 
-        uint32x4_t in0 = vld1q_u32(&input[input_start]);
-        uint32x4_t in1 = vld1q_u32(&input[input_start+4]);
-        uint32x4_t in2 = vld1q_u32(&input[input_start+8]);
+        uint8x16_t in0 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start]));
+        uint8x16_t in1 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+4]));
+        uint8x16_t in2 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+8]));
 
-        uint32x4_t acc0 = vld1q_u32(&acc[acc_start]);
-        uint32x4_t acc1 = vld1q_u32(&acc[acc_start+4]);
-        uint32x4_t acc2 = vld1q_u32(&acc[acc_start+8]);
+        uint8x16_t acc0 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start]));
+        uint8x16_t acc1 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start+4]));
+        uint8x16_t acc2 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start+8]));
 
         uint8x16_t tbl_a0 = {0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255};
         uint8x16_t tbl_a1 = {0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255};
@@ -117,14 +117,14 @@ void mul_add_96_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
         acc1 ^= a3 & (inrot[1] ^ (in1));
         acc2 ^= a3 & (inrot[2] ^ (in2));
 
-        vst1q_u32(&acc[acc_start], acc0);
-        vst1q_u32(&acc[acc_start+4], acc1);
-        vst1q_u32(&acc[acc_start+8], acc2);
+        vst1q_u32(&acc[acc_start], vreinterpretq_u32_u8(acc0));
+        vst1q_u32(&acc[acc_start+4], vreinterpretq_u32_u8(acc1));
+        vst1q_u32(&acc[acc_start+8], vreinterpretq_u32_u8(acc2));
 } 
 
 void mul_add_128_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
 
-        uint8x16_t in0_1 = vreinterpretq_u8_u32((&input[input_start]));
+        uint8x16_t in0_1 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start]));
         uint8x16_t in0_2 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+4]));
         uint8x16_t in1_1 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+8]));
         uint8x16_t in1_2 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+12]));
