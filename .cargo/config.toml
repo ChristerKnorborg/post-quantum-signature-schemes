@@ -1,36 +1,65 @@
 [alias]
-mayo1 = "run --no-default-features --features mayo1,custom_stack --release"
-mayo2 = "run --no-default-features --features mayo2,custom_stack --release"
-mayo3 = "run --no-default-features --features mayo3,custom_stack --release"
-mayo5 = "run --no-default-features --features mayo5,custom_stack --release"
 
-mayo1_aes = "run --no-default-features --features mayo1,custom_stack, system_aes --release"
-mayo2_aes = "run --no-default-features --features mayo2,custom_stack, system_aes --release"
-mayo3_aes = "run --no-default-features --features mayo3,custom_stack, system_aes --release"
-mayo5_aes = "run --no-default-features --features mayo5,custom_stack, system_aes --release"
+# Run MAYO KAT generation
+mayo1 = "run --no-default-features --features mayo1 --release"
+mayo2 = "run --no-default-features --features mayo2 --release"
+mayo3 = "run --no-default-features --features mayo3 --release"
+mayo5 = "run --no-default-features --features mayo5 --release"
 
-bench_mayo1_M1 = "run --no-default-features --features mayo1,bench,CCM1 --release"
-bench_mayo2_M1 = "run --no-default-features --features mayo2,bench,CCM1 --release"
-bench_mayo3_M1 = "run --no-default-features --features mayo3,bench,CCM1 --release"
-bench_mayo5_M1 = "run --no-default-features --features mayo5,bench,CCM1 --release"
+# Run MAYO KAT generation w. AES for ARM NEON
+mayo1_aes = "run --no-default-features --features mayo1,aes_neon --release"
+mayo2_aes = "run --no-default-features --features mayo2,aes_neon --release"
+mayo3_aes = "run --no-default-features --features mayo3,aes_neon --release"
+mayo5_aes = "run --no-default-features --features mayo5,aes_neon --release"
 
-bench_mayo1_OC4 = "run --no-default-features --features mayo1,bench,CCODROID-C4 --release"
-bench_mayo2_OC4 = "run --no-default-features --features mayo2,bench,CCODROID-C4 --release"
-bench_mayo3_OC4 = "run --no-default-features --features mayo3,bench,CCODROID-C4 --release"
-bench_mayo5_OC4 = "run --no-default-features --features mayo5,bench,CCODROID-C4 --release"
-
+# Benchmark 1000 using 1000 samples
 bench_mayo1 = "run --no-default-features --features mayo1,bench --release"
 bench_mayo2 = "run --no-default-features --features mayo2,bench --release"
 bench_mayo3 = "run --no-default-features --features mayo3,bench --release"
 bench_mayo5 = "run --no-default-features --features mayo5,bench --release"
 
-bench_mayo1_aes = "bench --no-default-features --features mayo1,system_aes --bench benchmark -- --verbose"
-bench_mayo2_aes = "bench --no-default-features --features mayo2,system_aes --bench benchmark -- --verbose"
-bench_mayo3_aes = "bench --no-default-features --features mayo3,system_aes --bench benchmark -- --verbose"
-bench_mayo5_aes = "bench --no-default-features --features mayo5,system_aes --bench benchmark -- --verbose"
+# Benchmark 1000 using 1000 samples w. AES for ARM NEON
+bench_mayo1_aes = "run --no-default-features --features mayo1,bench,aes_neon --release"
+bench_mayo2_aes = "run --no-default-features --features mayo2,bench,aes_neon --release"
+bench_mayo3_aes = "run --no-default-features --features mayo3,bench,aes_neon --release"
+bench_mayo5_aes = "run --no-default-features --features mayo5,bench,aes_neon --release"
 
-[target.'cfg(all(target_os = "windows", feature = "custom_stack"))']
-rustflags = ["-C", "link-args=/STACK:4194304"] # 4MB
 
-[target.'cfg(all(target_os = "macos", feature = "custom_stack"))']
-rustflags = ["-C", "link-arg=-Wl,-stack_size,0x400000"] # 4MB
+
+
+
+# HELPER COMPILATIONS FOR REPORT BENCHMARKS
+
+# Contains hardcoded frequency for clock cycles calculation for M1 MacBook 
+bench_mayo1_M1 = "run --no-default-features --features mayo1,bench,CCM1 --release"
+bench_mayo2_M1 = "run --no-default-features --features mayo2,bench,CCM1 --release"
+bench_mayo3_M1 = "run --no-default-features --features mayo3,bench,CCM1 --release"
+bench_mayo5_M1 = "run --no-default-features --features mayo5,bench,CCM1 --release"
+
+# Contains hardcoded frequency for clock cycles calculation for ODROID-C4 
+bench_mayo1_OC4 = "run --no-default-features --features mayo1,bench,CCODROID-C4 --release"
+bench_mayo2_OC4 = "run --no-default-features --features mayo2,bench,CCODROID-C4 --release"
+bench_mayo3_OC4 = "run --no-default-features --features mayo3,bench,CCODROID-C4 --release"
+bench_mayo5_OC4 = "run --no-default-features --features mayo5,bench,CCODROID-C4 --release"
+
+# Contains hardcoded frequency for clock cycles calculation for M1 MacBook 
+bench_mayo1_aes_M1 = "run --no-default-features --features mayo1,bench,aes_neon,CCM1 --release"
+bench_mayo2_aes_M1 = "run --no-default-features --features mayo2,bench,aes_neon,CCM1 --release"
+bench_mayo3_aes_M1 = "run --no-default-features --features mayo3,bench,aes_neon,CCM1 --release"
+bench_mayo5_aes_M1 = "run --no-default-features --features mayo5,bench,aes_neon,CCM1 --release"
+
+# Contains hardcoded frequency for clock cycles calculation for ODROID-C4 
+bench_mayo1_aes_OC4 = "run --no-default-features --features mayo1,bench,aes_neon,CCODROID-C4 --release"
+bench_mayo2_aes_OC4 = "run --no-default-features --features mayo2,bench,aes_neon,CCODROID-C4 --release"
+bench_mayo3_aes_OC4 = "run --no-default-features --features mayo3,bench,aes_neon,CCODROID-C4 --release"
+bench_mayo5_aes_OC4 = "run --no-default-features --features mayo5,bench,aes_neon,CCODROID-C4 --release"
+
+
+
+
+# Increase stack size
+[target.'cfg(target_os = "windows")']
+rustflags = ["-C", "link-args=/STACK:4194304"] #4MB
+
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-arg=-Wl,-stack_size,0x400000"] #4MB
