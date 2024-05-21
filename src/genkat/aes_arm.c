@@ -192,14 +192,14 @@ static void arm_aes128_ctr_enc_sch(const void *schedule, uint8_t *out,
         uint8x16_t nv0 = block;
 
         // wrong solution
-        uint8x16_t nv1 = vqtbl1q_u8(vreinterpretq_u8_s64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,1}) ), mask);
-        uint8x16_t nv2 = vqtbl1q_u8(vreinterpretq_u8_s64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,2}) ), mask);
+        uint8x16_t nv1 = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,1}) ), mask);
+        uint8x16_t nv2 = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,2}) ), mask);
 
-        uint8x16_t nv3 = vqtbl1q_u8(vreinterpretq_u8_s64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,3}) ), mask);
+        uint8x16_t nv3 = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,3}) ), mask);
 
         arm_aes128_encrypt_x4(schedule, nv0, nv1, nv2, nv3, out);
 
-        block = vqtbl1q_u8(vreinterpretq_u8_s64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,4}) ), mask);
+        block = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,4}) ), mask);
         out += 64;
         out_len -= 64;
     }
@@ -207,7 +207,7 @@ static void arm_aes128_ctr_enc_sch(const void *schedule, uint8_t *out,
         arm_aes128_encrypt(schedule, block, out);
         out += 16;
         out_len -= 16;
-        block = vqtbl1q_u8(vreinterpretq_u8_s64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,1}) ), mask);
+        block = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,1}) ), mask);
     }
     if (out_len > 0) {
         uint8_t tmp[16];
