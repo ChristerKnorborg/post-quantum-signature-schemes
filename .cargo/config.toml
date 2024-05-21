@@ -59,8 +59,8 @@ bench_mayo5_aes_OC4 = "run --no-default-features --features mayo5,bench,aes_neon
 
 
 # Increase stack size
-#[target.'cfg(target_os = "windows")']
-#rustflags = ["-C", "link-args=/STACK:10485760"] #10MB
+[target.'cfg(target_os = "windows")']
+rustflags = ["-C", "link-args=/STACK:10485760"] #10MB
 
 [target.'cfg(target_os = "macos")']
 rustflags = ["-C", "link-arg=-Wl,-stack_size,0x1000000"] #10MB
