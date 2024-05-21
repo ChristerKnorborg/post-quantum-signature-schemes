@@ -2,13 +2,13 @@
     This file contains code heavily inspired by the MAYO C implementation for NIST found at: https://github.com/PQCMayo/MAYO-C.
     Much of this code is adapted from the original C implementation to fit our Rust implementation for doing bitsliced arithmetic 
 */
-use crate::constants::{M, O, V};
+use crate::constants::{K, M, N, O, P1_BYTES, P2_BYTES, P3_BYTES, V};
+#[allow(unused_imports)]
+use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo3, safe_mul_add_bitsliced_m_vec_mayo5};
 
 
-
-const U32_PER_IDX: usize = M / 2 / 4; // number of u32 to represent a single index for all m matrices
-
-
+const U32_PER_TERM: usize = M/32; // Number of u32 to represent a term in the bitsliced polynomials.
+const U32_PER_IDX: usize = U32_PER_TERM * 4; // number of u32 to represent a single index for all m matrices
 
 //// Performs multiplication of a bitsliced matrix (`$bs_mat`) that is possibly upper triangular
 /// with a standard matrix (`$mat`), and adds the result to an accumulator (`$acc`).
@@ -125,11 +125,6 @@ macro_rules! transposed_mat_mul_bitsliced_mat_addxD {
 #[macro_export]
 macro_rules! transposed_mat_mul_bitsliced_mat_add {
     ($mat:expr, $bs_mat:expr, $acc:expr, $mat_rows:expr, $mat_cols:expr, $bs_mat_cols:expr) => {{
-
-        let offset = $bs_mat_cols * U32_PER_IDX;  // Calculate the index in the bitsliced matrix
-        let odd_cols_in_row = $mat_rows % 2 == 1;
-
-
         // Ensure we only process pairs of rows, assuming $mat_rows is even
         for r in 0..$mat_cols {  // Transpose means we treat each column of $mat as a row
 
@@ -176,8 +171,8 @@ macro_rules! transposed_mat_mul_bitsliced_mat_add {
 
 
 #[macro_export]
-macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
-    ($bs_mat:expr, $mat:expr, $acc:expr, $bs_mat_rows:expr, $bs_mat_cols:expr, $mat_rows:expr) => {{
+macro_rules! bitsliced_mat_mul_transposed_mat_add {
+    ($bs_mat:expr, $mat:expr, $acc:expr, $bs_mat_rows:expr, $bs_mat_cols:expr, $mat_rows:expr, $acc_offset:expr, $upper_triangular:expr) => {{
 
         let mut entries_used = 0;
         for r in 0..$bs_mat_rows {
@@ -185,12 +180,12 @@ macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
             #[cfg(any(feature = "mayo1", feature = "mayo2"))]
             {
             // Only iterate upper half if upper triangular. If the current column is odd, do not pack two nibbles in the last column.
-        
-            for c in (r .. $bs_mat_cols) {
+            let c_start = if $upper_triangular { r } else { 0 };
+            for c in (c_start .. $bs_mat_cols) {
                  // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
                  for k in 0..$mat_rows {
                     let bs_mat_start_idx = entries_used * U32_PER_IDX;
-                    let acc_start_idx = (r * $mat_rows + k) * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_rows + k) * U32_PER_IDX + $acc_offset;
 
                     safe_mul_add_bitsliced_m_vec(&$bs_mat, bs_mat_start_idx.try_into().unwrap(), $mat[k][c], $acc, acc_start_idx.try_into().unwrap());
                 }
@@ -202,12 +197,12 @@ macro_rules! upper_triangular_bitsliced_mat_mul_transposed_mat_add {
 
         #[cfg(any(feature = "mayo3", feature = "mayo5"))]
         {  
-            
-            for c in (r..$bs_mat_cols) {
+            let c_start = if $upper_triangular { r } else { 0 };
+            for c in (c_start..$bs_mat_cols) {
                  // Only iterate corresponding to upper part row of bitsliced matrix (as lower part is not stored in bitsliced representation)
                 for k in 0..$mat_rows {
                     let bs_mat_start_idx_1 = entries_used * U32_PER_IDX;
-                    let acc_start_idx = (r * $mat_rows + k ) * U32_PER_IDX;
+                    let acc_start_idx = (r * $mat_rows + k ) * U32_PER_IDX + $acc_offset;
                     
                     #[cfg(feature = "mayo3")]
                     {
@@ -338,131 +333,28 @@ pub fn p1_add_p1t(p1: &[u32], p1_p1t_added: &mut [u32]) {
 }
 
 
+pub fn calculate_st_p(p1: [u32 ; P1_BYTES/4], p2: [u32 ; P2_BYTES/4], p3: [u32 ; P3_BYTES/4], s: [[u8 ; N] ; K]) -> [u32 ; N * K * M/8]{
+    
+    let mut st_p = [0u32; N * K * M/8];
 
+    // Define s1 and s2 as 2D arrays
+    let mut s1 = [[0; V]; K];
+    let mut s2  = [[0; O]; K];
 
+    for r in 0..K {
+        for c in 0..V {
+            s1[r][c] = s[r][c];
+        }
 
-
-// Construct the m matrices of (P_1 P_2)
-//                             (0   P_3)
-// in bitsliced format
-pub fn create_big_p_bitsliced(p1: &[u32], p2: &[u32], p3: &[u32], big_p: &mut[u32]) {
-
-    // Entries exhausted in p1, p2, p3 and big_p respectively
-    let mut big_used = 0;
-    let mut p1_used = 0;
-    let mut p2_used = 0;
-
-    const P2_ROW_SIZE: usize = O * U32_PER_IDX;
-
-    // Set the first V rows to be p1 concatenated with p2
-    for r in 0..V {
-
-        // Assign V columns of p1 to the first V columns of the first big_p row 
-        // Then V-1 columns of p1 to the next V-1 columns of the big_p etc.
-        let p1_row_size = (V - r) * U32_PER_IDX;
-        let p1_row = &p1[p1_used..p1_used + p1_row_size];
-
-        big_p[big_used..big_used + p1_row_size].copy_from_slice(p1_row);
-
-        p1_used += p1_row_size;
-        big_used += p1_row_size;
-
-
-
-        // Assign O columns of p2 to the second O columns of the current big_p row
-        let p2_row = &p2[p2_used..p2_used + P2_ROW_SIZE];
-        big_p[big_used..big_used + P2_ROW_SIZE].copy_from_slice(p2_row);
-
-        p2_used += P2_ROW_SIZE;
-        big_used += P2_ROW_SIZE;
+        for c in 0..O {
+            s2[r][c] = s[r][V + c];
+        }
     }
 
-    // Set the last O rows to be p3
-    big_p[big_used..].copy_from_slice(p3);
+    const P3_OFFSET: usize = V * K * U32_PER_TERM * 4;
+
+    bitsliced_mat_mul_transposed_mat_add!(p1, s1, &mut st_p, V, V, K, 0, true);  // P1 * S1
+    bitsliced_mat_mul_transposed_mat_add!(p2, s2, &mut st_p, V, O, K, 0, false); // P2 * S2
+    bitsliced_mat_mul_transposed_mat_add!(p3, s2, &mut st_p, O, O, K, P3_OFFSET, true);  // P3 * S2
+    return st_p;
 }
-
-
-
-
-
-
-
-
-// This function (rewritten to Rust from the MAYO authors' C implementation) multiplies a bitsliced vectors of m field elements
-// with a nibble. A bitsliced vector is has of m/32 * 4 consecutive u32s, where every m/32 u32s represent a term for all m elements.
-pub fn mul_add_bitsliced_m_vec(input: &[u32], input_start: usize, nibble: u8, acc: &mut [u32], acc_start: usize) {
-
-
-    const U32_PER_TERM: usize = M/32; // Number of u32 in a term of the polynomial.
-
-    // Terms of the nibble x^3 + x^2 + x + 1. 
-    // Create a mask for the nibble of 32 bits for each of the 4 degrees. E.g. 1001 becomes:
-    // x0 = 11111111 11111111 11111111 11111111, x1 = 00000000 00000000 00000000 00000000 etc.
-    let n0: u32 = ((nibble & 1) != 0) as u32 * u32::MAX;
-    let n1: u32 = (((nibble >> 1) & 1) != 0) as u32 * u32::MAX;
-    let n2: u32 = (((nibble >> 2) & 1) != 0) as u32 * u32::MAX;
-    let n3: u32 = (((nibble >> 3) & 1) != 0) as u32 * u32::MAX;
-
-
-    // In the group defined by the polynomial x^3 + x^2 + x + 1:    x^6 ≡ x^3 + x^2,   x^5 ≡ x^2 + x,   x^4 ≡ x + 1.
-    // Therefore, the multiplication results are as follows:
-    // x^0 = in0 * n0 
-    // x^1 = in0 * n1 + in1 * n0
-    // x^2 = in0 * n2 + in1 * n1 + in2 * n0
-    // x^3 = in0 * n3 + in1 * n2 + in2 * n1 + in3 * n0
-    // x^4 = in1 * n3 + in2 * n2 + in3 * n1
-    // x^5 = in2 * n3 + in3 * n2
-    // x^6 = in3 * n3 
-    // In the loop below:
-    //      * x^1 = x^1, x^4 (after reduction) and x^5 (after reduction)
-    //      * x^2 = x^2, x^5 (after reduction) and x^6 (after reduction)
-    //      * x^3 = x^3, x^6 (after reduction)
-    // Therefore, acc1 (x^1), acc2 (x^2), acc (x^3) are set to all combination that result in those terms (inclusive reduced terms).
-
-    for i in 0..U32_PER_TERM {
-
-        let in0 = input_start + i;
-        let in1 = input_start + U32_PER_TERM + i;
-        let in2 = input_start + 2 * U32_PER_TERM + i;
-        let in3 = input_start + 3 * U32_PER_TERM + i;
-
-
-        let acc0 = acc_start + i;
-        let acc1 = acc_start + U32_PER_TERM + i;
-        let acc2 = acc_start + 2 * U32_PER_TERM + i;
-        let acc3 = acc_start + 3 * U32_PER_TERM + i;
-
-        
-        let a: u32 = input[in0] ^ input[in3];
-        let b: u32 = input[in3] ^ input[in2];
-        let c: u32 = input[in2] ^ input[in1];
-
-        // Degree 0 term of the nibble (x^0)
-        acc[acc0] ^= n0 & input[in0];
-        acc[acc1] ^= n0 & input[in1];
-        acc[acc2] ^= n0 & input[in2];
-        acc[acc3] ^= n0 & input[in3]; 
-
-        // Degree 1 term of the nibble (x^1)
-        acc[acc0] ^= n1 & input[in3];
-        acc[acc1] ^= n1 & a;                    
-        acc[acc2] ^= n1 & input[in1];
-        acc[acc3] ^= n1 & input[in2];
-
-        // Degree 2 term of the nibble (x^2)
-        acc[acc0] ^= n2 & input[in2];
-        acc[acc1] ^= n2 & b;                
-        acc[acc2] ^= n2 & a;
-        acc[acc3] ^= n2 & input[in1];
-
-        // Degree 3 term of the nibble (x^3)
-        acc[acc0] ^= n3 & input[in1];
-        acc[acc1] ^= n3 & c;
-        acc[acc2] ^= n3 & b;
-        acc[acc3] ^= n3 & a;
-    }
-}
-
-
-
-
