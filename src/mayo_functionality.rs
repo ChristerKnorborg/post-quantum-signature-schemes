@@ -13,24 +13,6 @@ use crate::{
 };
 
 
-
-
-
-fn transform_transposed_o_array(input: [[u8; V]; O]) -> [u8; O * V] {
-    let mut output = [0u8; O * V]; // Initialize the output array
-
-    let mut flat_index = 0; // Index for the flattened array
-    for y in 0..O {
-        for x in 0..V {
-            output[flat_index] = input[y][x];
-            flat_index += 1;
-        }
-    }
-
-    output
-}
-
-
 // MAYO algorithm 5: Generates a compact key par (cpk, csk)
 pub fn compact_key_gen() -> ([u8 ; CPK_BYTES], [u8 ; CSK_BYTES]) {
     

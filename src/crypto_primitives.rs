@@ -1,7 +1,4 @@
-use crate::genkat::bindings;
-
-
-
+use crate::{arm_neon_intrinsic::arm_intrinsic, genkat::bindings};
 
 /* RANDOMNESS AND EXTENDED OUTPUT FUNCTION USE NIST CALLS 
     - SAME AS MAYO VERSION BY THE AUTHORS 
@@ -53,5 +50,12 @@ pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], inpu
     }
 }
 
+pub fn safe_matrix_add(res: &mut [u8], a: &[u8], b: &[u8],  n: i32) {
+    unsafe { arm_intrinsic::matrix_add(res.as_mut_ptr(), a.as_ptr(), b.as_ptr(), n)}
+}
+
+pub fn safe_inner_product(res: &mut u8, a: &[u8], b: &[u8],  n: i32) {
+    unsafe { arm_intrinsic::inner_product(res, a.as_ptr(), b.as_ptr(), n)}
+}
 
 

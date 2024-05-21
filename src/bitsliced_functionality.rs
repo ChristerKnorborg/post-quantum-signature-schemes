@@ -1,9 +1,3 @@
-use crate::constants::N;
-
-
-
-
-
 #[macro_export]
 macro_rules! encode_to_bytestring_array {
     ($x:expr, $IN_LEN:expr, $OUT_LEN:expr) => {{
