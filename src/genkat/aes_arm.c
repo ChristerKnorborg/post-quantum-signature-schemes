@@ -97,7 +97,7 @@ static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);           \
       temp0 = veorq_u32(temp0, temp4);                                       \
-      temp0 = vsetq_lane_u64(vreinterpret_u64_u32(veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), vreinterpretq_u64_u32(temp0), 1);      \
+      temp0 = vsetq_lane_u64((uint64_t)(veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), vreinterpretq_u64_u32(temp0), 1);      \
       temp1 = vdupq_n_u32(vgetq_lane_u32(temp1, 3));                        \
       temp0 = veorq_u32(temp0, temp1);                                       \
 
@@ -111,7 +111,7 @@ static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys
     BLOCK1(0x80);
     BLOCK1(0x1b);
     BLOCK1(0x36);
-    rkeys[idx++] = temp0;
+    rkeys[idx++] = vreinterpretq_u8_u32(temp0);
 }
 
 void arm_aes128_load_schedule(const uint8_t *key, void **_schedule) {
