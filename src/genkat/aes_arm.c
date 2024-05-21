@@ -55,7 +55,7 @@ uint32_t subword(uint32_t word) {
            (uint32_t)sbox[word & 0xFF];
 }
 
-uint8x16_t aeskeygenassist(uint32x4_t a32, uint8_t rcon) {
+uint32x4_t aeskeygenassist(uint32x4_t a32, uint8_t rcon) {
     // Extract words X1 and X3
     uint32_t X1 = vgetq_lane_u32(a32, 1);
     uint32_t X3 = vgetq_lane_u32(a32, 3);
@@ -79,7 +79,7 @@ uint8x16_t aeskeygenassist(uint32x4_t a32, uint8_t rcon) {
     result = vsetq_lane_u32(subX3, result, 2);
     result = vsetq_lane_u32(rotX3, result, 3);
 
-    return vreinterpretq_u8_u32(result);
+    return result;
 }
 
 static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys[]) {
@@ -96,10 +96,10 @@ static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 0), temp4, 1);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);           \
-      temp0 = veorq_u8(temp0, temp4);                                       \
-      temp0 = vsetq_lane_u64(vreinterpret_u64_u8(veor_u8(vget_high_u8(temp0), vget_low_u8(temp0))), temp0, 1);      \
+      temp0 = veorq_u32(temp0, temp4);                                       \
+      temp0 = vsetq_lane_u64(vreinterpret_u64_u32(veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), temp0, 1);      \
       temp1 = vdupq_n_u32(vgetq_lane_u32(temp1, 3));                        \
-      temp0 = veorq_u8(temp0, temp1);                                       \
+      temp0 = veorq_u32(temp0, temp1);                                       \
 
     BLOCK1(0x01);
     BLOCK1(0x02);
