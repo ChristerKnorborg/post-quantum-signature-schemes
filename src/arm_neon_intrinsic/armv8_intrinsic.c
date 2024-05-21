@@ -82,19 +82,19 @@ void mul_add_96_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
         uint8x16_t a3 = vqtbl1q_u8(tbl_a3, aa);
 
         uint8x16_t inrot[3];
-        inrot[0] = vextq_u32(in0, in1, 3);
-        inrot[1] = vextq_u32(in1, in2, 3);
-        inrot[2] = vextq_u32(in2, in0, 3);
+        inrot[0] = vextq_u8(in0, in1, 3*4);
+        inrot[1] = vextq_u8(in1, in2, 3*4);
+        inrot[2] = vextq_u8(in2, in0, 3*4);
 
         uint8x16_t inrot2[3];
-        inrot2[0] = vextq_u32(in1, in2, 2);
-        inrot2[1] = vextq_u32(in2, in0, 2);
-        inrot2[2] = vextq_u32(in0, in1, 2);
+        inrot2[0] = vextq_u8(in1, in2, 2*4);
+        inrot2[1] = vextq_u8(in2, in0, 2*4);
+        inrot2[2] = vextq_u8(in0, in1, 2*4);
 
         uint8x16_t inrot3[3];
-        inrot3[0] = vextq_u32(in2, in0, 1);
-        inrot3[1] = vextq_u32(in0, in1, 1);
-        inrot3[2] = vextq_u32(in1, in2, 1);
+        inrot3[0] = vextq_u8(in2, in0, 1*4);
+        inrot3[1] = vextq_u8(in0, in1, 1*4);
+        inrot3[2] = vextq_u8(in1, in2, 1*4);
 
         acc0 ^= a0 & in0;
         acc1 ^= a0 & in1;
@@ -105,15 +105,15 @@ void mul_add_96_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
         const uint32x4_t mask3 = {-1, 0, 0, 0};
 
 
-        acc0 ^= a1 & (inrot3[0] ^ (inrot2[0] & mask1));
-        acc1 ^= a1 & (inrot3[1] ^ (inrot2[1] & mask2));
+        acc0 ^= a1 & (inrot3[0] ^ (inrot2[0] & vreinterpretq_u8_u32(mask1)));
+        acc1 ^= a1 & (inrot3[1] ^ (inrot2[1] & vreinterpretq_u8_u32(mask2)));
         acc2 ^= a1 & (inrot3[2]);
 
-        acc0 ^= a2 & (inrot2[0] ^ (inrot[0] & mask1));
+        acc0 ^= a2 & (inrot2[0] ^ (inrot[0] & vreinterpretq_u8_u32(mask1)));
         acc1 ^= a2 & (inrot2[1] ^ (inrot[1]));
-        acc2 ^= a2 & (inrot2[2] ^ (inrot[2] & mask3));
+        acc2 ^= a2 & (inrot2[2] ^ (inrot[2] & vreinterpretq_u8_u32(mask3)));
 
-        acc0 ^= a3 & (inrot[0] ^ (in0 & mask1));
+        acc0 ^= a3 & (inrot[0] ^ (in0 & vreinterpretq_u8_u32(mask1)));
         acc1 ^= a3 & (inrot[1] ^ (in1));
         acc2 ^= a3 & (inrot[2] ^ (in2));
 
@@ -124,15 +124,15 @@ void mul_add_96_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_
 
 void mul_add_128_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
 
-        uint32x4_t in0_1 = vld1q_u32(&input[input_start]);
-        uint32x4_t in0_2 = vld1q_u32(&input[input_start+4]);
-        uint32x4_t in1_1 = vld1q_u32(&input[input_start+8]);
-        uint32x4_t in1_2 = vld1q_u32(&input[input_start+12]);
+        uint8x16_t in0_1 = vreinterpretq_u8_u32((&input[input_start]));
+        uint8x16_t in0_2 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+4]));
+        uint8x16_t in1_1 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+8]));
+        uint8x16_t in1_2 = vreinterpretq_u8_u32(vld1q_u32(&input[input_start+12]));
 
-        uint32x4_t acc0_1 = vld1q_u32(&acc[acc_start]);
-        uint32x4_t acc0_2 = vld1q_u32(&acc[acc_start+4]);
-        uint32x4_t acc1_1 = vld1q_u32(&acc[acc_start+8]);
-        uint32x4_t acc1_2 = vld1q_u32(&acc[acc_start+12]);
+        uint8x16_t acc0_1 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start]));
+        uint8x16_t acc0_2 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start+4]));
+        uint8x16_t acc1_1 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start+8]));
+        uint8x16_t acc1_2 = vreinterpretq_u8_u32(vld1q_u32(&acc[acc_start+12]));
 
         uint8x16_t tbl_a0 = {0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255};
         uint8x16_t tbl_a1 = {0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255};
@@ -146,11 +146,11 @@ void mul_add_128_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8
         uint8x16_t a3 = vqtbl1q_u8(tbl_a3, aa);
 
 
-        uint32x4_t xz_1 = in0_1 ^ in1_2;
-        uint32x4_t xz_2 = in0_2 ^ in1_1;
+        uint8x16_t xz_1 = in0_1 ^ in1_2;
+        uint8x16_t xz_2 = in0_2 ^ in1_1;
 
-        uint32x4_t yy_1 = in1_1 ^ in1_2;
-        uint32x4_t yy_2 = in1_2 ^ in1_1;
+        uint8x16_t yy_1 = in1_1 ^ in1_2;
+        uint8x16_t yy_2 = in1_2 ^ in1_1;
 
         // Degree 0 term of a 
         acc0_1 ^= a0 & in0_1;
@@ -180,8 +180,8 @@ void mul_add_128_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8
         acc1_1 ^= a3 & yy_1;
         acc1_2 ^= a3 & xz_1;
 
-        vst1q_u32(&acc[acc_start], acc0_1);
-        vst1q_u32(&acc[acc_start+4], acc0_2);
-        vst1q_u32(&acc[acc_start+8], acc1_1);
-        vst1q_u32(&acc[acc_start+12], acc1_2);
+        vst1q_u32(&acc[acc_start], vreinterpretq_u32_u8(acc0_1));
+        vst1q_u32(&acc[acc_start+4], vreinterpretq_u32_u8(acc0_2));
+        vst1q_u32(&acc[acc_start+8], vreinterpretq_u32_u8(acc1_1));
+        vst1q_u32(&acc[acc_start+12], vreinterpretq_u32_u8(acc1_2));
 } 
