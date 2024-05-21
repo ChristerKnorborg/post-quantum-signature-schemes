@@ -19,7 +19,7 @@ use std::error::Error;
 pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
 
-    println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
+    
 
 
 
@@ -31,6 +31,8 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     {
         version_string.push_str("_AES");
     } 
+
+    println!("\nRUNNING BENCHMARKS FOR {} \n", version_string);
 
     let base_dir = "benchmark_result";
     if !std::path::Path::new(base_dir).exists() {
@@ -76,7 +78,19 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     let mut durations_verify = Vec::with_capacity(1000);
 
 
+    let warm_up_iterations = 50;  
+
+
+
+
+
+
+
     // KeyGen benchmark
+    for _ in 0..warm_up_iterations {
+        compact_key_gen();
+    }
+
     for _ in 0..amount_of_iterations{
 
         let start_keygen = Instant::now(); // Start timer
@@ -86,8 +100,16 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
         durations_keygen.push(duration_keygen);
     }
 
+    
+
    
     // ExpandSK benchmark
+    for _ in 0..warm_up_iterations {
+        let (_, csk) = compact_key_gen();
+        expand_sk(&csk);
+    }
+
+
     for _i in 0..amount_of_iterations{
 
         let (_ , csk) = compact_key_gen(); // Setup
@@ -100,8 +122,16 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     }
     
 
+
+    
+
     // ExpandPK benchmark
-    for _i in 0..amount_of_iterations{
+    for _ in 0..warm_up_iterations {
+        let (cpk, _) = compact_key_gen();
+        expand_pk(cpk);
+    }
+
+    for _ in 0..amount_of_iterations{
         
         let (cpk , _) = compact_key_gen(); // Setup
 
@@ -114,6 +144,15 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     
 
     // Sign benchmark
+    for _ in 0..warm_up_iterations {
+        let (_, csk) = compact_key_gen();
+        let mut message = [0u8; 32];
+        safe_random_bytes(&mut message, 32);
+        let message_vec = message.to_vec();
+        let _ = api_sign(message_vec.clone(), csk);
+    }
+
+
     for _i in 0..amount_of_iterations{
 
         // Setup
@@ -130,8 +169,22 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
     }
     
 
+
+
+
+
     // Verify benchmark
-    for _i in 0..amount_of_iterations {
+    for _ in 0..warm_up_iterations {
+        let (cpk, csk) = compact_key_gen();
+        let mut message = [0u8; 32];
+        safe_random_bytes(&mut message, 32);
+        let message_vec = message.to_vec();
+        let signature = api_sign(message_vec.clone(), csk);
+        api_sign_open(signature, cpk);
+    }
+
+
+    for _ in 0..amount_of_iterations {
 
         // Setup
         let (cpk, csk) = compact_key_gen();      
