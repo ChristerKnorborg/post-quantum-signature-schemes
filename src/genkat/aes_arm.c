@@ -82,7 +82,7 @@ uint32x4_t aeskeygenassist(uint32x4_t a32, uint8_t rcon) {
     return result;
 }
 
-static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys[]) {
+static void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys[]) {
     uint8x16_t key0 = vld1q_u8((const uint8_t *)(key));
     uint32x4_t temp0, temp1, temp4;
     int idx = 0;
@@ -125,7 +125,7 @@ void arm_aes128_load_schedule(const uint8_t *key, void **_schedule) {
 // AES encryption using NEON intrinsics. Round constants are 0 as the function mimics Intel AVX2 implementation,
 // which applies in order: ShiftRows, SubBytes, MixColumns, AddRoundKey. 
 // vaeseq_u8 applies SubBytes, ShiftRows, AddRoundKey. 
-static inline void arm_aes128_encrypt(const uint8x16_t rkeys[11], uint8x16_t nv, unsigned char *out) {
+static void arm_aes128_encrypt(const uint8x16_t rkeys[11], uint8x16_t nv, unsigned char *out) {
     uint8x16_t temp = veorq_u8(nv, rkeys[0]);
 
     temp = vaeseq_u8(temp, vdupq_n_u8(0)); // Don't add round key here (therefore 0)
