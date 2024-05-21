@@ -213,19 +213,19 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
         durations_verify.sort();
         
 
-        let final_average_duration_keygen = find_median(&durations_keygen);
-        let final_average_duration_expand_sk = find_median(&durations_expand_sk);
-        let final_average_duration_expand_pk = find_median(&durations_expand_pk);
-        let final_average_duration_sign = find_median(&durations_sign);
-        let final_average_duration_verify = find_median(&durations_verify);
+        let final_median_duration_keygen = find_median(&durations_keygen);
+        let final_median_duration_expand_sk = find_median(&durations_expand_sk);
+        let final_median_duration_expand_pk = find_median(&durations_expand_pk);
+        let final_median_duration_sign = find_median(&durations_sign);
+        let final_median_duration_verify = find_median(&durations_verify);
 
 
 
-        let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
-        let mut res_average_duration_expand_sk = format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
-        let mut res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
-        let mut res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
-        let mut res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
+        let mut res_median_duration_keygen = format_duration_as_nanos(&final_median_duration_keygen);
+        let mut res_median_duration_expand_sk = format_duration_as_nanos(&final_median_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
+        let mut res_median_duration_expand_pk = format_duration_as_nanos(&final_median_duration_expand_pk);
+        let mut res_median_duration_sign = format_duration_as_nanos(&final_median_duration_sign);
+        let mut res_median_duration_verify = format_duration_as_nanos(&final_median_duration_verify);
          
 
         #[cfg(feature = "CCM1")]
@@ -234,11 +234,11 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
             let cpu_speed_hz = 3.2*1e9;
 
-             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_verify.as_nanos() as f64 / 1e9) as f64));
         }
 
         #[cfg(feature = "CCODROID-C4")]
@@ -248,11 +248,11 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
             
             let cpu_speed_hz = 1.91*1e9;
 
-             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_verify.as_nanos() as f64 / 1e9) as f64));
 
         
         }
@@ -260,11 +260,11 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
     wtr.write_record(&[
         &VERSION.to_string(),
-        &res_average_duration_keygen,
-        &res_average_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
-        &res_average_duration_expand_pk,
-        &res_average_duration_sign,
-        &res_average_duration_verify,
+        &res_median_duration_keygen,
+        &res_median_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
+        &res_median_duration_expand_pk,
+        &res_median_duration_sign,
+        &res_median_duration_verify,
     ])?;
 
 
