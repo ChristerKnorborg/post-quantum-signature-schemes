@@ -96,7 +96,7 @@ static void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys[]) {
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);           \
       temp0 = veorq_u32(temp0, temp4);                                      \
-      temp0 = vreinterpretq_u32_u64(vsetq_lane_u64((uint64_t)(veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), vreinterpretq_u64_u32(temp0), 1));      \
+      temp0 = (vsetq_lane_u64(((uint64_t) veor_u32(vget_high_u32(temp0), vget_low_u32(temp0))), (temp0), 1));      \
       temp1 = vdupq_n_u32(vgetq_lane_u32(temp1, 3));                        \
       temp0 = veorq_u32(temp0, temp1);                                      \
 
@@ -174,34 +174,11 @@ void arm_aes128_free_schedule(void *schedule) {
     }
 }
 
-static void arm_aes128_encrypt_x4(const void *schedule, uint8x16_t nv0, uint8x16_t nv1, uint8x16_t nv2, uint8x16_t nv3, uint8_t *out) {
-    const uint8x16_t *rkeys = (const uint8x16_t *)schedule;
-
-    arm_aes128_encrypt(rkeys, nv0, out);
-    arm_aes128_encrypt(rkeys, nv1, out + 16);
-    arm_aes128_encrypt(rkeys, nv2, out + 32);
-    arm_aes128_encrypt(rkeys, nv3, out + 48);
-}
 
 static void arm_aes128_ctr_enc_sch(const void *schedule, uint8_t *out,
                                         size_t out_len) {
     uint8x16_t mask = {0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8}; 
     uint8x16_t block = vdupq_n_u8(0); // Initialize block to zero
-    while (out_len >= 64) {
-        uint8x16_t nv0 = block;
-
-        // wrong solution
-        uint8x16_t nv1 = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,1}) ), mask);
-        uint8x16_t nv2 = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,2}) ), mask);
-
-        uint8x16_t nv3 = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,3}) ), mask);
-
-        arm_aes128_encrypt_x4(schedule, nv0, nv1, nv2, nv3, out);
-
-        block = vqtbl1q_u8(vreinterpretq_u8_u64(vaddq_u64(vreinterpretq_u64_u8(vqtbl1q_u8(block, mask)), (uint64x2_t) {0,4}) ), mask);
-        out += 64;
-        out_len -= 64;
-    }
     while (out_len >= 16) {
         arm_aes128_encrypt(schedule, block, out);
         out += 16;
@@ -219,11 +196,6 @@ int AES_128_CTR(unsigned char *output, size_t outputByteLen,
                    const unsigned char *input) {
     void *schedule = NULL;
     arm_aes128_load_schedule(input, &schedule);
-    
-
-    //print_schedule((uint8x16_t *)schedule);
-    //printf("\n");
-
     arm_aes128_ctr_enc_sch(schedule, output, outputByteLen);
     arm_aes128_free_schedule(schedule);
     return (int)outputByteLen;
