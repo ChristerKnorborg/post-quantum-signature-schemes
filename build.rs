@@ -5,6 +5,7 @@ fn main() {
     if std::env::var("CARGO_FEATURE_AES_NEON").is_ok() {
         println!("cargo:info=Using AES with NEON intrinsics");
         build.file("src/genkat/aes_arm.c");
+        build.flag_if_supported("-march=armv8-a+crypto"); // Enable Cryptography extensions
 
     } else {
 

@@ -9,7 +9,6 @@
 #include "mem.h"
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #if defined(__arm__) || defined(__aarch32__) || defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
 # if defined(__GNUC__)
