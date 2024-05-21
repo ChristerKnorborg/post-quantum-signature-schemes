@@ -20,15 +20,24 @@ pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
 
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
+
+
+
     
     let implementation_variant = "initial_implementation";
+    let mut version_string = VERSION.to_string();
+
+    #[cfg(feature = "aes_neon")]
+    {
+        version_string.push_str("_AES");
+    } 
 
     let base_dir = "benchmark_result";
     if !std::path::Path::new(base_dir).exists() {
         fs::create_dir(base_dir)?;
     }
 
-    let file_name = format!("benchmark-{}-{}.csv", VERSION, implementation_variant);
+    let file_name = format!("{}_{}.csv", version_string, implementation_variant);
     let file_path = format!("{}/{}", base_dir, file_name);
 
     let file = OpenOptions::new()
