@@ -57,7 +57,7 @@ void inner_product(u_int8_t *result, u_int8_t *a, u_int8_t *b, int n) {
         poly16x8_t poly_res = vmull_p8(poly_va, poly_vb); 
 
         // Remove every second byte where no coefficients are stored
-        uint8x8_t narrowed = vqmovn_u16(poly_res); 
+        uint8x8_t narrowed = vqmovn_u16(vreinterpretq_u16_p16(poly_res)); 
                 
                 
         // Perform reduction of x^6, x^5 and x^4 using irreducible polynomial x^4 = x + 1.
