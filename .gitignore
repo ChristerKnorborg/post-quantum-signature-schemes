@@ -15,7 +15,9 @@ Cargo.lock
 
 
 # Added by cargo
+
 /target
 
-#No output files
-*.txt
+
+# Ignore benchmark results directory
+benchmark_result/
