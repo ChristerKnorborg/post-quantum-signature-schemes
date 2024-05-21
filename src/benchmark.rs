@@ -14,29 +14,34 @@ use csv::Writer;
 use std::error::Error;
 
 
+
+#[allow(unused_mut, unused_assignments)]
 pub fn benchmark(amount_of_iterations: i32) -> Result<(), Box<dyn Error>> {
 
 
-    println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
     
-let implementation_variant = "armv8_vmull";
+
+
+
+    
+    let implementation_variant = "armv8_vmull_implementation";
+    let mut version_string = VERSION.to_string();
+
+    #[cfg(feature = "aes_neon")]
+    {
+        version_string.push_str("_AES");
+    } 
+
+    println!("\nRUNNING BENCHMARKS FOR {} \n", version_string);
 
     let base_dir = "benchmark_result";
     if !std::path::Path::new(base_dir).exists() {
         fs::create_dir(base_dir)?;
     }
 
-    
+    let file_name = format!("{}_{}.csv", version_string, implementation_variant);
+    let file_path = format!("{}/{}", base_dir, file_name);
 
-            // Construct the file name with the specified pattern including the implementation variant
-            let file_name = format!("benchmark-{}-{}.csv", VERSION, implementation_variant);
-
-            // Combine the directory path and file name to get the full file path
-            let file_path = format!("{}/{}", base_dir, file_name);
-
-    
-
-    // Open a file in write mode, this will create or truncate the file if it exists.
     let file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -49,20 +54,16 @@ let implementation_variant = "armv8_vmull";
     // Write the CSV headers
     wtr.write_record(&["Version","keygen", "expand_sk", "expand_pk", "sign+expand_sk", "verify+expand_pk"])?;
 
-    // Here you would include your benchmarking logic and write the data like so:
-    // wtr.write_record(&[keygen_result, expand_sk_result, expand_pk_result, sign_result, verify_result])?;
 
-    // Ensure all data is flushed to the file
-
+    // Flush data to file
     let mut seed_bytes: Vec<u8> = Vec::with_capacity(24);
     let mut entropy_input: Vec<u8> = (0..=47).collect();
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
     let nbytes: u64 = entropy_input.len() as u64;
 
-    // Init the randombytes like NIST correctly
+    // Init the randombytes like NIST run correctly
     safe_random_bytes_init(&mut entropy_input, &personalization_string, 256);
     safe_random_bytes(&mut entropy_input, nbytes);
-
     safe_random_bytes_init(&mut seed_bytes, &personalization_string, 256);
 
     let mut message = [0u8; 32];
@@ -77,112 +78,130 @@ let implementation_variant = "armv8_vmull";
     let mut durations_verify = Vec::with_capacity(1000);
 
 
-    //this loop runs the benchmark for the keygen function
+    let warm_up_iterations = 50;  
+
+
+
+
+
+
+
+    // KeyGen benchmark
+    for _ in 0..warm_up_iterations {
+        compact_key_gen();
+    }
 
     for _ in 0..amount_of_iterations{
 
-
-        let start_keygen = Instant::now();
-
+        let start_keygen = Instant::now(); // Start timer
         compact_key_gen();
-        
-        let duration_keygen = start_keygen.elapsed();
+        let duration_keygen = start_keygen.elapsed(); // Stop timer
 
         durations_keygen.push(duration_keygen);
     }
 
-
-
-
-        //this loop runs the benchmark for the expand sk function
-
-        for _i in 0..amount_of_iterations{
-
-        let (_ , csk) = compact_key_gen();
-    
-    
-        let start_expand_sk = Instant::now();
     
 
-            expand_sk(csk);
-        //  expand_pk(cpk);
-    
-        //  let signature = api_sign(message_vec, csk);
-    
-        // api_sign_open(signature, cpk);
-        
-        let duration_expand_sk = start_expand_sk.elapsed();
+   
+    // ExpandSK benchmark
+    for _ in 0..warm_up_iterations {
+        let (_, csk) = compact_key_gen();
+        expand_sk(csk);
+    }
+
+
+    for _i in 0..amount_of_iterations{
+
+        let (_ , csk) = compact_key_gen(); // Setup
+
+        let start_expand_sk = Instant::now(); // Start timer
+        expand_sk(csk);
+        let duration_expand_sk = start_expand_sk.elapsed(); // Stop timer
 
         durations_expand_sk.push(duration_expand_sk);
-        }
+    }
     
 
 
+    
+
+    // ExpandPK benchmark
+    for _ in 0..warm_up_iterations {
+        let (cpk, _) = compact_key_gen();
+        expand_pk(cpk);
+    }
+
+    for _ in 0..amount_of_iterations{
         
-        //this loop runs the benchmark for the expand_pk function
+        let (cpk , _) = compact_key_gen(); // Setup
 
-        for _i in 0..amount_of_iterations{
-
-        let (cpk , _) = compact_key_gen();
-    
-    
-        let start_expand_pk = Instant::now();
-    
-
-            //expand_sk(csk);
-            expand_pk(cpk);
-    
-        //  let signature = api_sign(message_vec, csk);
-    
-        // api_sign_open(signature, cpk);
-        
-        let duration_expand_pk = start_expand_pk.elapsed();
+        let start_expand_pk = Instant::now(); // Start timer
+        expand_pk(cpk);
+        let duration_expand_pk = start_expand_pk.elapsed(); // Stop timer
 
         durations_expand_pk.push(duration_expand_pk);
-        }
+    }
     
 
+    // Sign benchmark
+    for _ in 0..warm_up_iterations {
+        let (_, csk) = compact_key_gen();
+        let mut message = [0u8; 32];
+        safe_random_bytes(&mut message, 32);
+        let message_vec = message.to_vec();
+        let _ = api_sign(message_vec.clone(), csk);
+    }
 
-        //this loop runs the benchmark for the sign function
 
-        for _i in 0..amount_of_iterations{
+    for _i in 0..amount_of_iterations{
 
-            let (_, csk) = compact_key_gen();
-            let mut message = [0u8; 32];
-            safe_random_bytes(&mut message, 32);
-            let message_vec = message.to_vec();
-    
-        let start_sign = Instant::now();
-    
+        // Setup
+        let (_, csk) = compact_key_gen();
+        let mut message = [0u8; 32];
+        safe_random_bytes(&mut message, 32);
+        let message_vec = message.to_vec();
+
+        let start_sign = Instant::now(); // Start timer
         api_sign(message_vec, csk);
+        let duration_sign = start_sign.elapsed(); // Stop timer
+
+        durations_sign.push(duration_sign);
+    }
     
-        let duration_sign = start_sign.elapsed();
-
-         durations_sign.push(duration_sign);
-        }
-    
 
 
-        //this loop runs the benchmark for the verify function
 
-        for _i in 0..amount_of_iterations{
 
-            let (cpk, csk) = compact_key_gen();      
-            let mut message = [0u8; 32];
-            safe_random_bytes(&mut message, 32);
-            let message_vec = message.to_vec();
 
-            let signature = api_sign(message_vec, csk);
-    
-        let start_verify = Instant::now();
-
+    // Verify benchmark
+    for _ in 0..warm_up_iterations {
+        let (cpk, csk) = compact_key_gen();
+        let mut message = [0u8; 32];
+        safe_random_bytes(&mut message, 32);
+        let message_vec = message.to_vec();
+        let signature = api_sign(message_vec.clone(), csk);
         api_sign_open(signature, cpk);
-        
-        let duration_verify = start_verify.elapsed();
+    }
 
-         durations_verify.push(duration_verify);
-        }
+
+    for _ in 0..amount_of_iterations {
+
+        // Setup
+        let (cpk, csk) = compact_key_gen();      
+        let mut message = [0u8; 32];
+        safe_random_bytes(&mut message, 32);
+        let message_vec = message.to_vec();
+        let signature = api_sign(message_vec, csk);
+
+
+        let start_verify = Instant::now(); // Start timer
+        api_sign_open(signature, cpk);
+        let duration_verify = start_verify.elapsed(); // Stop timer
+
+        durations_verify.push(duration_verify);
+    }
     
+
 
         let var = 10 as f64;
         let _ = format_duration_as_string(&var);
@@ -194,29 +213,19 @@ let implementation_variant = "armv8_vmull";
         durations_verify.sort();
         
 
-        let final_average_duration_keygen = find_median(&durations_keygen);
-        let final_average_duration_expand_sk = find_median(&durations_expand_sk);
-        let final_average_duration_expand_pk = find_median(&durations_expand_pk);
-        let final_average_duration_sign = find_median(&durations_sign);
-        let final_average_duration_verify = find_median(&durations_verify);
+        let final_median_duration_keygen = find_median(&durations_keygen);
+        let final_median_duration_expand_sk = find_median(&durations_expand_sk);
+        let final_median_duration_expand_pk = find_median(&durations_expand_pk);
+        let final_median_duration_sign = find_median(&durations_sign);
+        let final_median_duration_verify = find_median(&durations_verify);
 
 
 
-        #[allow(unused_mut)]
-        #[allow(unused_assignments)]
-        let mut res_average_duration_keygen = format_duration_as_nanos(&final_average_duration_keygen);
-        #[allow(unused_mut)]
-        #[allow(unused_assignments)]
-        let mut res_average_duration_expand_sk =format_duration_as_nanos(&final_average_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
-        #[allow(unused_mut)]
-        #[allow(unused_assignments)]
-        let mut res_average_duration_expand_pk = format_duration_as_nanos(&final_average_duration_expand_pk);
-        #[allow(unused_mut)]
-        #[allow(unused_assignments)]
-        let mut  res_average_duration_sign = format_duration_as_nanos(&final_average_duration_sign);
-        #[allow(unused_mut)]
-        #[allow(unused_assignments)]
-        let mut  res_average_duration_verify = format_duration_as_nanos(&final_average_duration_verify);
+        let mut res_median_duration_keygen = format_duration_as_nanos(&final_median_duration_keygen);
+        let mut res_median_duration_expand_sk = format_duration_as_nanos(&final_median_duration_expand_sk) ;// Replace with format_duration(duration_expand_sk) when enabled
+        let mut res_median_duration_expand_pk = format_duration_as_nanos(&final_median_duration_expand_pk);
+        let mut res_median_duration_sign = format_duration_as_nanos(&final_median_duration_sign);
+        let mut res_median_duration_verify = format_duration_as_nanos(&final_median_duration_verify);
          
 
         #[cfg(feature = "CCM1")]
@@ -225,15 +234,11 @@ let implementation_variant = "armv8_vmull";
 
             let cpu_speed_hz = 3.2*1e9;
 
-
-
-             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
-
-
+             res_median_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_verify.as_nanos() as f64 / 1e9) as f64));
         }
 
         #[cfg(feature = "CCODROID-C4")]
@@ -243,11 +248,11 @@ let implementation_variant = "armv8_vmull";
             
             let cpu_speed_hz = 1.91*1e9;
 
-             res_average_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_keygen.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_sign.as_nanos() as f64 / 1e9) as f64));
-             res_average_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_average_duration_verify.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_keygen = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_keygen.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_sk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_sk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_expand_pk = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_expand_pk.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_sign = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_sign.as_nanos() as f64 / 1e9) as f64));
+             res_median_duration_verify = format_duration_as_string(&(cpu_speed_hz * (final_median_duration_verify.as_nanos() as f64 / 1e9) as f64));
 
         
         }
@@ -255,11 +260,11 @@ let implementation_variant = "armv8_vmull";
 
     wtr.write_record(&[
         &VERSION.to_string(),
-        &res_average_duration_keygen,
-        &res_average_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
-        &res_average_duration_expand_pk,
-        &res_average_duration_sign,
-        &res_average_duration_verify,
+        &res_median_duration_keygen,
+        &res_median_duration_expand_sk, // Replace with format_duration(duration_expand_sk) when enabled
+        &res_median_duration_expand_pk,
+        &res_median_duration_sign,
+        &res_median_duration_verify,
     ])?;
 
 
