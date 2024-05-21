@@ -55,15 +55,6 @@ uint32_t subword(uint32_t word) {
            (uint32_t)sbox[word & 0xFF];
 }
 
-void print_uint8x16_t(uint8x16_t value) {
-    uint8_t bytes[16];
-    vst1q_u8(bytes, value);
-    for (int i = 0; i < 16; i++) {
-        printf("%02x ", bytes[i]);
-    }
-    printf("\n");
-}
-
 uint8x16_t aeskeygenassist(uint32x4_t a32, uint8_t rcon) {
     // Extract words X1 and X3
     uint32_t X1 = vgetq_lane_u32(a32, 1);
@@ -96,12 +87,12 @@ static inline void aes_setkey_encrypt(const unsigned char *key, uint8x16_t rkeys
     uint32x4_t temp0, temp1, temp4;
     int idx = 0;
 
-    temp0 = key0;
+    temp0 = vreinterpretq_u32_u8(key0);
     temp4 = vdupq_n_u32(0);
 
     #define BLOCK1(IMM)                                                     \
       temp1 = aeskeygenassist(temp0, IMM);                                  \
-      rkeys[idx++] = temp0;                                                 \
+      rkeys[idx++] = vreinterpretq_u8_u32(temp0);                           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 0), temp4, 1);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 1), temp4, 2);           \
       temp4 = vsetq_lane_u32(vgetq_lane_u32(temp0, 2), temp4, 3);           \
@@ -128,13 +119,6 @@ void arm_aes128_load_schedule(const uint8_t *key, void **_schedule) {
     // assert(*_schedule != NULL);
     uint8x16_t *schedule = (uint8x16_t *)*_schedule;
     aes_setkey_encrypt(key, schedule);
-}
-
-
-void print_schedule(uint8x16_t *schedule) {
-    for (int i = 0; i < 11; i++) {
-        print_uint8x16_t(schedule[i]);
-    }
 }
 
 
@@ -198,14 +182,6 @@ static void arm_aes128_encrypt_x4(const void *schedule, uint8x16_t nv0, uint8x16
     arm_aes128_encrypt(rkeys, nv1, out + 16);
     arm_aes128_encrypt(rkeys, nv2, out + 32);
     arm_aes128_encrypt(rkeys, nv3, out + 48);
-}
-
-
-void print_uint8_array(const uint8_t *out, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-        printf("%02x ", out[i]);
-    }
-    printf("\n");
 }
 
 static void arm_aes128_ctr_enc_sch(const void *schedule, uint8_t *out,
