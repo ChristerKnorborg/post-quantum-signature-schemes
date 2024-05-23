@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef __ARM_NEON
@@ -9,6 +8,9 @@
 #define O_MAYO_1 8
 #define V_MAYO_1 58
 #define K_MAYO_1 9
+
+
+// Test file to check loop unrolling speed up for different matrix multiplications in the crypto scheme
 
 void mayo_P1_times_O_mayo1(uint32_t *P1, unsigned char *O, uint32_t *acc) {
 
