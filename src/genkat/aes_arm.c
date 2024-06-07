@@ -1,10 +1,8 @@
-/* aes-arm.c - ARMv8 AES extensions using C intrinsics         */
-/*   Written and placed in public domain by Jeffrey Walton     */
-/*   Based on code from ARM, and by Johannes Schneiders, Skip  */
-/*   Hovsmith and Barry O'Rourke for the mbedTLS project.      */
-
-/* gcc -std=c99 -march=armv8-a+crypto aes-arm.c -o aes-arm.exe */
-
+/* ARMv8 AES Implementation adapted 
+  from liboqs/src/common/aes which 
+  in turn takes it from:
+  crypto_core/aes128ncrypt/dolbeau/aesenc-int
+ (https://bench.cr.yp.to/supercop.html) */
 
 #include "mem.h"
 #include <string.h>
