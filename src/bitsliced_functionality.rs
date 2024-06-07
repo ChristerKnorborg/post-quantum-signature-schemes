@@ -75,7 +75,7 @@ macro_rules! decode_bytestring_matrix_array {
 #[macro_export]
 macro_rules! encode_bit_sliced_array {
     ($v:expr, $OUT_LEN:expr) => {{
-        let mut bytestring = [0u8; $OUT_LEN / 2]; // Bytestring of length M/2 of all 0s
+        let mut bytestring = [0u8; $OUT_LEN / 2]; // Bytestring of length M/2
 
         for i in 0..($OUT_LEN / 8) {
             let mut b0: u8 = 0x0;

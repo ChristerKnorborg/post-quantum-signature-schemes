@@ -1,20 +1,22 @@
-// build.rs
 fn main() {
     let mut build = cc::Build::new();
 
-    // Use conditional compilation based on the feature
-    if std::env::var("CARGO_FEATURE_SYSTEM_AES").is_ok() {
-        println!("cargo:info=Using system AES");
-        build.file("src/genkat/randombytes_system.c");
+    // Check if aes_neon is enabled
+    if std::env::var("CARGO_FEATURE_AES_NEON").is_ok() {
+        println!("cargo:info=Using AES with NEON intrinsics");
+        build.file("src/genkat/aes_arm.c");
+        build.flag_if_supported("-march=armv8-a+crypto"); // Enable Cryptography extensions
+
     } else {
+
         println!("cargo:info=Using default AES");
-        build.file("src/genkat/randombytes_ctrdrbg.c");
+        build.file("src/genkat/aes_c.c");
     }
 
-    build.file("src/genkat/mem.c")
-        .file("src/genkat/aes_c.c")
+    build.file("src/genkat/randombytes_ctrdrbg.c")
+        .file("src/genkat/mem.c")
         .file("src/genkat/fips202.c")
+        .file("src/arm_neon_intrinsic/armv8_intrinsic.c")
         .flag("-O3")
-        .flag("-mcpu=apple-m1")
         .compile("randombytes_nist");
 }

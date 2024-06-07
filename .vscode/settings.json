@@ -8,13 +8,18 @@
         "./Cargo.toml",
         "./Cargo.toml",
         ".\\Cargo.toml",
-        ".\\Cargo.toml"
+        ".\\Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml"
     ],
 
     "files.associations": {
         "rng.h": "c",
         "ctype.h": "c"
-    }
+    },
+    "rust-analyzer.showUnlinkedFileNotification": false
 
 
 

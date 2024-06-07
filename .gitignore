@@ -19,3 +19,8 @@ Cargo.lock
 
 #No output files
 *.txt
+
+
+
+# Ignore benchmark results directory
+benchmark_result/
