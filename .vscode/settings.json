@@ -16,8 +16,10 @@
     ],
 
     "files.associations": {
+        "*.sage": "python",
         "rng.h": "c",
-        "ctype.h": "c"
+        "ctype.h": "c",
+        "arm_acle.h": "c"
     },
     "rust-analyzer.showUnlinkedFileNotification": false
 
