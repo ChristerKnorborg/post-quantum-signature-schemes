@@ -30,5 +30,5 @@ To run 1000 samples of timings the following commands can be executed:
 `cargo bench_mayo3`  
 `cargo bench_mayo5`
 
-The median result is reported in nanoseconds. Calculating the clock cycles must be done manually using the freqeuncy of the tested device.
-Each of these can also be executed with the aes suffix. For instance `cargo bench_mayo1_aes`.
+The median result is reported in nanoseconds. Calculating the result in clock cycles must be done manually using the freqeuncy of the tested device.
+Each of these command can also be executed with the aes suffix. For instance `cargo bench_mayo1_aes`.
