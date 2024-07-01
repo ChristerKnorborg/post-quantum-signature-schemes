@@ -1,4 +1,4 @@
-use crate::arm_neon_intrinsic::arm_intrinsic::{encode_bit_sliced_array_mayo12, mul_add_bitsliced_m_vec, mul_add_bitsliced_m_vec_mayo1, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
+use crate::arm_neon_intrinsic::arm_intrinsic::{mul_add_bitsliced_m_vec_mayo12, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
 use crate::genkat::bindings;
 
 
@@ -58,12 +58,8 @@ pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], inpu
 
 
 
-pub fn safe_mul_add_bitsliced_m_vec(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
-    unsafe { mul_add_bitsliced_m_vec(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
-}
-
-pub fn safe_mul_add_bitsliced_m_vec_mayo1(input: &[u32], input_start: i32, input_offset: i32, nibble1: u8, nibble2: u8, acc: &mut [u32], acc_start: i32){
-    unsafe { mul_add_bitsliced_m_vec_mayo1(input.as_ptr(), input_start, input_offset, nibble1, nibble2, acc.as_mut_ptr(), acc_start) }
+pub fn safe_mul_add_bitsliced_m_vec_mayo12(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
+    unsafe { mul_add_bitsliced_m_vec_mayo12(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
 }
 
 pub fn safe_mul_add_bitsliced_m_vec_mayo3(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
@@ -74,8 +70,4 @@ pub fn safe_mul_add_bitsliced_m_vec_mayo5(input: &[u32], input_start: i32, nibbl
     unsafe { mul_add_bitsliced_m_vec_mayo5(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
 }
 
-
-pub fn safe_encode_bit_sliced_array_mayo12(input: &mut [u8], output: &mut [u8], matrices: i32){
-    unsafe { encode_bit_sliced_array_mayo12(input.as_mut_ptr() , output.as_mut_ptr() , matrices) }
-}
 

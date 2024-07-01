@@ -7,66 +7,65 @@
 
 #define __STDC_FORMAT_MACROS
 
- 
-void mul_add_bitsliced_m_vec_mayo5(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
-    
-        int u_32_per_term = 4;
 
+
+void mul_add_bitsliced_m_vec_mayo12(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
+
+        // In0 is x^0 and x^1 and in1 is x^2 and x^3
         uint32x4_t in0 = vld1q_u32(&input[input_start]);
-        uint32x4_t in1 = vld1q_u32(&input[input_start + u_32_per_term]);
-        uint32x4_t in2 = vld1q_u32(&input[input_start + 2 * u_32_per_term]);
-        uint32x4_t in3 = vld1q_u32(&input[input_start + 3 * u_32_per_term]);
+        uint32x4_t in1 = vld1q_u32(&input[input_start+4]);
 
-        // Load accumulators as uint32x2_t
         uint32x4_t acc0 = vld1q_u32(&acc[acc_start]);
-        uint32x4_t acc1 = vld1q_u32(&acc[acc_start + u_32_per_term]);
-        uint32x4_t acc2 = vld1q_u32(&acc[acc_start + 2 * u_32_per_term]);
-        uint32x4_t acc3 = vld1q_u32(&acc[acc_start + 3 * u_32_per_term]);
+        uint32x4_t acc1 = vld1q_u32(&acc[acc_start+4]);
 
-
-
-        // Nibble mask extraction
-        uint32x4_t n0 = vdupq_n_u32((nibble & 1) ? 0xFFFFFFFF : 0);
-        uint32x4_t n1 = vdupq_n_u32((nibble & 2) ? 0xFFFFFFFF : 0);
-        uint32x4_t n2 = vdupq_n_u32((nibble & 4) ? 0xFFFFFFFF : 0);
-        uint32x4_t n3 = vdupq_n_u32((nibble & 8) ? 0xFFFFFFFF : 0);
-
-
-        // Compute bitwise XORs
-        uint32x4_t a = veorq_u32(in0, in3);
-        uint32x4_t b = veorq_u32(in3, in2);
-        uint32x4_t c = veorq_u32(in2, in1);
-
-        // x^0 terms
-        acc0 = veorq_u32(acc0, vandq_u32(n0, in0));
-        acc1 = veorq_u32(acc1, vandq_u32(n0, in1));
-        acc2 = veorq_u32(acc2, vandq_u32(n0, in2));
-        acc3 = veorq_u32(acc3, vandq_u32(n0, in3));
+        // The lookup vector to be used for the multiplications
+        uint8x16_t mul_tbl = {0x0, 0x13, 0x26, 0x35, 0x4c, 0x5f, 0x6a, 0x79, 0x98, 0x8b, 0xbe, 0xad, 0xd4, 0xc7, 0xf2, 0xe1};
         
-        // x^1 terms
-        acc0 = veorq_u32(acc0, vandq_u32(n1, in3));
-        acc1 = veorq_u32(acc1, vandq_u32(n1, a));
-        acc2 = veorq_u32(acc2, vandq_u32(n1, in1));
-        acc3 = veorq_u32(acc3, vandq_u32(n1, in2));
 
-        // x^2 terms
-        acc0 = veorq_u32(acc0, vandq_u32(n2, in2));
-        acc1 = veorq_u32(acc1, vandq_u32(n2, b));
-        acc2 = veorq_u32(acc2, vandq_u32(n2, a));
-        acc3 = veorq_u32(acc3, vandq_u32(n2, in1));
+        uint32x4_t inshuf2_1 = vcombine_u32(vget_low_u32(in1), vget_high_u32(in1));
+        uint32x4_t inshuf2_2 = vcombine_u32(vget_low_u32(in0), vget_high_u32(in0));
 
-        //x^3 terms
-        acc0 = veorq_u32(acc0, vandq_u32(n3, in1));
-        acc1 = veorq_u32(acc1, vandq_u32(n3, c));
-        acc2 = veorq_u32(acc2, vandq_u32(n3, b));
-        acc3 = veorq_u32(acc3, vandq_u32(n3, a));
+        uint32x4_t inshuf1_1 = vcombine_u32(vget_high_u32(in0), vget_low_u32(in0));
+        uint32x4_t inshuf1_2 = vcombine_u32(vget_high_u32(in1), vget_low_u32(in1));
+        
+        uint32x4_t inshuf3_1 = vcombine_u32(vget_low_u32(inshuf1_2), vget_high_u32(inshuf1_2));
+        uint32x4_t inshuf3_2 = vcombine_u32(vget_low_u32(inshuf1_1), vget_high_u32(inshuf1_1));
 
-        // Store results back to acc array as uint32x2_t
+
+        const uint64x2_t mask1_1 = vcombine_u64(vdup_n_u64(1), vdup_n_u64(16));
+        const uint64x2_t mask1_2 = vcombine_u64(vdup_n_u64(16), vdup_n_u64(16));
+
+        const uint64x2_t mask2_1 = vcombine_u64(vdup_n_u64(128), vdup_n_u64(32));
+        const uint64x2_t mask2_2 = vcombine_u64(vdup_n_u64(8), vdup_n_u64(32));
+
+        const uint64x2_t mask3_1 = vcombine_u64(vdup_n_u64(64), vdup_n_u64(4));
+        const uint64x2_t mask3_2 = vcombine_u64(vdup_n_u64(64), vdup_n_u64(64));
+
+        const uint64x2_t mask4_1 = vcombine_u64(vdup_n_u64(32), vdup_n_u64(8));
+        const uint64x2_t mask4_2 = vcombine_u64(vdup_n_u64(32), vdup_n_u64(128));
+
+        uint64x2_t aaaa = vreinterpretq_u64_u8(vqtbl1q_u8(mul_tbl, vdupq_n_u8(nibble)));
+
+        acc0 ^= in0 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask1_1, mask1_1));
+        acc1 ^= in1 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask1_2, mask1_2));
+
+        acc0 ^= inshuf1_1 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask2_1, mask2_1));
+        acc1 ^= inshuf1_2 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask2_2, mask2_2));
+
+        acc0 ^= inshuf2_1 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask3_1, mask3_1));
+        acc1 ^= inshuf2_2 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask3_2, mask3_2));
+
+        acc0 ^= inshuf3_1 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask4_1, mask4_1));
+        acc1 ^= inshuf3_2 & vreinterpretq_u32_u64(vceqq_u64(aaaa & mask4_2, mask4_2));
+
         vst1q_u32(&acc[acc_start], acc0);
-        vst1q_u32(&acc[acc_start + u_32_per_term], acc1);
-        vst1q_u32(&acc[acc_start + 2 * u_32_per_term], acc2);
-        vst1q_u32(&acc[acc_start + 3 * u_32_per_term], acc3); 
+        vst1q_u32(&acc[acc_start+4], acc1);
 }
+
+
+
+
+
 
 
 void mul_add_bitsliced_m_vec_mayo3(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
@@ -133,56 +132,34 @@ void mul_add_bitsliced_m_vec_mayo3(u_int32_t *input, u_int32_t input_start, u_in
 }
 
 
-void mul_add_bitsliced_m_vec_mayo1(u_int32_t *input, u_int32_t input_start, u_int32_t input_offset, u_int8_t nibble1, u_int8_t nibble2, u_int32_t *acc, u_int32_t acc_start) {
+
+
+
+
+ 
+void mul_add_bitsliced_m_vec_mayo5(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
     
-        int u_32_per_term = 2;
+        int u_32_per_term = 4;
 
-        uint32x2_t in0_0 = vld1_u32(&input[input_start]);
-        uint32x2_t in1_0 = vld1_u32(&input[input_start + u_32_per_term]);
-        uint32x2_t in2_0 = vld1_u32(&input[input_start + 2 * u_32_per_term]);
-        uint32x2_t in3_0 = vld1_u32(&input[input_start + 3 * u_32_per_term]);
-
-        uint32x2_t in0_1 = vld1_u32(&input[input_offset + input_start]);
-        uint32x2_t in1_1 = vld1_u32(&input[input_offset + (input_start + u_32_per_term)]);
-        uint32x2_t in2_1 = vld1_u32(&input[input_offset + (input_start + 2 * u_32_per_term)]);
-        uint32x2_t in3_1 = vld1_u32(&input[input_offset + (input_start + 3 * u_32_per_term)]);
-
-         // Convert to uint32x4_t for processing
-        uint32x4_t in0 = vcombine_u32(in0_0, in0_1);
-        uint32x4_t in1 = vcombine_u32(in1_0, in1_1);
-        uint32x4_t in2 = vcombine_u32(in2_0, in2_1);
-        uint32x4_t in3 = vcombine_u32(in3_0, in3_1);
+        uint32x4_t in0 = vld1q_u32(&input[input_start]);
+        uint32x4_t in1 = vld1q_u32(&input[input_start + u_32_per_term]);
+        uint32x4_t in2 = vld1q_u32(&input[input_start + 2 * u_32_per_term]);
+        uint32x4_t in3 = vld1q_u32(&input[input_start + 3 * u_32_per_term]);
 
         // Load accumulators as uint32x2_t
-        uint32x2_t acc0_low = vld1_u32(&acc[acc_start]);
-        uint32x2_t acc1_low = vld1_u32(&acc[acc_start + u_32_per_term]);
-        uint32x2_t acc2_low = vld1_u32(&acc[acc_start + 2 * u_32_per_term]);
-        uint32x2_t acc3_low = vld1_u32(&acc[acc_start + 3 * u_32_per_term]);
+        uint32x4_t acc0 = vld1q_u32(&acc[acc_start]);
+        uint32x4_t acc1 = vld1q_u32(&acc[acc_start + u_32_per_term]);
+        uint32x4_t acc2 = vld1q_u32(&acc[acc_start + 2 * u_32_per_term]);
+        uint32x4_t acc3 = vld1q_u32(&acc[acc_start + 3 * u_32_per_term]);
 
-        // Convert to uint32x4_t for processing (Only add acc once or it will cancel for XOR)
-        uint32x2_t zero = vdup_n_u32(0);
-        uint32x4_t acc0 = vcombine_u32(acc0_low, zero);
-        uint32x4_t acc1 = vcombine_u32(acc1_low, zero);
-        uint32x4_t acc2 = vcombine_u32(acc2_low, zero);
-        uint32x4_t acc3 = vcombine_u32(acc3_low, zero);
 
 
         // Nibble mask extraction
-        uint32x2_t n0_1 = vdup_n_u32((nibble1 & 1) ? 0xFFFFFFFF : 0);
-        uint32x2_t n1_1 = vdup_n_u32((nibble1 & 2) ? 0xFFFFFFFF : 0);
-        uint32x2_t n2_1 = vdup_n_u32((nibble1 & 4) ? 0xFFFFFFFF : 0);
-        uint32x2_t n3_1 = vdup_n_u32((nibble1 & 8) ? 0xFFFFFFFF : 0);
+        uint32x4_t n0 = vdupq_n_u32((nibble & 1) ? 0xFFFFFFFF : 0);
+        uint32x4_t n1 = vdupq_n_u32((nibble & 2) ? 0xFFFFFFFF : 0);
+        uint32x4_t n2 = vdupq_n_u32((nibble & 4) ? 0xFFFFFFFF : 0);
+        uint32x4_t n3 = vdupq_n_u32((nibble & 8) ? 0xFFFFFFFF : 0);
 
-        uint32x2_t n0_2 = vdup_n_u32((nibble2 & 1) ? 0xFFFFFFFF : 0);
-        uint32x2_t n1_2 = vdup_n_u32((nibble2 & 2) ? 0xFFFFFFFF : 0);
-        uint32x2_t n2_2 = vdup_n_u32((nibble2 & 4) ? 0xFFFFFFFF : 0);
-        uint32x2_t n3_2 = vdup_n_u32((nibble2 & 8) ? 0xFFFFFFFF : 0);
-
-        // Combining vectors
-        uint32x4_t n0 = vcombine_u32(n0_1, n0_2); // combines n0 and n1
-        uint32x4_t n1 = vcombine_u32(n1_1, n1_2); // combines n2 and n3
-        uint32x4_t n2 = vcombine_u32(n2_1, n2_2); // combines n0_2 and n1_2
-        uint32x4_t n3 = vcombine_u32(n3_1, n3_2); // combines n2_2 and n3_2
 
         // Compute bitwise XORs
         uint32x4_t a = veorq_u32(in0, in3);
@@ -214,69 +191,8 @@ void mul_add_bitsliced_m_vec_mayo1(u_int32_t *input, u_int32_t input_start, u_in
         acc3 = veorq_u32(acc3, vandq_u32(n3, a));
 
         // Store results back to acc array as uint32x2_t
-        vst1_u32(&acc[acc_start], veor_u32(vget_low_u32(acc0), vget_high_u32(acc0)));
-        vst1_u32(&acc[acc_start + u_32_per_term], veor_u32(vget_low_u32(acc1), vget_high_u32(acc1)));
-        vst1_u32(&acc[acc_start + 2 * u_32_per_term], veor_u32(vget_low_u32(acc2), vget_high_u32(acc2)));
-        vst1_u32(&acc[acc_start + 3 * u_32_per_term], veor_u32(vget_low_u32(acc3), vget_high_u32(acc3))); 
-}
-
-
-
-// First method for MAYO1 and MAYO2 - works similarly to thoes of MAYO3 and MAYO5
-void mul_add_bitsliced_m_vec(u_int32_t *input, u_int32_t input_start, u_int8_t nibble, u_int32_t *acc, u_int32_t acc_start) {
-    
-        int u_32_per_term = 2;
-
-        uint32x2_t in0 = vld1_u32(&input[input_start]);
-        uint32x2_t in1 = vld1_u32(&input[input_start + u_32_per_term]);
-        uint32x2_t in2 = vld1_u32(&input[input_start + 2 * u_32_per_term]);
-        uint32x2_t in3 = vld1_u32(&input[input_start + 3 * u_32_per_term]);
-
-        uint32x2_t acc0 = vld1_u32(&acc[acc_start]);
-        uint32x2_t acc1 = vld1_u32(&acc[acc_start + u_32_per_term]);
-        uint32x2_t acc2 = vld1_u32(&acc[acc_start + 2 * u_32_per_term]);
-        uint32x2_t acc3 = vld1_u32(&acc[acc_start + 3 * u_32_per_term]);
-
-
-        // Nibble mask extraction
-        uint32x2_t n0 = vdup_n_u32((nibble & 1) ? 0xFFFFFFFF : 0);
-        uint32x2_t n1 = vdup_n_u32((nibble & 2) ? 0xFFFFFFFF : 0);
-        uint32x2_t n2 = vdup_n_u32((nibble & 4) ? 0xFFFFFFFF : 0);
-        uint32x2_t n3 = vdup_n_u32((nibble & 8) ? 0xFFFFFFFF : 0);
-
-
-        // Compute bitwise XORs
-        uint32x2_t a = veor_u32(in0, in3);
-        uint32x2_t b = veor_u32(in3, in2);
-        uint32x2_t c = veor_u32(in2, in1);
-
-        // x^0 terms
-        acc0 = veor_u32(acc0, vand_u32(n0, in0));
-        acc1 = veor_u32(acc1, vand_u32(n0, in1));
-        acc2 = veor_u32(acc2, vand_u32(n0, in2));
-        acc3 = veor_u32(acc3, vand_u32(n0, in3));
-
-        // x^1 terms
-        acc0 = veor_u32(acc0, vand_u32(n1, in3));
-        acc1 = veor_u32(acc1, vand_u32(n1, a));
-        acc2 = veor_u32(acc2, vand_u32(n1, in1));
-        acc3 = veor_u32(acc3, vand_u32(n1, in2));
-
-        // x^2 terms
-        acc0 = veor_u32(acc0, vand_u32(n2, in2));
-        acc1 = veor_u32(acc1, vand_u32(n2, b));
-        acc2 = veor_u32(acc2, vand_u32(n2, a));
-        acc3 = veor_u32(acc3, vand_u32(n2, in1));
-
-        //x^3 terms
-        acc0 = veor_u32(acc0, vand_u32(n3, in1));
-        acc1 = veor_u32(acc1, vand_u32(n3, c));
-        acc2 = veor_u32(acc2, vand_u32(n3, b));
-        acc3 = veor_u32(acc3, vand_u32(n3, a));
-
-        // Store results back to acc array
-        vst1_u32(&acc[acc_start], acc0);  // Stores at index acc_start
-        vst1_u32(&acc[acc_start + u_32_per_term], acc1); // Stores at index acc_start + 2
-        vst1_u32(&acc[acc_start + 2 * u_32_per_term], acc2); // Stores at index acc_start + 4
-        vst1_u32(&acc[acc_start + 3 * u_32_per_term], acc3); // Stores at index acc_start + 6
+        vst1q_u32(&acc[acc_start], acc0);
+        vst1q_u32(&acc[acc_start + u_32_per_term], acc1);
+        vst1q_u32(&acc[acc_start + 2 * u_32_per_term], acc2);
+        vst1q_u32(&acc[acc_start + 3 * u_32_per_term], acc3); 
 }

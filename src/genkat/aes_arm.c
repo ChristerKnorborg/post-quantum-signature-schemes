@@ -43,6 +43,8 @@ static const uint8_t sbox[256] = {
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
 
+  
+
 
 // subword algorithm used in the aes key scheduling. 
 uint32_t subword(uint32_t word) {
@@ -123,45 +125,36 @@ void arm_aes128_load_schedule(const uint8_t *key, void **_schedule) {
 // which applies in order: ShiftRows, SubBytes, MixColumns, AddRoundKey. 
 // vaeseq_u8 applies SubBytes, ShiftRows, AddRoundKey. 
 static void arm_aes128_encrypt(const uint8x16_t rkeys[11], uint8x16_t nv, unsigned char *out) {
-    uint8x16_t temp = veorq_u8(nv, rkeys[0]);
-
-    temp = vaeseq_u8(temp, vdupq_n_u8(0)); // Don't add round key here (therefore 0)
-    temp = vaesmcq_u8(temp); // MixColumns
-    temp = veorq_u8(temp, rkeys[1]); // AddRoundKey now
-
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
+    
+    uint8x16_t temp = vaeseq_u8(nv, rkeys[0]);
+    
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[2]);
+    temp = vaeseq_u8(temp, rkeys[1]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[3]);
+    temp = vaeseq_u8(temp, rkeys[2]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[4]);
+    temp = vaeseq_u8(temp, rkeys[3]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[5]);
+    temp = vaeseq_u8(temp, rkeys[4]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[6]);
+    temp = vaeseq_u8(temp, rkeys[5]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[7]);
+    temp = vaeseq_u8(temp, rkeys[6]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[8]);
+    temp = vaeseq_u8(temp, rkeys[7]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
     temp = vaesmcq_u8(temp);
-    temp = veorq_u8(temp, rkeys[9]);
+    temp = vaeseq_u8(temp, rkeys[8]); 
 
-    temp = vaeseq_u8(temp, vdupq_n_u8(0));
+    temp = vaesmcq_u8(temp);
+    temp = vaeseq_u8(temp, rkeys[9]);
+
     temp = veorq_u8(temp, rkeys[10]);
     vst1q_u8(out, temp);
 }

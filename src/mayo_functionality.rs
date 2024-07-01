@@ -4,7 +4,7 @@ use crate::crypto_primitives::{safe_aes_128_ctr, safe_random_bytes, safe_shake25
 use crate::finite_field::{add, mul};
 use crate::sample::sample_solution;
 #[allow(unused_imports)]
-use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec, safe_mul_add_bitsliced_m_vec_mayo1, safe_mul_add_bitsliced_m_vec_mayo3, safe_mul_add_bitsliced_m_vec_mayo5};
+use crate::crypto_primitives::{safe_mul_add_bitsliced_m_vec_mayo12, safe_mul_add_bitsliced_m_vec_mayo3, safe_mul_add_bitsliced_m_vec_mayo5};
 use crate::bitsliced_arithmetic::{p1_add_p1t, calculate_st_p};
 use crate::constants::{
     CSK_BYTES, DIGEST_BYTES, F_Z, K, L_BYTES, M, N, V, O, O_BYTES, P1_BYTES, P2_BYTES, P3_BYTES,
