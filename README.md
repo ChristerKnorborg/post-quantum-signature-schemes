@@ -5,9 +5,14 @@ The different branches contains improvements throughout our implementation proce
 
 The code can be executed using the following Rust commands, which run the MAYO authors suggested parameter versions:
 
-\texttt{cargo mayo1}
-\texttt{cargo mayo2}
-\texttt{cargo mayo3}
-\texttt{cargo mayo5}
+`cargo mayo1`  
+`cargo mayo2`  
+`cargo mayo3`  
+`cargo mayo5`
 
+Furthermore, the scheme can be executed with our native ARM AES implementation using the commands:
 
+`cargo mayo1_aes`  
+`cargo mayo2_aes`  
+`cargo mayo3_aes`  
+`cargo mayo5_aes`
