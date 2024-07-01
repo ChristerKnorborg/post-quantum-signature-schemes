@@ -16,3 +16,11 @@ Furthermore, the scheme can be executed with our native ARM AES implementation u
 `cargo mayo2_aes`  
 `cargo mayo3_aes`  
 `cargo mayo5_aes`
+
+To run 1000 samples of benchmarks the following commands can be executed:
+
+`cargo bench_mayo1`  
+`cargo bench_mayo2`  
+`cargo bench_mayo3`  
+`cargo bench_mayo5`
+
