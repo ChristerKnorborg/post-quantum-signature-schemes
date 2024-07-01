@@ -5,7 +5,7 @@ The different branches contains improvements throughout our implementation proce
 
 
 
-# Generate and Compare with Known Answer Test File
+### Generate and Compare with Known Answer Test File
 The code can be executed using the Rust commands below, which runs the MAYO authors suggested parameter versions dependent on the command. Each of these executions runs the algorithms of the MAYO scheme using the NIST test vectors and stores the input and output in a txt-file. 
 This is then compared to the KAT-file of the authors NIST submission. We emphasize the file is deleted afterwards if no differences are present.
 
@@ -21,7 +21,7 @@ Furthermore, the scheme can be executed with our ARMv8 intrinsics AES implementa
 `cargo mayo3_aes`  
 `cargo mayo5_aes`
 
-# Benchmark
+### Benchmark
 
 To run 1000 samples of timings the following commands can be executed:
 
