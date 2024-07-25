@@ -4,20 +4,14 @@ use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion
 // use criterion_cycles_per_byte::CyclesPerByte;
 use gnuplot::{Caption, Color, Figure};
 
-
 use lib::constants::VERSION;
 use lib::crypto_primitives::{
     safe_aes_128_ctr, safe_random_bytes, safe_random_bytes_init, safe_shake256,
 };
 use lib::mayo_functionality::{api_sign, api_sign_open, compact_key_gen, expand_pk, expand_sk};
 
-
 fn criterion_benchmark(c: &mut Criterion) {
-
     println!("\nRUNNING BENCHMARKS FOR {} \n", VERSION);
-
-
-    
 
     let mut seed_bytes: Vec<u8> = Vec::with_capacity(24);
     let mut entropy_input: Vec<u8> = (0..=47).collect();
@@ -30,13 +24,10 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     safe_random_bytes_init(&mut seed_bytes, &personalization_string, 256);
 
-
     c.bench_function("KeyGen", |bencher| {
         bencher.iter_batched(
             || seed_bytes.clone(),
-            |_| {
-                compact_key_gen()
-            },
+            |_| compact_key_gen(),
             BatchSize::LargeInput,
         );
     });
@@ -44,9 +35,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("ExpandSK", |bencher| {
         bencher.iter_batched(
             || compact_key_gen(),
-            |(_, csk)| {
-                expand_sk(csk)
-            },
+            |(_, csk)| expand_sk(csk),
             BatchSize::LargeInput,
         );
     });
@@ -54,9 +43,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("ExpandPK", |bencher| {
         bencher.iter_batched(
             || compact_key_gen(),
-            |(cpk, _)| {
-                expand_pk(cpk)
-            },
+            |(cpk, _)| expand_pk(cpk),
             BatchSize::LargeInput,
         );
     });
@@ -71,9 +58,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
                 (message_vec, csk)
             },
-            |(message, csk)| {
-                api_sign(message, csk)
-            },
+            |(message, csk)| api_sign(message, csk),
             BatchSize::LargeInput,
         );
     });
@@ -81,7 +66,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("ExpandPK + Verify", |bencher| {
         bencher.iter_batched(
             || {
-                let (cpk, csk) = compact_key_gen();      
+                let (cpk, csk) = compact_key_gen();
                 let mut message = [0u8; 32];
                 safe_random_bytes(&mut message, 32);
                 let message_vec = message.to_vec();
@@ -90,14 +75,10 @@ fn criterion_benchmark(c: &mut Criterion) {
 
                 (signature, cpk)
             },
-            |(message, cpk)| {
-                api_sign_open(message, cpk)
-            },
+            |(message, cpk)| api_sign_open(message, cpk),
             BatchSize::LargeInput,
         );
     });
-
-    //c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
 
 criterion_group!(
@@ -105,6 +86,6 @@ criterion_group!(
     // config = Criterion::default(); //.with_measurement(CyclesPerByte)
     config = Criterion::default().measurement_time(Duration::from_secs(60)).sample_size(5000);
     targets = criterion_benchmark
-    
+
 );
 criterion_main!(my_bench);

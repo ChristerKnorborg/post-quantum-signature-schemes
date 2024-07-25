@@ -1,6 +1,5 @@
 #[cfg(feature = "mayo1")]
 mod mayo1_features {
-
     pub const VERSION: &str = "MAYO_1";
     pub const N: usize = 66;
     pub const M: usize = 64;
@@ -26,9 +25,6 @@ mod mayo1_features {
     pub const SK_SEED_BYTES: usize = 24;
     pub const L_BYTES: usize = 14848;
 
-
-
-
     // Compact representation of irreducible polynomial [z^0 + z^1 + z^2 + z^3 + z^m]
     pub const F_Z: [(usize, u8); 3] = [(0, 0x8), (2, 0x2), (3, 0x8)]; // f(z) =  1z^64         + x^3*z^3 + x*z^2         + x^3
     pub const SHIFTS: usize = (K * (K + 1) / 2) - 1; // Number of shifts in the polynomial (max ell)
@@ -46,7 +42,7 @@ mod mayo2_features {
     pub const O: usize = 18;
     pub const K: usize = 4;
     pub const Q: usize = 16;
-    pub const V: usize = 60;  // N - O (Vinegar variables)
+    pub const V: usize = 60; // N - O (Vinegar variables)
     pub const M_BYTES: usize = 32;
     pub const O_BYTES: usize = 540;
     pub const V_BYTES: usize = 30;
@@ -82,7 +78,7 @@ mod mayo3_features {
     pub const O: usize = 10;
     pub const K: usize = 11;
     pub const Q: usize = 16;
-    pub const V: usize = 89;  // N - O (Vinegar variables)
+    pub const V: usize = 89; // N - O (Vinegar variables)
     pub const M_BYTES: usize = 48;
     pub const O_BYTES: usize = 445;
     pub const V_BYTES: usize = 45;
@@ -118,7 +114,7 @@ mod mayo5_features {
     pub const O: usize = 12;
     pub const K: usize = 12;
     pub const Q: usize = 16;
-    pub const V: usize = 121;  // N - O (Vinegar variables)
+    pub const V: usize = 121; // N - O (Vinegar variables)
     pub const M_BYTES: usize = 64;
     pub const O_BYTES: usize = 726;
     pub const V_BYTES: usize = 61;
@@ -145,7 +141,6 @@ mod mayo5_features {
     pub const COMPARE_FILE_NAME: &str = "./src/genkat/Results MAYO/PQCsignKAT_40_MAYO_5.txt";
 }
 
-
 // Re-export the constants from the included module so they can be accessed directly
 // through this common `constants` module.
 #[cfg(feature = "mayo1")]
@@ -159,4 +154,3 @@ pub use mayo3_features::*;
 
 #[cfg(feature = "mayo5")]
 pub use mayo5_features::*;
-
