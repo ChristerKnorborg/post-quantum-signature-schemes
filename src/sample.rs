@@ -1,13 +1,12 @@
+use crate::constants::{K, M, O};
 use crate::finite_field::{add, inv, mul, sub};
-use crate::constants::{M, K, O};
 use crate::{matrix_vec_mul, vec_add};
-
 
 // MAYO Algorithm 1: Echelon Form
 // Function to perform the echelon form algorithm on matrix B.
-pub fn echelon_form(mut b: [[u8 ; K*O+1]; M]) -> [[u8 ; K*O+1]; M] {
+pub fn echelon_form(mut b: [[u8; K * O + 1]; M]) -> [[u8; K * O + 1]; M] {
     const ROWS: usize = M;
-    const COLS: usize = K*O+1;
+    const COLS: usize = K * O + 1;
     let mut pivot_row = 0;
     let mut pivot_column = 0;
 
@@ -17,7 +16,7 @@ pub fn echelon_form(mut b: [[u8 ; K*O+1]; M]) -> [[u8 ; K*O+1]; M] {
         for i in pivot_row..ROWS {
             if b[i][pivot_column] != 0 {
                 next_pivot_row = Some(i);
-                break; // Optimized to break early if pivot is found 
+                break; // Optimized to break early if pivot is found
             }
         }
         let next_pivot_row = match next_pivot_row {
@@ -48,45 +47,36 @@ pub fn echelon_form(mut b: [[u8 ; K*O+1]; M]) -> [[u8 ; K*O+1]; M] {
         pivot_row += 1;
         pivot_column += 1;
     }
-    return b
+    b
 }
-
-
-
-
-
-
-
 
 // MAYO Algorithm 2: Sample Solution
 // Function to solve the equation Ax = y in GF(16) using gaussian elimination.
-pub fn sample_solution(a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<[u8; K*O], &'static str> {
-
-
-    let mut x: [u8; K*O] = r;
-    let mut temp = matrix_vec_mul!(a, x, M, K*O); //  (m x K*O) * (K*O x 1) = (m x 1)
+pub fn sample_solution(
+    a: [[u8; K * O]; M],
+    y: [u8; M],
+    r: [u8; K * O],
+) -> Result<[u8; K * O], &'static str> {
+    let mut x: [u8; K * O] = r;
+    let mut temp = matrix_vec_mul!(a, x, M, K * O); //  (m x K*O) * (K*O x 1) = (m x 1)
     temp = vec_add!(temp, y, M); // Add same as subtracting in GF(16)
 
-
-
-    let mut pre_ech_a: [[u8; K*O + 1]; M] = [[0u8 ; K*O + 1] ; M];
+    let mut pre_ech_a: [[u8; K * O + 1]; M] = [[0u8; K * O + 1]; M];
 
     for i in 0..M {
-        pre_ech_a[i][..K*O].copy_from_slice(&a[i]);
-        pre_ech_a[i][K*O] = temp[i];
+        pre_ech_a[i][..K * O].copy_from_slice(&a[i]);
+        pre_ech_a[i][K * O] = temp[i];
     }
 
-
     // Put (A | y) in echelon form with leading 1's.
-    let a: [[u8; K*O+1]; M] = echelon_form(pre_ech_a);
-
+    let a: [[u8; K * O + 1]; M] = echelon_form(pre_ech_a);
 
     // Split the matrix into A and y
-    let mut a_ech: [[u8; K*O]; M] = [[0; K*O]; M];
+    let mut a_ech: [[u8; K * O]; M] = [[0; K * O]; M];
     let mut y_ech: [u8; M] = [0; M];
     for (i, row) in a.iter().enumerate() {
-        a_ech[i].copy_from_slice(&row[..K*O]);
-        y_ech[i] = row[K*O];
+        a_ech[i].copy_from_slice(&row[..K * O]);
+        y_ech[i] = row[K * O];
     }
 
     // Check if the matrix A has full rank (E.g. no full row of zeros in the echelon form)
@@ -111,5 +101,3 @@ pub fn sample_solution(a: [[u8; K * O]; M], y: [u8; M], r: [u8; K*O]) -> Result<
     }
     Ok(x)
 }
-
-

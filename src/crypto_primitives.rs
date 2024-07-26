@@ -1,14 +1,11 @@
-use crate::arm_neon_intrinsic::arm_intrinsic::{mul_add_bitsliced_m_vec_mayo12, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5};
+use crate::arm_neon_intrinsic::arm_intrinsic::{
+    mul_add_bitsliced_m_vec_mayo12, mul_add_bitsliced_m_vec_mayo3, mul_add_bitsliced_m_vec_mayo5,
+};
 use crate::genkat::bindings;
 
-
-
-
-
-/* RANDOMNESS AND EXTENDED OUTPUT FUNCTION USE NIST CALLS 
-    - SAME AS MAYO VERSION BY THE AUTHORS 
+/* RANDOMNESS AND EXTENDED OUTPUT FUNCTION USE NIST CALLS
+    - SAME AS MAYO VERSION BY THE AUTHORS
 */
-
 
 pub fn safe_random_bytes_init(
     entropy_input: &mut [u8],
@@ -30,20 +27,11 @@ pub fn safe_random_bytes(random_arrays: &mut [u8], nbytes: u64) {
     }
 }
 
-pub fn safe_aes_128_ctr(
-    output: &mut [u32],
-    output_byte_len: u64,
-    input: &[u8],
-) {
+pub fn safe_aes_128_ctr(output: &mut [u32], output_byte_len: u64, input: &[u8]) {
     unsafe {
-        bindings::AES_128_CTR(
-            output.as_mut_ptr(),
-            output_byte_len,
-            input.as_ptr(),
-        );
+        bindings::AES_128_CTR(output.as_mut_ptr(), output_byte_len, input.as_ptr());
     }
 }
-
 
 pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], input_byte_len: u64) {
     unsafe {
@@ -56,18 +44,56 @@ pub fn safe_shake256(output: &mut [u8], output_byte_len: u64, input: &[u8], inpu
     }
 }
 
-
-
-pub fn safe_mul_add_bitsliced_m_vec_mayo12(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
-    unsafe { mul_add_bitsliced_m_vec_mayo12(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
+pub fn safe_mul_add_bitsliced_m_vec_mayo12(
+    input: &[u32],
+    input_start: i32,
+    nibble: u8,
+    acc: &mut [u32],
+    acc_start: i32,
+) {
+    unsafe {
+        mul_add_bitsliced_m_vec_mayo12(
+            input.as_ptr(),
+            input_start,
+            nibble,
+            acc.as_mut_ptr(),
+            acc_start,
+        )
+    }
 }
 
-pub fn safe_mul_add_bitsliced_m_vec_mayo3(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
-    unsafe { mul_add_bitsliced_m_vec_mayo3(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
+pub fn safe_mul_add_bitsliced_m_vec_mayo3(
+    input: &[u32],
+    input_start: i32,
+    nibble: u8,
+    acc: &mut [u32],
+    acc_start: i32,
+) {
+    unsafe {
+        mul_add_bitsliced_m_vec_mayo3(
+            input.as_ptr(),
+            input_start,
+            nibble,
+            acc.as_mut_ptr(),
+            acc_start,
+        )
+    }
 }
 
-pub fn safe_mul_add_bitsliced_m_vec_mayo5(input: &[u32], input_start: i32, nibble: u8, acc: &mut [u32], acc_start: i32){
-    unsafe { mul_add_bitsliced_m_vec_mayo5(input.as_ptr(), input_start, nibble, acc.as_mut_ptr(), acc_start) }
+pub fn safe_mul_add_bitsliced_m_vec_mayo5(
+    input: &[u32],
+    input_start: i32,
+    nibble: u8,
+    acc: &mut [u32],
+    acc_start: i32,
+) {
+    unsafe {
+        mul_add_bitsliced_m_vec_mayo5(
+            input.as_ptr(),
+            input_start,
+            nibble,
+            acc.as_mut_ptr(),
+            acc_start,
+        )
+    }
 }
-
-

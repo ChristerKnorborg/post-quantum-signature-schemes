@@ -1,28 +1,24 @@
+use crate::crypto_primitives::safe_random_bytes_init;
 use std::fs::File;
-use std::io::{Write, Result};
 use std::io::{self, Read};
+use std::io::{Result, Write};
 use std::path::Path;
-use crate::crypto_primitives:: safe_random_bytes_init;
-
 
 pub fn test_random(k: u8, o: u8) -> Vec<u8> {
     let num_elems: u16 = (k * o) as u16;
 
     let test_vec = vec![1; num_elems as usize];
-    return test_vec;
+    test_vec
 }
 
-pub fn print_matrix(mat: Vec<Vec<u8>>) -> () {
+pub fn print_matrix(mat: Vec<Vec<u8>>) {
     mat.iter().for_each(|f| {
         println!("{:?}", f);
     })
 }
 
-
-
-
 // Method to set the random number generator seed for debugging and testing purposes
-pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
+pub fn set_seed_for_test(mut entropy_input: Vec<u8>) {
     let personalization_string: Vec<u8> = vec![0u8; 47]; // Example, adjust as necessary
 
     safe_random_bytes_init(
@@ -30,7 +26,6 @@ pub fn set_seed_for_test(mut entropy_input: Vec<u8>){
         &personalization_string, // Even if empty, this is now a valid pointer
         256,
     );
-
 }
 
 pub fn write_u32_array_to_file_int(filename: &str, data: &[u32]) -> Result<()> {
@@ -43,7 +38,6 @@ pub fn write_u32_array_to_file_int(filename: &str, data: &[u32]) -> Result<()> {
     Ok(())
 }
 
-
 pub fn write_u32_array_to_file_byte(filename: &str, data: &[u32]) -> Result<()> {
     let mut file = File::create(filename)?;
 
@@ -54,15 +48,13 @@ pub fn write_u32_array_to_file_byte(filename: &str, data: &[u32]) -> Result<()> 
     Ok(())
 }
 
-
-
 pub fn write_u8_array_to_file_int(filename: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(filename)?;
-    
+
     for byte in data.iter() {
         write!(file, "{:}", byte)?;
     }
-    
+
     Ok(())
 }
 
@@ -75,7 +67,6 @@ pub fn write_u8_array_to_file_byte(filename: &str, data: &[u8]) -> Result<()> {
 
     Ok(())
 }
-
 
 // Convert a hex string to a byte vector of nibbles by parsing each pair of hex digits
 // into a u8 and collecting them into a single Vec<u8>.
@@ -102,12 +93,12 @@ pub fn hex_string_to_bytes(hex_str: &str) -> Vec<u8> {
         res.push(last_byte);
     }
 
-    return res;
+    res
 }
 
 // Convert a byte vector of nibbles to a hex string by formatting each byte as a pair of
 // hex digits and concatenating them into a single String.
-pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
+pub fn bytes_to_hex_string(bytes: &[u8], uneven: bool) -> String {
     let mut hex_str = String::new();
     let len = bytes.len();
 
@@ -120,9 +111,8 @@ pub fn bytes_to_hex_string(bytes: &Vec<u8>, uneven: bool) -> String {
             hex_str.push_str(&format!("{:02X}", byte));
         }
     }
-    return hex_str;
+    hex_str
 }
-
 
 fn read_file_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     let mut file = File::open(path)?;
@@ -137,7 +127,6 @@ pub fn compare_hex_files<P: AsRef<Path>>(file1_path: P, file2_path: P) -> io::Re
 
     Ok(file1_contents == file2_contents)
 }
-
 
 // test echoleon_form
 #[cfg(test)]
